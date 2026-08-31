@@ -7,11 +7,13 @@ export async function convertProformaToTaxInvoiceAction(proformaId: string) {
   try {
     const invoice = await TaxInvoiceService.convertProformaToTaxInvoice(proformaId);
     revalidatePath("/invoices");
+    revalidatePath("/finance");
+    revalidatePath("/dashboard");
     revalidatePath(`/proforma-invoices/${proformaId}`);
     return { success: true, data: invoice };
   } catch (error: any) {
     console.error("Failed to convert invoice:", error);
-    return { success: false, error: error.message || "Failed to convert invoice." };
+    return { success: false, error: error.message || "Unable to convert Proforma Invoice to Tax Invoice. Please try again." };
   }
 }
 

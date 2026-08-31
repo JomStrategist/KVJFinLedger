@@ -2,19 +2,27 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ProformaInvoiceStatus } from "@prisma/client";
 import { updateProformaInvoiceStatusAction } from "./proforma-actions";
+import { convertProformaToTaxInvoiceAction } from "./actions";
 
 export function ProformaInvoiceClientList({
   initialInvoices,
 }: {
   initialInvoices: any[]; // Using any to avoid complex nested Prisma typings inline
 }) {
+  const router = useRouter();
   const [invoices, setInvoices] = useState(initialInvoices);
   const [isPending, startTransition] = useTransition();
+  const [isConverting, startConvertTransition] = useTransition();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProformaInvoiceStatus | "ALL">("ALL");
+
+  // Conversion modal state
+  const [convertingInvoice, setConvertingInvoice] = useState<any | null>(null);
+  const [convertError, setConvertError] = useState<string | null>(null);
 
   const filteredInvoices = invoices.filter((invoice) => {
     const searchLower = search.toLowerCase();
@@ -33,6 +41,7 @@ export function ProformaInvoiceClientList({
       case "DRAFT": return "bg-theme-surface-hover text-theme-text";
       case "SENT": return "bg-theme-surface-hover text-blue-800";
       case "ACCEPTED": return "bg-emerald-100 text-emerald-800";
+      case "CONVERTED": return "bg-purple-100 text-purple-800";
       case "REJECTED": return "bg-red-100 text-red-800";
       case "EXPIRED": return "bg-orange-100 text-orange-800";
       case "CANCELLED": return "bg-theme-surface-hover text-theme-text-muted line-through";
@@ -52,6 +61,27 @@ export function ProformaInvoiceClientList({
       if (!res.success) {
         setInvoices(prev);
         alert(res.error);
+      }
+    });
+  };
+
+  const handleConfirmConvert = () => {
+    if (!convertingInvoice) return;
+    setConvertError(null);
+
+    startConvertTransition(async () => {
+      const res = await convertProformaToTaxInvoiceAction(convertingInvoice.id);
+      if (res.success && res.data) {
+        setInvoices((prev) =>
+          prev.map((i) =>
+            i.id === convertingInvoice.id ? { ...i, status: "CONVERTED" } : i
+          )
+        );
+        const newInvoiceId = res.data.id;
+        setConvertingInvoice(null);
+        router.push(`/invoices/${newInvoiceId}`);
+      } else {
+        setConvertError(res.error || "Unable to convert Proforma Invoice to Tax Invoice. Please try again.");
       }
     });
   };
@@ -82,6 +112,7 @@ export function ProformaInvoiceClientList({
           <option value="DRAFT">Draft</option>
           <option value="SENT">Sent</option>
           <option value="ACCEPTED">Accepted</option>
+          <option value="CONVERTED">Converted</option>
           <option value="REJECTED">Rejected</option>
           <option value="EXPIRED">Expired</option>
           <option value="CANCELLED">Cancelled</option>
@@ -105,7 +136,7 @@ export function ProformaInvoiceClientList({
             <tbody className="divide-y divide-theme-border text-sm">
               {filteredInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-theme-text-muted">
+                  <td colSpan={6} className="px-6 py-8 text-center text-theme-text-muted">
                     No proforma invoices found. Create your first proforma invoice to begin billing.
                   </td>
                 </tr>
@@ -133,26 +164,40 @@ export function ProformaInvoiceClientList({
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-3">
+                      <div className="flex items-center justify-end gap-3 flex-wrap">
                         {invoice.status === "DRAFT" && (
                           <Link 
                             href={`/proforma-invoices/${invoice.id}/edit`}
-                            className="text-theme-text-muted hover:text-theme-primary font-medium text-xs"
+                            className="text-theme-text-muted hover:text-theme-primary font-medium text-xs transition-colors"
                           >
                             Edit
                           </Link>
                         )}
                         <Link 
                           href={`/proforma-invoices/${invoice.id}`}
-                          className="text-theme-text-muted hover:text-theme-primary font-medium text-xs"
+                          className="text-theme-text-muted hover:text-theme-primary font-medium text-xs transition-colors"
                         >
                           View
                         </Link>
+                        {invoice.status !== "CONVERTED" && invoice.status !== "CANCELLED" && invoice.status !== "REJECTED" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setConvertingInvoice(invoice);
+                              setConvertError(null);
+                            }}
+                            disabled={isConverting}
+                            className="text-theme-primary hover:text-theme-primary-dark font-medium text-xs transition-colors cursor-pointer"
+                          >
+                            Convert to Tax Invoice
+                          </button>
+                        )}
                         {invoice.status !== "CANCELLED" && (
                           <button
+                            type="button"
                             onClick={() => handleCancel(invoice.id)}
                             disabled={isPending}
-                            className="text-red-500 hover:text-red-700 font-medium text-xs disabled:opacity-50"
+                            className="text-red-500 hover:text-red-700 font-medium text-xs disabled:opacity-50 transition-colors cursor-pointer"
                           >
                             Cancel
                           </button>
@@ -166,6 +211,80 @@ export function ProformaInvoiceClientList({
           </table>
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      {convertingInvoice && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div 
+            className="bg-white rounded-xl border border-theme-border p-6 w-full max-w-md shadow-2xl space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-theme-border pb-3">
+              <h3 className="text-lg font-bold text-theme-text">Confirm and Finalize</h3>
+              <button
+                type="button"
+                onClick={() => { if (!isConverting) { setConvertingInvoice(null); setConvertError(null); } }}
+                disabled={isConverting}
+                className="text-theme-text-muted hover:text-theme-text p-1 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm text-theme-text leading-relaxed">
+                Are you sure you want to convert this Proforma Invoice into a Confirmed Tax Invoice?
+              </p>
+
+              <div className="bg-theme-surface-hover p-3.5 rounded-lg border border-theme-border text-xs space-y-1.5 text-theme-text-muted">
+                <div className="flex justify-between">
+                  <span className="font-medium text-theme-text">Proforma Invoice:</span>
+                  <span className="font-semibold text-theme-text">{convertingInvoice.invoiceNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-medium text-theme-text">Customer:</span>
+                  <span className="font-medium text-theme-text">{convertingInvoice.customer?.legalName}</span>
+                </div>
+                <div className="flex justify-between border-t border-theme-border pt-1.5 mt-1.5">
+                  <span className="font-medium text-theme-text">Total Amount:</span>
+                  <span className="font-bold text-theme-primary">₹{convertingInvoice.totalAmount?.toString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {convertError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg font-medium">
+                {convertError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-theme-border">
+              <button
+                type="button"
+                onClick={() => { setConvertingInvoice(null); setConvertError(null); }}
+                disabled={isConverting}
+                className="px-4 py-2 text-sm font-medium text-theme-text bg-white border border-theme-border rounded-lg hover:bg-theme-surface-hover transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmConvert}
+                disabled={isConverting}
+                className="px-4 py-2 text-sm font-medium text-white bg-theme-primary hover:bg-theme-primary-dark rounded-lg flex items-center gap-2 disabled:opacity-50 shadow-sm transition-colors"
+              >
+                {isConverting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                {isConverting ? "Converting..." : "Confirm and Finalize"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
