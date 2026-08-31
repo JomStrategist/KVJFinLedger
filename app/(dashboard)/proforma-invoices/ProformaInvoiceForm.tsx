@@ -142,6 +142,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
   }, [selectedCustomer, customerType]);
 
   // Determine active tax logic based on Customer Type & GST Treatment
+  const isKerala = !selectedCustomer?.state || selectedCustomer.state.trim().toLowerCase() === BUSINESS_LOCATION.state.toLowerCase();
   const isExport = customerType === "B2B_EXPORT" || gstTreatment === "Export / Zero Rated";
   const isGstExempt = gstTreatment === "GST Not Applicable";
   const effectiveGstRate = isExport || isGstExempt ? 0 : globalGstRate;
@@ -613,10 +614,10 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
           {/* GST Controls Bar (Matching Screenshot 1 & 2) */}
           <div className="p-4 bg-theme-surface-hover/60 border-t border-theme-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-6">
-              {/* GST Rate */}
+              {/* GST / IGST Rate */}
               <div className="flex items-center gap-2">
                 <label className="text-xs font-bold text-theme-text uppercase tracking-wide">
-                  {gstTreatment === "IGST" ? "IGST Rate:" : "GST Rate:"}
+                  {isExport ? "Tax Rate:" : isKerala ? "GST Rate:" : "IGST Rate:"}
                 </label>
                 <select
                   value={globalGstRate}
@@ -630,20 +631,22 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                 </select>
               </div>
 
-              {/* GST-inclusive? (Required between GST Rate & Reverse GST Calculator) */}
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-bold text-theme-text uppercase tracking-wide">
-                  GST-inclusive?
-                </label>
-                <select
-                  value={isGstInclusive}
-                  onChange={(e) => setIsGstInclusive(e.target.value as "EXCLUSIVE" | "INCLUSIVE")}
-                  className="border border-theme-border rounded-lg px-3 py-1.5 text-sm font-semibold bg-theme-surface focus:ring-2 focus:ring-theme-primary text-theme-text"
-                >
-                  <option value="EXCLUSIVE">GST Exclusive</option>
-                  <option value="INCLUSIVE">GST Inclusive</option>
-                </select>
-              </div>
+              {/* GST-inclusive / IGST-inclusive? */}
+              {!isExport && !isGstExempt && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-bold text-theme-text uppercase tracking-wide">
+                    {isKerala ? "GST-inclusive?" : "IGST-inclusive?"}
+                  </label>
+                  <select
+                    value={isGstInclusive}
+                    onChange={(e) => setIsGstInclusive(e.target.value as "EXCLUSIVE" | "INCLUSIVE")}
+                    className="border border-theme-border rounded-lg px-3 py-1.5 text-sm font-semibold bg-theme-surface focus:ring-2 focus:ring-theme-primary text-theme-text"
+                  >
+                    <option value="EXCLUSIVE">{isKerala ? "GST Exclusive" : "IGST Exclusive"}</option>
+                    <option value="INCLUSIVE">{isKerala ? "GST Inclusive" : "IGST Inclusive"}</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Reverse GST Base Amount Indicator */}
