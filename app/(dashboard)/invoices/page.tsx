@@ -22,6 +22,15 @@ export default async function InvoicesHubPage({
           <h1 className="text-2xl font-bold text-theme-text">Invoices</h1>
           <p className="text-theme-text-muted mt-1 text-sm">Manage both draft estimates (Proforma) and finalized Tax Invoices.</p>
         </div>
+        <Link
+          href="/proforma-invoices/new"
+          className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-theme-primary hover:bg-theme-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-primary gap-1.5 shrink-0"
+        >
+          <svg className="-ml-1 mr-1.5 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          + Create Proforma
+        </Link>
       </div>
 
       {/* Tabs */}

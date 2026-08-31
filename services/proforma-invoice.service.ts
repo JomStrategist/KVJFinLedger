@@ -11,11 +11,17 @@ export type CreateProformaInvoiceInput = {
   invoiceDate: string | Date;
   notes?: string | null;
   isPurchaseOrder?: boolean;
-  tdsRate?: number; // kept for legacy overall tds if any
+  tdsRate?: number; // overall invoice-level tds rate
   globalGstRate?: number;
   isGlobalGstEnabled?: boolean;
   globalTdsRate?: number;
   isGlobalTdsEnabled?: boolean;
+  isGstInclusive?: boolean;
+  gstTreatment?: string;
+  paymentTerms?: string;
+  placeCountry?: string;
+  customerGstin?: string;
+  customerAddress?: string;
   items: {
     productId: string;
     description?: string | null;
@@ -104,14 +110,24 @@ export class ProformaInvoiceService {
     const customer = await prisma.customer.findUnique({ where: { id: data.customerId } });
     if (!customer) throw new Error("Customer not found");
 
+    const isInclusive = Boolean(data.isGstInclusive);
+    const appliedRate = data.globalGstRate || 0;
+
     const mappedItems = data.items.map(item => {
-      const grossAmount = Number((item.quantity * item.unitPrice).toFixed(2));
-      const discountAmount = Number(((grossAmount * item.discountPercent) / 100).toFixed(2));
-      const taxableAmount = Number((grossAmount - discountAmount).toFixed(2));
+      const rawGross = Number((item.quantity * item.unitPrice).toFixed(2));
+      const discountAmount = Number(((rawGross * item.discountPercent) / 100).toFixed(2));
+      let taxableAmount = 0;
+
+      if (isInclusive && appliedRate > 0) {
+        const inclusiveAfterDiscount = Number((rawGross - discountAmount).toFixed(2));
+        taxableAmount = Number((inclusiveAfterDiscount / (1 + appliedRate / 100)).toFixed(2));
+      } else {
+        taxableAmount = Number((rawGross - discountAmount).toFixed(2));
+      }
 
       return {
         ...item,
-        grossAmount,
+        grossAmount: rawGross,
         discountAmount,
         taxableAmount,
       };
