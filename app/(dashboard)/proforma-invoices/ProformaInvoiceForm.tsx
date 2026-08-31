@@ -3,6 +3,7 @@
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createProformaInvoiceAction, updateProformaInvoiceAction } from "../invoices/proforma-actions";
+import { CustomerForm } from "../customers/CustomerForm";
 import { TaxEngine, TDS_RATES } from "@/lib/tax";
 import { BUSINESS_LOCATION } from "@/lib/config/business";
 
@@ -43,7 +44,6 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
 
   const [customers, setCustomers] = useState(initialCustomers);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({ legalName: '', customerType: 'B2B', state: BUSINESS_LOCATION.state, email: '', phone: '' });
 
   // Form State
   const [customerId, setCustomerId] = useState(initialData?.customerId || "");
@@ -181,9 +181,12 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
     const val = e.target.value;
     if (val === "ADD_NEW") {
       setShowAddCustomer(true);
-      setCustomerId("");
     } else {
       setCustomerId(val);
+      const cust = customers.find(c => c.id === val);
+      if (cust?.customerType) {
+        setCustomerType(cust.customerType);
+      }
     }
   };
 
@@ -254,7 +257,8 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 pb-24">
+    <>
+      <form onSubmit={handleSubmit} className="space-y-8 pb-24">
       {error && (
         <div className="bg-red-900/20 text-red-700 p-4 rounded-lg text-sm font-medium border border-red-200">
           {error}
@@ -302,7 +306,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                 {c.legalName} {c.gstin ? `(${c.gstin})` : ''} - {c.state || "State missing"}
               </option>
             ))}
-            <option value="ADD_NEW" className="font-bold text-theme-primary bg-theme-surface-hover">+ Add Custom Customer</option>
+            <option value="ADD_NEW" className="font-bold text-theme-primary bg-theme-surface-hover">+ Add New Customer</option>
           </select>
           {selectedCustomer && (
             <p className="text-xs text-theme-text-muted mt-1">
@@ -669,43 +673,41 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
           Save as Draft
         </button>
       </div>
-
-      {showAddCustomer && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-           <div className="bg-theme-surface rounded-xl border border-theme-border p-6 w-full max-w-md shadow-xl">
-             <h3 className="text-lg font-bold text-theme-text mb-4 border-b border-theme-border pb-2">Add Custom Customer</h3>
-             <div className="space-y-4">
-               <div>
-                 <label className="block text-sm text-theme-text mb-1">Legal Name *</label>
-                 <input type="text" value={newCustomer.legalName} onChange={e => setNewCustomer({...newCustomer, legalName: e.target.value})} className="w-full bg-theme-surface-hover border border-theme-border rounded-md px-3 py-2 text-sm" />
-               </div>
-               <div>
-                 <label className="block text-sm text-theme-text mb-1">Customer Type</label>
-                 <select value={newCustomer.customerType} onChange={e => setNewCustomer({...newCustomer, customerType: e.target.value})} className="w-full bg-theme-surface-hover border border-theme-border rounded-md px-3 py-2 text-sm">
-                   <option value="B2B">B2B</option>
-                   <option value="B2C">B2C</option>
-                 </select>
-               </div>
-               <div>
-                 <label className="block text-sm text-theme-text mb-1">State</label>
-                 <input type="text" value={newCustomer.state} onChange={e => setNewCustomer({...newCustomer, state: e.target.value})} className="w-full bg-theme-surface-hover border border-theme-border rounded-md px-3 py-2 text-sm" />
-               </div>
-               <div className="flex gap-4 pt-4 border-t border-theme-border justify-end">
-                 <button type="button" onClick={() => setShowAddCustomer(false)} className="text-sm px-4 py-2 text-theme-text-muted hover:text-white">Cancel</button>
-                 <button type="button" onClick={async () => {
-                   if (!newCustomer.legalName) return alert("Legal Name is required");
-                   // In a real implementation this would call createCustomerAction
-                   // Mocking the result for the UI
-                   const mockedCustomer = { id: Math.random().toString(), ...newCustomer };
-                   setCustomers([...customers, mockedCustomer]);
-                   setCustomerId(mockedCustomer.id);
-                   setShowAddCustomer(false);
-                 }} className="text-sm px-4 py-2 bg-theme-primary text-white rounded-md hover:bg-theme-primary-dark">Save Customer</button>
-               </div>
-             </div>
-           </div>
-        </div>
-      )}
     </form>
+
+    {showAddCustomer && (
+      <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="bg-theme-surface rounded-xl border border-theme-border w-full max-w-4xl shadow-2xl max-h-[90vh] overflow-y-auto my-8">
+          <div className="flex justify-between items-center border-b border-theme-border p-6 pb-4">
+            <div>
+              <h2 className="text-xl font-bold text-theme-text">Add New Customer</h2>
+              <p className="text-sm text-theme-text-muted mt-0.5">Create a new customer profile without leaving this invoice.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddCustomer(false)}
+              className="text-theme-text-muted hover:text-theme-text p-1.5 rounded-lg hover:bg-theme-surface-hover transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <CustomerForm
+            isModal={true}
+            onSuccess={(createdCustomer) => {
+              setCustomers((prev) => [createdCustomer, ...prev]);
+              setCustomerId(createdCustomer.id);
+              if (createdCustomer.customerType) {
+                setCustomerType(createdCustomer.customerType);
+              }
+              setShowAddCustomer(false);
+            }}
+            onCancel={() => setShowAddCustomer(false)}
+          />
+        </div>
+      </div>
+    )}
+  </>
   );
 }

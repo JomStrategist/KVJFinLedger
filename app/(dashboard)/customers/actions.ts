@@ -21,7 +21,7 @@ export async function createCustomerAction(data: CreateCustomerInput) {
   try {
     const customer = await CustomerService.createCustomer(data);
     revalidatePath("/customers");
-    return { success: true, id: customer.id };
+    return { success: true, id: customer.id, customer };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to create customer." };
   }
@@ -32,7 +32,7 @@ export async function updateCustomerAction(id: string, data: UpdateCustomerInput
     const customer = await CustomerService.updateCustomer(id, data);
     revalidatePath("/customers");
     revalidatePath(`/customers/${id}`);
-    return { success: true, id: customer.id };
+    return { success: true, id: customer.id, customer };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to update customer." };
   }

@@ -7,11 +7,14 @@ import { createCustomerAction, updateCustomerAction } from "./actions";
 
 type CustomerFormProps = {
   initialData?: Customer;
+  onSuccess?: (customer: Customer) => void;
+  onCancel?: () => void;
+  isModal?: boolean;
 };
 
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
-export function CustomerForm({ initialData }: CustomerFormProps) {
+export function CustomerForm({ initialData, onSuccess, onCancel, isModal = false }: CustomerFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +77,11 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
       }
 
       if (res.success) {
-        router.push("/customers");
+        if (onSuccess && res.customer) {
+          onSuccess(res.customer);
+        } else {
+          router.push("/customers");
+        }
       } else {
         setError(res.error);
       }
@@ -82,7 +89,10 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-theme-surface border border-theme-border rounded-xl shadow-sm p-6 space-y-6">
+    <form 
+      onSubmit={handleSubmit} 
+      className={`${isModal ? "" : "bg-theme-surface border border-theme-border rounded-xl shadow-sm"} p-6 space-y-6`}
+    >
       {error && (
         <div className="bg-red-900/20 text-red-700 p-4 rounded-lg text-sm font-medium border border-red-200">
           {error}
@@ -92,7 +102,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
       {/* Customer Type */}
       <div>
         <label className="block text-sm font-medium text-theme-text mb-2">Customer Type</label>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input 
               type="radio" 
@@ -147,7 +157,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
               required
               value={formData.legalName}
               onChange={handleChange}
-              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary"
+              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface text-theme-text"
             />
           </div>
 
@@ -159,7 +169,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
                 name="tradeName"
                 value={formData.tradeName}
                 onChange={handleChange}
-                className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary"
+                className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface text-theme-text"
               />
             </div>
           )}
@@ -174,7 +184,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
                 name="gstin"
                 value={formData.gstin}
                 onChange={handleChange}
-                className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary uppercase"
+                className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary uppercase bg-theme-surface text-theme-text"
                 placeholder="e.g. 27ABCDE1234F1Z5"
               />
             </div>
@@ -187,7 +197,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
               name="pan"
               value={formData.pan}
               onChange={handleChange}
-              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary uppercase"
+              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary uppercase bg-theme-surface text-theme-text"
             />
           </div>
         </div>
@@ -203,7 +213,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary"
+              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface text-theme-text"
             />
           </div>
 
@@ -214,7 +224,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary"
+              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface text-theme-text"
             />
           </div>
         </div>
@@ -232,7 +242,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
             name="address"
             value={formData.address}
             onChange={handleChange}
-            className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary"
+            className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface text-theme-text"
           />
         </div>
 
@@ -244,7 +254,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
               name="city"
               value={formData.city}
               onChange={handleChange}
-              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary"
+              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface text-theme-text"
             />
           </div>
           <div>
@@ -256,7 +266,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
               name="state"
               value={formData.state}
               onChange={handleChange}
-              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary"
+              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface text-theme-text"
             />
           </div>
           <div>
@@ -268,7 +278,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
               name="stateCode"
               value={formData.stateCode}
               onChange={handleChange}
-              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary"
+              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface text-theme-text"
               placeholder="e.g. 27"
             />
           </div>
@@ -279,7 +289,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
               name="pinCode"
               value={formData.pinCode}
               onChange={handleChange}
-              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary"
+              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface text-theme-text"
             />
           </div>
         </div>
@@ -288,7 +298,7 @@ export function CustomerForm({ initialData }: CustomerFormProps) {
       <div className="pt-4 border-t flex justify-end gap-3">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => onCancel ? onCancel() : router.back()}
           className="px-4 py-2 text-sm font-medium text-theme-text bg-theme-surface border border-theme-border rounded-lg hover:bg-theme-surface-hover focus:outline-none focus:ring-2 focus:ring-theme-primary"
           disabled={isPending}
         >
