@@ -13,12 +13,15 @@ export default function LoginForm() {
   return (
     <div className="flex h-screen w-full items-center justify-center bg-theme-surface-hover">
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-theme-surface p-8 shadow-lg border border-theme-border">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-theme-text">
-            Billing ERP
+        <div className="text-center">
+          <div className="mx-auto h-12 w-12 rounded-xl bg-theme-primary flex items-center justify-center font-bold text-white shadow-sm text-xl mb-3">
+            FL
+          </div>
+          <h2 className="text-2xl font-bold text-theme-text tracking-tight">
+            FinLedger India
           </h2>
-          <p className="mt-2 text-center text-sm text-theme-text-muted">
-            Sign in to your account
+          <p className="mt-1 text-xs text-theme-text-muted">
+            Financial Management & Billing ERP
           </p>
         </div>
 

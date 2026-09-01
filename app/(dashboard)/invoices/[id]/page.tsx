@@ -77,7 +77,8 @@ export default async function TaxInvoiceDetailPage({
             <h2 className="text-3xl font-bold text-theme-text tracking-tight">TAX INVOICE</h2>
             
             <div className="mt-8 space-y-1 text-sm text-theme-text-muted">
-              <p className="font-bold text-theme-text text-lg">Your Company Name</p>
+              <p className="font-bold text-theme-text text-xl">FinLedger India</p>
+              <p className="text-xs font-semibold text-theme-primary">IT Services • Training • Digital Products</p>
               <p>123 Business Avenue, Tech Park</p>
               <p>{BUSINESS_LOCATION.state} - {BUSINESS_LOCATION.stateCode}</p>
               <p>GSTIN: 27AAAAA0000A1Z5</p>
