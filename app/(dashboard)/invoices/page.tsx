@@ -29,7 +29,7 @@ export default async function InvoicesHubPage({
           <svg className="-ml-1 mr-1.5 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          + Create Proforma
+          Create Proforma
         </Link>
       </div>
 
