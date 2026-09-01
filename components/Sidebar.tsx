@@ -33,7 +33,7 @@ const navItems = [
   },
   {
     name: "Bank Transfers",
-    href: "/finance",
+    href: "/bank-transfers",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -41,29 +41,11 @@ const navItems = [
     )
   },
   {
-    name: "Customers",
-    href: "/customers",
+    name: "Masters",
+    href: "/masters",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-      </svg>
-    )
-  },
-  {
-    name: "Products & Services",
-    href: "/products",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-      </svg>
-    )
-  },
-  {
-    name: "Vendors",
-    href: "/vendors",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
       </svg>
     )
   },
@@ -180,10 +162,10 @@ export function Sidebar({ userRole }: { userRole?: string }) {
         {!isCollapsed && (
           <div className="flex items-center gap-2.5 transition-opacity duration-300">
             <div className="h-9 w-9 rounded-lg bg-white/20 flex items-center justify-center font-bold text-white shadow-inner text-base">
-              FL
+              KVJ
             </div>
             <div className="leading-tight">
-              <div className="text-base font-bold text-white tracking-tight">FinLedger India</div>
+              <div className="text-base font-bold text-white tracking-tight">KVJ Analytics</div>
               <div className="text-[11px] text-white/70 font-medium">Financial Management</div>
             </div>
           </div>
@@ -248,7 +230,7 @@ export function Sidebar({ userRole }: { userRole?: string }) {
       {/* Footer info in sidebar */}
       {!isCollapsed && (
         <div className="p-4 border-t border-white/10 text-[11px] text-white/60 text-center">
-          FinLedger India • FY 2026–27
+          KVJ Analytics • FY 2026–27
         </div>
       )}
     </aside>

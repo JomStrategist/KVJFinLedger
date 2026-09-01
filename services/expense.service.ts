@@ -43,15 +43,20 @@ export class ExpenseService {
       ];
     }
 
-    return await prisma.expense.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      include: {
-        vendor: true,
-        category: true,
-        employee: true,
-      }
-    });
+    try {
+      return await prisma.expense.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        include: {
+          vendor: true,
+          category: true,
+          employee: true,
+        }
+      });
+    } catch (error) {
+      console.warn("ExpenseService.getExpenses DB fetch error:", error);
+      return [];
+    }
   }
 
   static async getExpenseById(id: string) {

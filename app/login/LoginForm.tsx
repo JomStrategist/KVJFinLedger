@@ -15,13 +15,13 @@ export default function LoginForm() {
       <div className="w-full max-w-md space-y-8 rounded-2xl bg-theme-surface p-8 shadow-lg border border-theme-border">
         <div className="text-center">
           <div className="mx-auto h-12 w-12 rounded-xl bg-theme-primary flex items-center justify-center font-bold text-white shadow-sm text-xl mb-3">
-            FL
+            KVJ
           </div>
           <h2 className="text-2xl font-bold text-theme-text tracking-tight">
-            FinLedger India
+            KVJ Analytics
           </h2>
           <p className="mt-1 text-xs text-theme-text-muted">
-            Financial Management & Billing ERP
+            Financial Management System
           </p>
         </div>
 

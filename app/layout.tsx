@@ -6,7 +6,7 @@ import { Providers } from "@/components/Providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "FinLedger India",
+  title: "KVJ Analytics - Financial Management System",
   description: "Financial Management System for Indian IT Services and Training Businesses",
 };
 

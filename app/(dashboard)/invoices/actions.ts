@@ -28,3 +28,30 @@ export async function cancelTaxInvoiceAction(id: string, reason: string) {
     return { success: false, error: error.message || "Failed to cancel invoice." };
   }
 }
+
+export async function recordInvoicePaymentAction(
+  invoiceId: string,
+  payload: {
+    paymentDate: string;
+    paymentAmount: number;
+    isTdsDeducted: boolean;
+    tdsRate: number;
+    tdsAmount: number;
+    bankReceipt: number;
+    reference?: string;
+    remarks?: string;
+  }
+) {
+  try {
+    const payment = await TaxInvoiceService.recordPayment(invoiceId, payload);
+    revalidatePath("/invoices");
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/finance");
+    revalidatePath("/dashboard");
+    revalidatePath("/reports");
+    return { success: true, data: payment };
+  } catch (error: any) {
+    console.error("Failed to record invoice payment:", error);
+    return { success: false, error: error.message || "Failed to record payment." };
+  }
+}

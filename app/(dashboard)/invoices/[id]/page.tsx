@@ -4,8 +4,7 @@ import { TaxInvoiceStatus } from "@prisma/client";
 import { TaxEngine } from "@/lib/tax";
 import { BUSINESS_LOCATION } from "@/lib/config/business";
 import { numberToWords } from "@/lib/utils/number-to-words";
-import { CancelInvoiceButton } from "./CancelInvoiceButton";
-import { PrintButton } from "./PrintButton";
+import { InvoiceDetailActions } from "./InvoiceDetailActions";
 import Link from "next/link";
 
 export default async function TaxInvoiceDetailPage({
@@ -54,12 +53,7 @@ export default async function TaxInvoiceDetailPage({
           <h1 className="text-xl font-bold text-theme-text">{invoice.invoiceNumber}</h1>
           <p className="text-theme-text-muted text-sm">Confirmed on {new Date(invoice.createdAt).toLocaleDateString()}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {invoice.status !== "CANCELLED" && (
-            <CancelInvoiceButton invoiceId={invoice.id} />
-          )}
-          <PrintButton />
-        </div>
+        <InvoiceDetailActions invoice={invoice} />
       </div>
 
       {invoice.status === "CANCELLED" && (
@@ -77,8 +71,8 @@ export default async function TaxInvoiceDetailPage({
             <h2 className="text-3xl font-bold text-theme-text tracking-tight">TAX INVOICE</h2>
             
             <div className="mt-8 space-y-1 text-sm text-theme-text-muted">
-              <p className="font-bold text-theme-text text-xl">FinLedger India</p>
-              <p className="text-xs font-semibold text-theme-primary">IT Services • Training • Digital Products</p>
+              <p className="font-bold text-theme-text text-xl">KVJ Analytics</p>
+              <p className="text-xs font-semibold text-theme-primary">IT Services • Training Services • Digital Products</p>
               <p>123 Business Avenue, Tech Park</p>
               <p>{BUSINESS_LOCATION.state} - {BUSINESS_LOCATION.stateCode}</p>
               <p>GSTIN: 27AAAAA0000A1Z5</p>
@@ -236,21 +230,9 @@ export default async function TaxInvoiceDetailPage({
               )}
             </div>
 
-            <div className="flex justify-between font-medium text-theme-text px-2 pt-2">
-              <span>Gross Amount</span>
-              <span>₹{invoice.grossAmount.toString()}</span>
-            </div>
-
-            {Number(invoice.tdsAmount) > 0 && (
-              <div className="flex justify-between text-red-600 font-medium pt-2 border-t border-theme-border px-2">
-                <span>Less: TDS ({invoice.tdsRate?.toString()}%)</span>
-                <span>-₹{invoice.tdsAmount.toString()}</span>
-              </div>
-            )}
-
             <div className="flex justify-between items-center text-lg font-bold text-theme-text px-2 pt-3 border-t border-theme-border">
-              <span>Net Amount Payable</span>
-              <span className="text-theme-primary print:text-black">₹{invoice.netAmount.toString()}</span>
+              <span>Invoice Total</span>
+              <span className="text-theme-primary print:text-black">₹{Number(invoice.grossAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
         </div>
@@ -265,6 +247,77 @@ export default async function TaxInvoiceDetailPage({
             <p className="text-xs font-bold text-theme-text">Authorized Signatory</p>
           </div>
         </div>
+      </div>
+
+      {/* Internal Payment Settlement & Tracking History (Hidden in Print) */}
+      <div className="bg-theme-surface rounded-xl shadow-sm border border-theme-border p-6 space-y-4 print:hidden">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-theme-border">
+          <div>
+            <h3 className="text-sm font-bold text-theme-text uppercase tracking-wider">
+              Internal Payment Settlement History
+            </h3>
+            <p className="text-xs text-theme-text-muted">
+              Record of bank receipts and actual customer TDS deductions.
+            </p>
+          </div>
+          <div className="flex items-center gap-4 text-xs">
+            <div>
+              <span className="text-theme-text-muted">Total Received: </span>
+              <span className="font-bold text-emerald-600">
+                ₹{(invoice.payments || []).reduce((sum: number, p: any) => sum + Number(p.paymentAmount), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div>
+              <span className="text-theme-text-muted">Actual TDS: </span>
+              <span className="font-bold text-theme-text">
+                ₹{(invoice.payments || []).reduce((sum: number, p: any) => sum + Number(p.tdsAmount), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {(invoice.payments || []).length === 0 ? (
+          <p className="text-xs text-theme-text-muted italic py-2">
+            No payments recorded yet for this invoice. Click &quot;Record Payment&quot; in the header to record partial or full receipts.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-theme-surface-hover text-theme-text-muted font-semibold uppercase">
+                <tr>
+                  <th className="px-4 py-2.5">#</th>
+                  <th className="px-4 py-2.5">Date</th>
+                  <th className="px-4 py-2.5 text-right">Payment Amount</th>
+                  <th className="px-4 py-2.5 text-right">TDS Deducted</th>
+                  <th className="px-4 py-2.5 text-right">Bank Receipt</th>
+                  <th className="px-4 py-2.5">Reference / UTR</th>
+                  <th className="px-4 py-2.5">Remarks</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-theme-border">
+                {(invoice.payments || []).map((p: any, idx: number) => (
+                  <tr key={p.id || idx} className="hover:bg-theme-surface-hover/50">
+                    <td className="px-4 py-2.5 font-semibold text-theme-text">Payment {idx + 1}</td>
+                    <td className="px-4 py-2.5 text-theme-text-muted">
+                      {new Date(p.paymentDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-medium text-theme-text">
+                      ₹{Number(p.paymentAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-theme-text-muted">
+                      {Number(p.tdsAmount) > 0 ? `₹${Number(p.tdsAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })} (${p.tdsRate}%)` : "₹0.00"}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-bold text-emerald-600">
+                      ₹{Number(p.bankReceipt).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-2.5 text-theme-text-muted">{p.reference || "—"}</td>
+                    <td className="px-4 py-2.5 text-theme-text-muted">{p.remarks || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

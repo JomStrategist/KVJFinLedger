@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 
-
 export interface DateFilter {
   fromDate?: Date;
   toDate?: Date;
@@ -35,11 +34,38 @@ export class DashboardService {
     return where;
   }
 
-  static async getDashboardKPIs(filters?: DateFilter) {
-    const where = this.getDateWhereClause(filters);
+  /**
+   * Unified, high-performance dashboard fetch.
+   * Performs only 3 efficient queries and computes all analytics in memory.
+   */
+  static async getUnifiedDashboardData(filters?: DateFilter) {
+    const txnWhere = this.getDateWhereClause(filters);
+    const invoiceWhere = {
+      status: { not: "CANCELLED" as const },
+      ...this.getSourceDateWhereClause("invoiceDate", filters)
+    };
+    const expenseWhere = {
+      status: { not: "CANCELLED" as const },
+      ...this.getSourceDateWhereClause("expenseDate", filters)
+    };
 
-    const txns = await prisma.financialTransaction.findMany({ where });
+    const [txns, invoices, expenses] = await Promise.all([
+      prisma.financialTransaction.findMany({
+        where: txnWhere,
+        orderBy: { transactionDate: "asc" }
+      }),
+      prisma.taxInvoice.findMany({
+        where: invoiceWhere,
+        include: { customer: true }
+      }),
+      prisma.expense.findMany({
+        where: expenseWhere,
+        include: { category: true, vendor: true },
+        orderBy: { netAmount: "desc" }
+      })
+    ]);
 
+    // 1. KPIs
     let totalRevenue = 0;
     let totalExpenses = 0;
     let outstandingReceivables = 0;
@@ -50,7 +76,7 @@ export class DashboardService {
       if (txn.type === "REVENUE") {
         totalRevenue += net;
         if (txn.paymentStatus !== "PAID") {
-          outstandingReceivables += net; // Simplified for now since we don't track partial amounts yet
+          outstandingReceivables += net;
         }
       } else if (txn.type === "EXPENSE") {
         totalExpenses += net;
@@ -63,7 +89,7 @@ export class DashboardService {
     const operatingResult = totalRevenue - totalExpenses;
     const profitMargin = totalRevenue > 0 ? (operatingResult / totalRevenue) * 100 : 0;
 
-    return {
+    const kpis = {
       totalRevenue,
       totalExpenses,
       operatingResult,
@@ -71,17 +97,9 @@ export class DashboardService {
       outstandingReceivables,
       outstandingPayables
     };
-  }
 
-  static async getRevenueVsExpenseTrend(filters?: DateFilter) {
-    const where = this.getDateWhereClause(filters);
-    const txns = await prisma.financialTransaction.findMany({
-      where,
-      orderBy: { transactionDate: 'asc' }
-    });
-
-    const monthlyData: Record<string, { month: string, revenue: number, expenses: number }> = {};
-
+    // 2. Trends (Monthly Revenue vs Expenses)
+    const monthlyData: Record<string, { month: string; revenue: number; expenses: number }> = {};
     for (const txn of txns) {
       const date = new Date(txn.transactionDate);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -97,135 +115,163 @@ export class DashboardService {
         monthlyData[monthKey].expenses += Number(txn.netAmount);
       }
     }
+    const trends = Object.values(monthlyData);
 
-    return Object.values(monthlyData);
-  }
-
-  static async getExpenseByCategory(filters?: DateFilter) {
-    const where = {
-      status: "APPROVED",
-      ...this.getSourceDateWhereClause("expenseDate", filters)
-    } as any;
-
-    const expenses = await prisma.expense.findMany({
-      where,
-      include: { category: true }
-    });
-
-    const categoryMap: Record<string, { category: string; amount: number }> = {};
-    let totalExpenses = 0;
-
-    for (const exp of expenses) {
-      const name = exp.category?.name || "Uncategorized/Multiple";
-      const net = Number(exp.netAmount);
-      if (!categoryMap[name]) categoryMap[name] = { category: name, amount: 0 };
-      categoryMap[name].amount += net;
-      totalExpenses += net;
-    }
-
-    return Object.values(categoryMap).map(c => ({
-      ...c,
-      percentage: totalExpenses > 0 ? (c.amount / totalExpenses) * 100 : 0
-    })).sort((a, b) => b.amount - a.amount);
-  }
-
-  static async getRevenueByCustomer(filters?: DateFilter) {
-    const where = {
-      status: { in: ["CONFIRMED", "PAID", "PARTIALLY_PAID"] },
-      ...this.getSourceDateWhereClause("invoiceDate", filters)
-    } as any;
-
-    const invoices = await prisma.taxInvoice.findMany({
-      where,
-      include: { customer: true }
-    });
-
-    const customerMap: Record<string, { customer: string; amount: number }> = {};
-    let totalRevenue = 0;
-
-    for (const inv of invoices) {
-      const name = inv.customerNameSnapshot || inv.customer.legalName;
-      const net = Number(inv.netAmount);
-      if (!customerMap[name]) customerMap[name] = { customer: name, amount: 0 };
-      customerMap[name].amount += net;
-      totalRevenue += net;
-    }
-
-    return Object.values(customerMap).map(c => ({
-      ...c,
-      percentage: totalRevenue > 0 ? (c.amount / totalRevenue) * 100 : 0
-    })).sort((a, b) => b.amount - a.amount).slice(0, 5); // Top 5
-  }
-
-  static async getPaymentStatusSummary(filters?: DateFilter) {
-    const where = this.getDateWhereClause(filters);
-    const txns = await prisma.financialTransaction.findMany({ where });
-
-    const summary = {
-      revenue: { PAID: 0, PARTIALLY_PAID: 0, UNPAID: 0 },
-      expenses: { PAID: 0, PARTIALLY_PAID: 0, UNPAID: 0 }
-    };
-
-    for (const txn of txns) {
-      const type = txn.type === "REVENUE" ? "revenue" : "expenses";
-      const status = txn.paymentStatus;
-      summary[type][status] += Number(txn.netAmount);
-    }
-
-    return summary;
-  }
-
-  static async getMonthlyFinancialSummary(filters?: DateFilter) {
-    const trends = await this.getRevenueVsExpenseTrend(filters);
-    return trends.map(t => ({
+    // 3. Monthly Financial Summary Table
+    const monthlySummary = trends.map(t => ({
       month: t.month,
       revenue: t.revenue,
       expenses: t.expenses,
       operatingResult: t.revenue - t.expenses,
       profitMargin: t.revenue > 0 ? ((t.revenue - t.expenses) / t.revenue) * 100 : 0
-    })).reverse(); // Latest month first
+    })).reverse();
+
+    // 4. Expense by Category
+    const categoryMap: Record<string, { category: string; amount: number }> = {};
+    let totalExpenseAmount = 0;
+    for (const exp of expenses) {
+      const name = exp.category?.name || "Uncategorized/Multiple";
+      const net = Number(exp.netAmount);
+      if (!categoryMap[name]) categoryMap[name] = { category: name, amount: 0 };
+      categoryMap[name].amount += net;
+      totalExpenseAmount += net;
+    }
+    const expenseCategories = Object.values(categoryMap).map(c => ({
+      ...c,
+      percentage: totalExpenseAmount > 0 ? (c.amount / totalExpenseAmount) * 100 : 0
+    })).sort((a, b) => b.amount - a.amount);
+
+    // 5. Revenue by Top Customers
+    const customerMap: Record<string, { customer: string; amount: number }> = {};
+    let totalInvoiceRevenue = 0;
+    for (const inv of invoices) {
+      const name = inv.customerNameSnapshot || inv.customer?.legalName || "Customer";
+      const net = Number(inv.netAmount);
+      if (!customerMap[name]) customerMap[name] = { customer: name, amount: 0 };
+      customerMap[name].amount += net;
+      totalInvoiceRevenue += net;
+    }
+    const topCustomers = Object.values(customerMap).map(c => ({
+      ...c,
+      percentage: totalInvoiceRevenue > 0 ? (c.amount / totalInvoiceRevenue) * 100 : 0
+    })).sort((a, b) => b.amount - a.amount).slice(0, 5);
+
+    // 6. Top 5 Expenses
+    const topExpenses = expenses.slice(0, 5);
+
+    // 7. Live Tax Position
+    const outputGST = invoices.reduce((sum, inv) => sum + Number(inv.totalGST || 0), 0);
+    const inputGST = expenses.reduce((sum, exp) => sum + Number(exp.totalInputGST || 0), 0);
+    const netGST = outputGST - inputGST;
+    const tdsReceivable = invoices.reduce((sum, inv) => sum + Number(inv.tdsAmount || 0), 0);
+    const tdsPayable = expenses.reduce((sum, exp) => sum + Number(exp.tdsAmount || 0), 0);
+
+    // 9. Recent Transactions
+    const recentTxnList: Array<{
+      id: string;
+      date: Date;
+      transaction: string;
+      category: string;
+      amount: number;
+      type: "REVENUE" | "EXPENSE" | "ASSET";
+    }> = [];
+
+    for (const inv of invoices) {
+      recentTxnList.push({
+        id: inv.id,
+        date: new Date(inv.invoiceDate || inv.createdAt),
+        transaction: `${inv.customerNameSnapshot || inv.customer?.legalName || "Customer"} — Tax Invoice`,
+        category: "Training Income",
+        amount: Number(inv.netAmount || inv.grossAmount),
+        type: "REVENUE",
+      });
+    }
+
+    for (const exp of expenses) {
+      const isAsset = exp.category?.name?.toLowerCase().includes("asset") || false;
+      recentTxnList.push({
+        id: exp.id,
+        date: new Date(exp.expenseDate || exp.createdAt),
+        transaction: exp.notes || (exp.vendor?.name ? `${exp.vendor.name}` : "Business Expense"),
+        category: exp.category?.name || "Operating Expense",
+        amount: Number(exp.netAmount),
+        type: isAsset ? "ASSET" : "EXPENSE",
+      });
+    }
+
+    recentTxnList.sort((a, b) => b.date.getTime() - a.date.getTime());
+    const recentTransactions = recentTxnList.slice(0, 6);
+
+    // 8. Financial Insights
+    const insights: string[] = [];
+    if (kpis.totalRevenue === 0 && kpis.totalExpenses === 0) {
+      insights.push("No financial transactions recorded for the selected period.");
+    } else {
+      if (kpis.operatingResult > 0) {
+        insights.push("Operating result is positive for the selected period.");
+      } else if (kpis.operatingResult < 0) {
+        insights.push("Expenses exceed revenue for the selected period.");
+      }
+      if (kpis.totalRevenue > 0 && (kpis.outstandingReceivables / kpis.totalRevenue) > 0.3) {
+        insights.push("Outstanding receivables represent over 30% of total recorded revenue.");
+      }
+      if (expenseCategories.length > 0 && expenseCategories[0].percentage > 40) {
+        insights.push(`A significant portion of expenses (${expenseCategories[0].percentage.toFixed(1)}%) comes from ${expenseCategories[0].category}.`);
+      }
+    }
+
+    return {
+      kpis,
+      trends,
+      monthlySummary,
+      expenseCategories,
+      topCustomers,
+      topExpenses,
+      recentTransactions,
+      insights,
+      taxPosition: {
+        outputGST,
+        inputGST,
+        netGST,
+        tdsReceivable,
+        tdsPayable
+      }
+    };
+  }
+
+  // Legacy helper methods for backward compatibility
+  static async getDashboardKPIs(filters?: DateFilter) {
+    const data = await this.getUnifiedDashboardData(filters);
+    return data.kpis;
+  }
+
+  static async getRevenueVsExpenseTrend(filters?: DateFilter) {
+    const data = await this.getUnifiedDashboardData(filters);
+    return data.trends;
+  }
+
+  static async getExpenseByCategory(filters?: DateFilter) {
+    const data = await this.getUnifiedDashboardData(filters);
+    return data.expenseCategories;
+  }
+
+  static async getRevenueByCustomer(filters?: DateFilter) {
+    const data = await this.getUnifiedDashboardData(filters);
+    return data.topCustomers;
+  }
+
+  static async getMonthlyFinancialSummary(filters?: DateFilter) {
+    const data = await this.getUnifiedDashboardData(filters);
+    return data.monthlySummary;
   }
 
   static async getTopExpenses(filters?: DateFilter) {
-    const where = {
-      status: "APPROVED",
-      ...this.getSourceDateWhereClause("expenseDate", filters)
-    } as any;
-
-    return await prisma.expense.findMany({
-      where,
-      include: { vendor: true, category: true },
-      orderBy: { netAmount: 'desc' },
-      take: 5
-    });
+    const data = await this.getUnifiedDashboardData(filters);
+    return data.topExpenses;
   }
 
   static async getFinancialInsights(filters?: DateFilter) {
-    const kpis = await this.getDashboardKPIs(filters);
-    const insights: string[] = [];
-
-    if (kpis.totalRevenue === 0 && kpis.totalExpenses === 0) {
-      insights.push("No financial data available for the selected period.");
-      return insights;
-    }
-
-    if (kpis.operatingResult > 0) {
-      insights.push("Operating result is positive for the selected period.");
-    } else if (kpis.operatingResult < 0) {
-      insights.push("Expenses exceed revenue for the selected period.");
-    } else {
-      insights.push("Revenue and expenses are exactly equal for the selected period.");
-    }
-
-    if (kpis.totalRevenue > 0 && (kpis.outstandingReceivables / kpis.totalRevenue) > 0.3) {
-      insights.push("Outstanding receivables represent a significant portion (over 30%) of total revenue.");
-    }
-
-    const categories = await this.getExpenseByCategory(filters);
-    if (categories.length > 0 && categories[0].percentage > 40) {
-      insights.push(`A significant portion of expenses (${categories[0].percentage.toFixed(1)}%) comes from ${categories[0].category}.`);
-    }
-
-    return insights;
+    const data = await this.getUnifiedDashboardData(filters);
+    return data.insights;
   }
 }

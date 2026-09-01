@@ -1,46 +1,29 @@
 import { requireAuth } from '@/lib/auth-utils';
-import { OptimisticTabs } from '@/components/OptimisticTabs';
-import { ExpensesList } from './ExpensesList';
-import { ExpenseCategories } from './ExpenseCategories';
+import { ExpenseService } from '@/services/expense.service';
+import { ExpenseCategoryService } from '@/services/expense-category.service';
+import { VendorService } from '@/services/vendor.service';
+import { prisma } from '@/lib/prisma';
+import { ExpensesClientList } from './ExpensesClientList';
 
-export default async function ExpensesHubPage({
-  searchParams
-}: {
-  searchParams: { tab?: string; [key: string]: any }
-}) {
+export default async function ExpensesPage() {
   await requireAuth();
 
-  // Await searchParams per Next.js 16 requirements
-  const params = await Promise.resolve(searchParams);
-  const activeTab = params.tab || 'list';
+  const expenses = await ExpenseService.getExpenses();
+  const categories = await ExpenseCategoryService.getExpenseCategories();
+  const vendors = await VendorService.getVendors();
+  const users = await prisma.user.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true, email: true },
+  });
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-theme-text">Expenses</h1>
-          <p className="text-theme-text-muted mt-1 text-sm">Manage and track your business expenses and expense categories.</p>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <OptimisticTabs 
-        basePath="/expenses"
-        defaultTab="list"
-        tabs={[
-          { id: "list", label: "Expenses" },
-          { id: "categories", label: "Expense Categories" }
-        ]}
+    <div className="p-6 md:p-8 max-w-7xl mx-auto">
+      <ExpensesClientList
+        initialExpenses={JSON.parse(JSON.stringify(expenses))}
+        categories={JSON.parse(JSON.stringify(categories))}
+        vendors={JSON.parse(JSON.stringify(vendors))}
+        employees={JSON.parse(JSON.stringify(users))}
       />
-
-      {/* Tab Content */}
-      <div>
-        {activeTab === 'list' ? (
-          <ExpensesList searchParams={params as any} />
-        ) : (
-          <ExpenseCategories searchParams={params as any} />
-        )}
-      </div>
     </div>
   );
 }

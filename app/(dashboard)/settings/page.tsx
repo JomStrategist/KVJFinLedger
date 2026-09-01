@@ -1,18 +1,17 @@
-import { requireAdmin } from '@/lib/auth-utils';
-import { SettingsClient } from './SettingsClient';
+import { requireAdmin } from "@/lib/auth-utils";
+import { SettingsClient } from "./SettingsClient";
+
+export const metadata = {
+  title: "Settings - KVJ Analytics",
+  description: "Manage company profile, GST configuration, financial year settings and preferences.",
+};
 
 export default async function SettingsPage() {
   await requireAdmin();
+
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-theme-text">Settings</h1>
-          <p className="text-theme-text-muted mt-1 text-sm">Manage application preferences and configurations.</p>
-        </div>
-      </div>
+    <div className="p-6 md:p-8 max-w-7xl mx-auto">
       <SettingsClient />
     </div>
-  )
+  );
 }
-

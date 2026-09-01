@@ -90,8 +90,8 @@ export default async function ProformaInvoiceDetailPage({
             <p className="text-theme-text-muted mt-1 font-medium">NOT A TAX INVOICE</p>
             
             <div className="mt-8 space-y-1 text-sm text-theme-text-muted">
-              <p className="font-bold text-theme-text text-xl">FinLedger India</p>
-              <p className="text-xs font-semibold text-theme-primary">IT Services • Training • Digital Products</p>
+              <p className="font-bold text-theme-text text-xl">KVJ Analytics</p>
+              <p className="text-xs font-semibold text-theme-primary">IT Services • Training Services • Digital Products</p>
               <p>123 Business Avenue, Tech Park</p>
               <p>{BUSINESS_LOCATION.state} - {BUSINESS_LOCATION.stateCode}</p>
               <p>GSTIN: 27AAAAA0000A1Z5</p>

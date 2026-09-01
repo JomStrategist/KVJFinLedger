@@ -41,7 +41,10 @@ export async function ProformaInvoices() {
         </div>
       </div>
 
-      <ProformaInvoiceClientList initialInvoices={invoices} initialCustomers={customers} />
+      <ProformaInvoiceClientList 
+        initialInvoices={JSON.parse(JSON.stringify(invoices))} 
+        initialCustomers={JSON.parse(JSON.stringify(customers))} 
+      />
     </div>
   );
 }

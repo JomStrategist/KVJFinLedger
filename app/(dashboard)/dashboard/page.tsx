@@ -2,7 +2,7 @@ import { requireAdmin } from '@/lib/auth-utils';
 import { DashboardService } from '@/services/dashboard.service';
 import { formatCurrency } from '@/lib/utils/currency';
 import Link from 'next/link';
-import { RevenueVsExpenseChart, OperatingResultChart, ExpenseCategoryChart } from './DashboardCharts';
+import { RevenueVsExpenseChart } from './DashboardCharts';
 
 export default async function DashboardPage({
   searchParams,
@@ -19,249 +19,217 @@ export default async function DashboardPage({
     toDate: toFilter ? new Date(toFilter) : undefined,
   };
 
-  const [
+  const dashboardData = await DashboardService.getUnifiedDashboardData(filters);
+  const {
     kpis,
     trends,
-    expenseCategories,
-    topCustomers,
-    paymentSummary,
-    monthlySummary,
-    topExpenses,
-    insights
-  ] = await Promise.all([
-    DashboardService.getDashboardKPIs(filters),
-    DashboardService.getRevenueVsExpenseTrend(filters),
-    DashboardService.getExpenseByCategory(filters),
-    DashboardService.getRevenueByCustomer(filters),
-    DashboardService.getPaymentStatusSummary(filters),
-    DashboardService.getMonthlyFinancialSummary(filters),
-    DashboardService.getTopExpenses(filters),
-    DashboardService.getFinancialInsights(filters)
-  ]);
+    recentTransactions,
+    taxPosition
+  } = dashboardData;
+
+  const { outputGST, inputGST, netGST, tdsReceivable, tdsPayable } = taxPosition;
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8">
+    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-7">
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-theme-text">Profit & Loss Dashboard</h1>
-          <p className="text-theme-text-muted mt-1 text-sm">Overview of financial performance.</p>
-        </div>
-        
-        {/* Date Filter */}
-        <form className="flex flex-wrap items-center gap-3">
-          <input
-            type="date"
-            name="from"
-            defaultValue={fromFilter || ""}
-            className="border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary"
-            title="From Date"
-          />
-          <input
-            type="date"
-            name="to"
-            defaultValue={toFilter || ""}
-            className="border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary"
-            title="To Date"
-          />
-          <button
-            type="submit"
-            className="bg-theme-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-theme-primary-dark"
-          >
-            Apply
-          </button>
-          {(fromFilter || toFilter) && (
-            <Link
-              href="/dashboard"
-              className="bg-theme-surface text-theme-text-muted px-4 py-2 rounded-lg text-sm font-medium hover:text-theme-text border border-theme-border flex items-center justify-center"
-            >
-              Clear
-            </Link>
-          )}
-        </form>
-      </div>
-
-      {/* Financial Insights */}
-      {insights.length > 0 && (
-        <div className="bg-theme-surface-hover border-l-4 border-theme-primary p-4 rounded-r-lg">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-700" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">Financial Insights</h3>
-              <div className="mt-2 text-sm text-theme-primary-dark">
-                <ul className="list-disc pl-5 space-y-1">
-                  {insights.map((insight, idx) => (
-                    <li key={idx}>{insight}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-theme-surface rounded-lg shadow p-6 border-l-4 border-green-500">
-          <h3 className="text-sm font-medium text-theme-text-muted uppercase">Total Revenue</h3>
-          <p className="mt-2 text-2xl font-bold text-theme-text">{formatCurrency(kpis.totalRevenue)}</p>
-        </div>
-        <div className="bg-theme-surface rounded-lg shadow p-6 border-l-4 border-red-500">
-          <h3 className="text-sm font-medium text-theme-text-muted uppercase">Total Expenses</h3>
-          <p className="mt-2 text-2xl font-bold text-theme-text">{formatCurrency(kpis.totalExpenses)}</p>
-        </div>
-        <div className={`bg-theme-surface rounded-lg shadow p-6 border-l-4 ${kpis.operatingResult >= 0 ? 'border-theme-primary' : 'border-red-500'}`}>
-          <h3 className="text-sm font-medium text-theme-text-muted uppercase">Operating Result</h3>
-          <p className={`mt-2 text-2xl font-bold ${kpis.operatingResult >= 0 ? 'text-theme-primary' : 'text-red-600'}`}>
-            {formatCurrency(kpis.operatingResult)}
+          <span className="text-[11px] font-bold text-[#177B55] tracking-widest uppercase block">
+            FINANCIAL MANAGEMENT • INDIA
+          </span>
+          <h1 className="text-3xl font-extrabold text-[#17211B] mt-0.5 tracking-tight">
+            Dashboard
+          </h1>
+          <p className="text-[#68756C] text-sm mt-0.5 font-normal">
+            A financial overview for the current financial year.
           </p>
         </div>
-        <div className="bg-theme-surface rounded-lg shadow p-6 border-l-4 border-purple-500">
-          <h3 className="text-sm font-medium text-theme-text-muted uppercase">Profit Margin</h3>
-          <p className="mt-2 text-2xl font-bold text-theme-text">{kpis.profitMargin.toFixed(2)}%</p>
+
+        {/* Right Financial Year Selector */}
+        <div className="flex items-center gap-3">
+          <select
+            defaultValue="FY 2026–27"
+            className="border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold bg-white text-[#17211B] shadow-xs focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+          >
+            <option value="FY 2026–27">FY 2026–27</option>
+            <option value="FY 2025–26">FY 2025–26</option>
+          </select>
         </div>
       </div>
 
-      {/* Secondary KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-theme-surface rounded-lg shadow p-6 border-l-4 border-orange-400">
-          <h3 className="text-sm font-medium text-theme-text-muted uppercase">Outstanding Receivables</h3>
-          <p className="mt-2 text-2xl font-bold text-theme-text">{formatCurrency(kpis.outstandingReceivables)}</p>
-          <p className="text-sm text-theme-text-muted mt-1">From Unpaid/Partially Paid Revenue</p>
+      {/* Row 1: 5 KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* 1. Invoice Revenue */}
+        <div className="bg-white p-5 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+          <span className="text-xs font-semibold text-[#68756C]">Invoice Revenue</span>
+          <strong className="text-2xl font-bold text-[#177B55] my-2">
+            {formatCurrency(kpis.totalRevenue)}
+          </strong>
+          <span className="text-[11px] text-[#68756C]">Confirmed Tax Invoices</span>
         </div>
-        <div className="bg-theme-surface rounded-lg shadow p-6 border-l-4 border-pink-400">
-          <h3 className="text-sm font-medium text-theme-text-muted uppercase">Outstanding Payables</h3>
-          <p className="mt-2 text-2xl font-bold text-theme-text">{formatCurrency(kpis.outstandingPayables)}</p>
-          <p className="text-sm text-theme-text-muted mt-1">From Unpaid/Partially Paid Expenses</p>
+
+        {/* 2. Expenses */}
+        <div className="bg-white p-5 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+          <span className="text-xs font-semibold text-[#68756C]">Expenses</span>
+          <strong className="text-2xl font-bold text-[#B27A17] my-2">
+            {formatCurrency(kpis.totalExpenses)}
+          </strong>
+          <span className="text-[11px] text-[#68756C]">Categorised business expenses</span>
+        </div>
+
+        {/* 3. Net Profit */}
+        <div className="bg-white p-5 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+          <span className="text-xs font-semibold text-[#68756C]">Net Profit</span>
+          <strong className={`text-2xl font-bold my-2 ${kpis.operatingResult >= 0 ? 'text-[#177B55]' : 'text-[#B94B4B]'}`}>
+            {formatCurrency(kpis.operatingResult)}
+          </strong>
+          <span className="text-[11px] text-[#68756C]">Income − recognised expenses</span>
+        </div>
+
+        {/* 4. Profit Margin */}
+        <div className="bg-white p-5 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+          <span className="text-xs font-semibold text-[#68756C]">Profit Margin</span>
+          <strong className="text-2xl font-bold text-[#177B55] my-2">
+            {kpis.profitMargin.toFixed(2)}%
+          </strong>
+          <span className="text-[11px] text-[#68756C]">Net profit ÷ revenue</span>
+        </div>
+
+        {/* 5. Receivables */}
+        <div className="bg-white p-5 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+          <span className="text-xs font-semibold text-[#68756C]">Receivables</span>
+          <strong className="text-2xl font-bold text-[#17211B] my-2">
+            {formatCurrency(kpis.outstandingReceivables)}
+          </strong>
+          <span className="text-[11px] text-[#68756C]">Unpaid + outstanding invoices</span>
         </div>
       </div>
 
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-theme-surface p-6 rounded-lg shadow border border-theme-border">
-          <h3 className="text-lg font-semibold mb-4">Revenue vs Expenses</h3>
+      {/* Row 2: Monthly Revenue vs Expense + Tax Position */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Monthly Chart */}
+        <div className="lg:col-span-7 bg-white p-6 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-[#17211B]">Monthly Revenue vs Expense</h2>
+            <p className="text-xs text-[#68756C] mt-0.5">Clustered column chart · FY 2026–27</p>
+          </div>
           <RevenueVsExpenseChart data={trends} />
         </div>
-        <div className="bg-theme-surface p-6 rounded-lg shadow border border-theme-border">
-          <h3 className="text-lg font-semibold mb-4">Operating Result Trend</h3>
-          <OperatingResultChart data={trends} />
-        </div>
-      </div>
 
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-theme-surface p-6 rounded-lg shadow border border-theme-border">
-          <h3 className="text-lg font-semibold mb-4">Expenses by Category</h3>
-          <ExpenseCategoryChart data={expenseCategories} />
-        </div>
-        <div className="bg-theme-surface p-6 rounded-lg shadow border border-theme-border">
-          <h3 className="text-lg font-semibold mb-4">Top Customers by Revenue</h3>
-          {topCustomers.length === 0 ? (
-            <div className="flex items-center justify-center h-64 text-theme-text-muted">No revenue data available.</div>
-          ) : (
-            <div className="overflow-hidden mt-4">
-              <ul className="divide-y divide-theme-border">
-                {topCustomers.map((customer, idx) => (
-                  <li key={idx} className="py-3 flex justify-between items-center">
-                    <span className="font-medium text-theme-text truncate pr-4">{customer.customer}</span>
-                    <div className="text-right flex-shrink-0">
-                      <span className="block text-sm font-bold text-theme-text">{formatCurrency(customer.amount)}</span>
-                      <span className="block text-xs text-theme-text-muted">{customer.percentage.toFixed(1)}% of total</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+        {/* Right Column: Tax Position */}
+        <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-[#D9E3DC] shadow-xs space-y-3.5">
+          <div>
+            <h2 className="text-lg font-bold text-[#17211B]">Tax Position</h2>
+            <p className="text-xs text-[#68756C] mt-0.5">Current financial-year position</p>
+          </div>
+
+          <div className="space-y-2.5 pt-1">
+            {/* GST Payable */}
+            <div className="bg-[#F6FAF7] border border-[#D9E3DC] rounded-xl p-3.5">
+              <span className="text-[11px] font-bold text-[#17211B] block">GST Payable</span>
+              <strong className="text-xl font-bold text-[#B27A17] mt-0.5 block">
+                {formatCurrency(outputGST)}
+              </strong>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Tables Row */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="bg-theme-surface rounded-lg shadow border border-theme-border overflow-hidden">
-          <div className="p-4 border-b border-theme-border bg-theme-surface-hover">
-            <h3 className="text-lg font-semibold text-theme-text">Monthly Financial Table</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-theme-border">
-              <thead className="bg-theme-surface">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-theme-text-muted uppercase tracking-wider">Month</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-theme-text-muted uppercase tracking-wider">Revenue</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-theme-text-muted uppercase tracking-wider">Expenses</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-theme-text-muted uppercase tracking-wider">Result</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-theme-text-muted uppercase tracking-wider">Margin</th>
-                </tr>
-              </thead>
-              <tbody className="bg-theme-surface divide-y divide-theme-border">
-                {monthlySummary.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-sm text-theme-text-muted">No monthly data available.</td>
-                  </tr>
-                ) : (
-                  monthlySummary.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-theme-surface-hover">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-theme-text">{row.month}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600">{formatCurrency(row.revenue)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">{formatCurrency(row.expenses)}</td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${row.operatingResult >= 0 ? 'text-theme-primary' : 'text-red-600'}`}>
-                        {formatCurrency(row.operatingResult)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-theme-text">{row.profitMargin.toFixed(2)}%</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+            {/* GST Receivable / ITC */}
+            <div className="bg-[#F6FAF7] border border-[#D9E3DC] rounded-xl p-3.5">
+              <span className="text-[11px] font-bold text-[#17211B] block">GST Receivable / ITC</span>
+              <strong className="text-xl font-bold text-[#177B55] mt-0.5 block">
+                {formatCurrency(inputGST)}
+              </strong>
+            </div>
 
-        <div className="bg-theme-surface rounded-lg shadow border border-theme-border overflow-hidden">
-          <div className="p-4 border-b border-theme-border bg-theme-surface-hover">
-            <h3 className="text-lg font-semibold text-theme-text">Top Expenses</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-theme-border">
-              <thead className="bg-theme-surface">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-theme-text-muted uppercase tracking-wider">Expense</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-theme-text-muted uppercase tracking-wider">Vendor & Category</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-theme-text-muted uppercase tracking-wider">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="bg-theme-surface divide-y divide-theme-border">
-                {topExpenses.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="px-6 py-4 text-center text-sm text-theme-text-muted">No expenses found.</td>
-                  </tr>
-                ) : (
-                  topExpenses.map((expense) => (
-                    <tr key={expense.id} className="hover:bg-theme-surface-hover">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-theme-primary">
-                          <Link href={`/expenses/${expense.id}`}>{expense.expenseNumber}</Link>
-                        </div>
-                        <div className="text-xs text-theme-text-muted">{expense.expenseDate.toLocaleDateString('en-IN')}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-theme-text truncate max-w-[200px]">{expense.vendor?.name || 'No Vendor'}</div>
-                        <div className="text-xs text-theme-text-muted">{expense.category?.name || 'Multiple Categories'}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-theme-text">
-                        {formatCurrency(Number(expense.netAmount))}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            {/* Net GST */}
+            <div className="bg-[#F6FAF7] border border-[#D9E3DC] rounded-xl p-3.5">
+              <span className="text-[11px] font-bold text-[#17211B] block">Net GST</span>
+              <strong className="text-xl font-bold text-[#17211B] mt-0.5 block">
+                {netGST >= 0 ? `${formatCurrency(netGST)} Payable` : `${formatCurrency(Math.abs(netGST))} ITC Credit`}
+              </strong>
+            </div>
+
+            {/* TDS Receivable */}
+            <div className="bg-[#F6FAF7] border border-[#D9E3DC] rounded-xl p-3.5">
+              <span className="text-[11px] font-bold text-[#17211B] block">TDS Receivable</span>
+              <strong className="text-xl font-bold text-[#386F9E] mt-0.5 block">
+                {formatCurrency(tdsReceivable)}
+              </strong>
+            </div>
+
+            {/* TDS Payable */}
+            <div className="bg-[#F6FAF7] border border-[#D9E3DC] rounded-xl p-3.5">
+              <span className="text-[11px] font-bold text-[#17211B] block">TDS Payable</span>
+              <strong className="text-xl font-bold text-[#B27A17] mt-0.5 block">
+                {formatCurrency(tdsPayable)}
+              </strong>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Row 3: Recent Transactions */}
+      <div className="bg-white p-6 rounded-2xl border border-[#D9E3DC] shadow-xs space-y-4">
+        <div className="flex justify-between items-center pb-2">
+          <div>
+            <h2 className="text-lg font-bold text-[#17211B]">Recent Transactions</h2>
+            <p className="text-xs text-[#68756C] mt-0.5">Latest income, expenses and asset movements</p>
+          </div>
+          <Link
+            href="/reports"
+            className="px-4 py-1.5 text-xs font-bold border border-[#D9E3DC] text-[#17211B] rounded-lg hover:bg-[#F4F7F3] transition-colors shadow-xs"
+          >
+            Reports
+          </Link>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[650px]">
+            <thead>
+              <tr className="border-b border-[#D9E3DC] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
+                <th className="py-3 px-2">Date</th>
+                <th className="py-3 px-4">Transaction</th>
+                <th className="py-3 px-4">Category</th>
+                <th className="py-3 px-2 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E9EEE9] text-xs">
+              {(!recentTransactions || recentTransactions.length === 0) ? (
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-[#68756C]">
+                    No recent transactions found. Create invoices or record expenses to see them here.
+                  </td>
+                </tr>
+              ) : (
+                recentTransactions.map((t) => {
+                  const formattedDate = new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                  return (
+                    <tr key={t.id} className="hover:bg-[#F9FAF8] transition-colors">
+                      <td className="py-3.5 px-2 text-[#68756C] whitespace-nowrap font-medium">
+                        {formattedDate}
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold text-[#17211B]">
+                        {t.transaction}
+                      </td>
+                      <td className="py-3.5 px-4 text-[#68756C]">
+                        {t.category}
+                      </td>
+                      <td className="py-3.5 px-2 text-right whitespace-nowrap font-bold">
+                        {t.type === 'REVENUE' ? (
+                          <span className="text-[#177B55]">+ {formatCurrency(t.amount)}</span>
+                        ) : t.type === 'ASSET' ? (
+                          <span className="text-[#386F9E]">Asset {formatCurrency(t.amount)}</span>
+                        ) : (
+                          <span className="text-[#B94B4B]">− {formatCurrency(t.amount)}</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

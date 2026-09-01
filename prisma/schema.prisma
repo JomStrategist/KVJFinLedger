@@ -15,16 +15,37 @@ enum Role {
   USER
 }
 
+model RoleDefinition {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false)
+  status      String   @default("ACTIVE")
+  permissions Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+}
+
 model User {
-  id                String   @id @default(uuid())
+  id                String          @id @default(uuid())
   name              String
-  email             String   @unique
+  username          String?         @unique
+  email             String          @unique
+  phone             String?
+  employeeId        String?
+  department        String?
   password          String
-  role              Role     @default(USER)
-  isActive          Boolean  @default(true)
-  mustResetPassword Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  role              Role            @default(USER)
+  roleTitle         String?         @default("Administrator")
+  roleDefinitionId  String?
+  roleDefinition    RoleDefinition? @relation(fields: [roleDefinitionId], references: [id])
+  permissions       Json?
+  isActive          Boolean         @default(true)
+  mustResetPassword Boolean         @default(false)
+  lastLogin         DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
   expenses          Expense[]
 }
 
@@ -210,6 +231,22 @@ model TaxInvoice {
   updatedAt       DateTime @updatedAt
 
   items           TaxInvoiceItem[]
+  payments        InvoicePayment[]
+}
+
+model InvoicePayment {
+  id              String      @id @default(cuid())
+  taxInvoiceId    String
+  taxInvoice      TaxInvoice  @relation(fields: [taxInvoiceId], references: [id], onDelete: Cascade)
+  paymentDate     DateTime    @default(now())
+  paymentAmount   Decimal
+  isTdsDeducted   Boolean     @default(false)
+  tdsRate         Decimal     @default(0)
+  tdsAmount       Decimal     @default(0)
+  bankReceipt     Decimal
+  reference       String?
+  remarks         String?
+  createdAt       DateTime    @default(now())
 }
 
 model TaxInvoiceItem {
@@ -433,4 +470,16 @@ model FinancialTransaction {
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model BankTransfer {
+  id          String   @id @default(cuid())
+  date        DateTime @default(now())
+  fromAccount String
+  toAccount   String
+  amount      Decimal
+  reference   String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

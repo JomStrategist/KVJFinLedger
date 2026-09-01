@@ -215,8 +215,8 @@ export function ProformaInvoiceClientList({
                       <div className="text-theme-text font-medium">{invoice.customer.legalName}</div>
                       {invoice.customer.gstin && <div className="text-xs text-theme-text-muted mt-0.5">GSTIN: {invoice.customer.gstin}</div>}
                     </td>
-                    <td className="px-6 py-4 text-theme-text-muted">
-                      {new Date(invoice.invoiceDate).toLocaleDateString()}
+                    <td className="px-6 py-4 text-theme-text-muted" suppressHydrationWarning>
+                      {new Date(invoice.invoiceDate).toLocaleDateString("en-IN")}
                     </td>
                     <td className="px-6 py-4 text-right font-medium text-theme-text">
                       ₹{invoice.totalAmount.toString()}

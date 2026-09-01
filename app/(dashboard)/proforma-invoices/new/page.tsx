@@ -17,7 +17,10 @@ export default async function NewProformaInvoicePage() {
         </div>
       </div>
       
-      <ProformaInvoiceForm customers={customers} products={products} />
+      <ProformaInvoiceForm 
+        customers={JSON.parse(JSON.stringify(customers))} 
+        products={JSON.parse(JSON.stringify(products))} 
+      />
     </div>
   );
 }

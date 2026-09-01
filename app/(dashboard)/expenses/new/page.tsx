@@ -17,7 +17,12 @@ export default async function NewExpensePage() {
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8">
-      <ExpenseForm vendors={vendors} categories={categories} products={products} employees={employees} />
+      <ExpenseForm 
+        vendors={JSON.parse(JSON.stringify(vendors))} 
+        categories={JSON.parse(JSON.stringify(categories))} 
+        products={JSON.parse(JSON.stringify(products))} 
+        employees={JSON.parse(JSON.stringify(employees))} 
+      />
     </div>
   );
 }

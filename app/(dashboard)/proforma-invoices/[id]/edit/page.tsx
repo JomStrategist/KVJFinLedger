@@ -36,9 +36,9 @@ export default async function EditProformaInvoicePage({
       </div>
       
       <ProformaInvoiceForm 
-        initialData={invoice} 
-        customers={customers} 
-        products={products} 
+        initialData={JSON.parse(JSON.stringify(invoice))} 
+        customers={JSON.parse(JSON.stringify(customers))} 
+        products={JSON.parse(JSON.stringify(products))} 
       />
     </div>
   );

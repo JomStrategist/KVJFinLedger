@@ -49,13 +49,21 @@ export class TaxInvoiceService {
       ];
     }
 
-    return await prisma.taxInvoice.findMany({
-      where,
-      include: {
-        customer: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    try {
+      return await prisma.taxInvoice.findMany({
+        where,
+        include: {
+          customer: true,
+          payments: {
+            orderBy: { paymentDate: "asc" }
+          }
+        },
+        orderBy: { createdAt: "desc" },
+      });
+    } catch (error) {
+      console.warn("TaxInvoiceService.getTaxInvoices DB fetch error:", error);
+      return [];
+    }
   }
 
   static async getTaxInvoiceById(id: string) {
@@ -63,7 +71,79 @@ export class TaxInvoiceService {
       where: { id },
       include: {
         items: true,
+        customer: true,
+        payments: {
+          orderBy: { paymentDate: "asc" }
+        }
       },
+    });
+  }
+
+  static async recordPayment(
+    invoiceId: string,
+    data: {
+      paymentDate: string | Date;
+      paymentAmount: number;
+      isTdsDeducted: boolean;
+      tdsRate: number;
+      tdsAmount: number;
+      bankReceipt: number;
+      reference?: string;
+      remarks?: string;
+    }
+  ) {
+    const invoice = await prisma.taxInvoice.findUnique({
+      where: { id: invoiceId },
+      include: { payments: true }
+    });
+
+    if (!invoice) throw new Error("Invoice not found.");
+    if (invoice.status === "CANCELLED") throw new Error("Cannot record payment for a cancelled invoice.");
+
+    return await prisma.$transaction(async (tx) => {
+      // 1. Create payment record
+      const payment = await tx.invoicePayment.create({
+        data: {
+          taxInvoiceId: invoiceId,
+          paymentDate: new Date(data.paymentDate),
+          paymentAmount: data.paymentAmount,
+          isTdsDeducted: data.isTdsDeducted,
+          tdsRate: data.tdsRate || 0,
+          tdsAmount: data.tdsAmount || 0,
+          bankReceipt: data.bankReceipt,
+          reference: data.reference || null,
+          remarks: data.remarks || null,
+        }
+      });
+
+      // 2. Compute total settlements
+      const allPayments = [...invoice.payments, payment];
+      const totalPaidAmount = allPayments.reduce((sum, p) => sum + Number(p.paymentAmount), 0);
+      const totalTdsDeducted = allPayments.reduce((sum, p) => sum + Number(p.tdsAmount), 0);
+      const totalSettled = totalPaidAmount + totalTdsDeducted;
+
+      const invoiceTotal = Number(invoice.grossAmount);
+      let newStatus: TaxInvoiceStatus = "CONFIRMED";
+      if (totalSettled >= invoiceTotal - 0.5) { // allow 50 paisa rounding tolerance
+        newStatus = "PAID";
+      } else if (totalSettled > 0) {
+        newStatus = "PARTIALLY_PAID";
+      }
+
+      // 3. Update invoice status
+      await tx.taxInvoice.update({
+        where: { id: invoiceId },
+        data: { status: newStatus }
+      });
+
+      // 4. Update corresponding FinancialTransaction status
+      const ftStatus = newStatus === "PAID" ? "PAID" : newStatus === "PARTIALLY_PAID" ? "PARTIALLY_PAID" : "UNPAID";
+      await tx.financialTransaction.updateMany({
+        where: { sourceId: invoiceId, sourceType: "TAX_INVOICE" },
+        data: { paymentStatus: ftStatus }
+      });
+
+      return payment;
     });
   }
 

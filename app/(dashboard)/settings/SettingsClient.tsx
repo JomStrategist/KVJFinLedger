@@ -1,334 +1,447 @@
 "use client";
 
-import { useState } from 'react';
-import { useSettings, AppSettings } from '@/hooks/useSettings';
+import { useState } from "react";
+import { useSettings, AppSettings } from "@/hooks/useSettings";
 
 export function SettingsClient() {
   const { settings, saveSettings, resetSettings, isLoaded } = useSettings();
-  const [activeTab, setActiveTab] = useState('business');
-  
-  // Local state for form values to allow unsaved edits
+  const [activeTab, setActiveTab] = useState<
+    "business" | "tax" | "bank" | "invoice" | "display"
+  >("business");
+
   const [formValues, setFormValues] = useState<Partial<AppSettings>>({});
-  const [isDirty, setIsDirty] = useState(false);
-  const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   if (!isLoaded) {
-    return <div className="p-8 text-center text-theme-text-muted">Loading settings...</div>;
+    return (
+      <div className="bg-white rounded-2xl border border-[#D9E3DC] p-12 text-center text-[#68756C] shadow-xs">
+        Loading settings...
+      </div>
+    );
   }
 
-  // Combine saved settings with current form edits
-  const currentValues = { ...settings, ...formValues };
+  const currentValues: AppSettings = { ...settings, ...formValues };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormValues(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    setIsDirty(true);
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormValues((prev) => ({ ...prev, [name]: value }));
     setMessage(null);
   };
 
   const handleSave = () => {
+    setIsSaving(true);
     const success = saveSettings(formValues);
+    setIsSaving(false);
     if (success) {
-      setMessage({ type: 'success', text: 'Settings saved successfully!' });
-      setIsDirty(false);
-      setFormValues({}); // Clear local edits since they are now saved
+      setMessage({ type: "success", text: "Settings saved successfully!" });
+      setFormValues({});
       setTimeout(() => setMessage(null), 3000);
     } else {
-      setMessage({ type: 'error', text: 'Failed to save settings.' });
+      setMessage({ type: "error", text: "Failed to save settings." });
     }
   };
 
   const handleReset = () => {
-    if (confirm('Are you sure you want to reset all settings to their defaults?')) {
+    if (confirm("Are you sure you want to reset all settings to defaults?")) {
       const success = resetSettings();
       if (success) {
         setFormValues({});
-        setIsDirty(false);
-        setMessage({ type: 'success', text: 'Settings reset to defaults.' });
+        setMessage({ type: "success", text: "Settings reset to defaults." });
         setTimeout(() => setMessage(null), 3000);
       }
     }
   };
 
   const tabs = [
-    { id: 'business', label: 'Business Profile' },
-    { id: 'tax', label: 'Tax Information' },
-    { id: 'invoice', label: 'Invoice Settings' },
-    { id: 'financial_year', label: 'Financial Year' },
-    { id: 'preferences', label: 'Preferences' },
-    { id: 'display', label: 'Display Settings' },
+    { id: "business", label: "Company Profile" },
+    { id: "tax", label: "GST & Tax" },
+    { id: "bank", label: "Bank Accounts" },
+    { id: "invoice", label: "Invoice Preferences" },
+    { id: "display", label: "System Display" },
   ];
 
   return (
-    <div className="bg-theme-surface rounded-lg shadow border border-theme-border flex flex-col md:flex-row min-h-[600px]">
-      {/* Sidebar Tabs */}
-      <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-theme-border bg-theme-surface-hover p-4">
-        <nav className="space-y-1">
-          {tabs.map(tab => (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <span className="text-[11px] font-bold text-[#177B55] tracking-widest uppercase block">
+            FINANCIAL MANAGEMENT • INDIA
+          </span>
+          <h1 className="text-3xl font-extrabold text-[#17211B] mt-0.5 tracking-tight">
+            Settings
+          </h1>
+          <p className="text-[#68756C] text-sm mt-0.5 font-normal">
+            Manage company profile, GST configuration, financial year settings and preferences.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-xl text-xs font-bold text-white bg-[#1b5e4b] hover:bg-[#136f58] shadow-xs transition-colors disabled:opacity-50"
+        >
+          {isSaving ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
+
+      {/* Main Card Container */}
+      <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 md:p-8 space-y-6">
+        {/* Navigation Tabs */}
+        <div className="flex flex-wrap gap-2 border-b border-[#D9E3DC] pb-4">
+          {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === tab.id 
-                  ? 'bg-theme-surface-hover text-theme-primary-dark' 
-                  : 'text-theme-text hover:bg-theme-surface-hover'
+              type="button"
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeTab === tab.id
+                  ? "bg-[#E5F3EC] text-[#0B5F46] shadow-2xs"
+                  : "bg-white text-[#68756C] hover:bg-[#F4F7F3] hover:text-[#17211B] border border-[#D9E3DC]"
               }`}
             >
               {tab.label}
             </button>
           ))}
-        </nav>
-      </div>
+        </div>
 
-      {/* Main Content */}
-      <div className="flex-1 p-6 flex flex-col">
+        {/* Status Message Alert */}
         {message && (
-          <div className={`mb-6 p-4 rounded-md ${message.type === 'success' ? 'bg-theme-surface-hover text-green-800 border-green-200' : 'bg-red-900/20 text-red-800 border-red-200'} border`}>
+          <div
+            className={`p-3.5 rounded-xl text-xs font-semibold ${
+              message.type === "success"
+                ? "bg-[#E5F3EC] text-[#0B5F46] border border-[#C2E3D2]"
+                : "bg-red-50 text-red-700 border border-red-200"
+            }`}
+          >
             {message.text}
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto pr-2">
-          {/* 1. BUSINESS PROFILE */}
-          {activeTab === 'business' && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-theme-text border-b pb-2">Business Profile</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Business Name</label>
-                  <input type="text" name="businessName" value={currentValues.businessName} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Legal Name</label>
-                  <input type="text" name="legalName" value={currentValues.legalName} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-theme-text">Business Address</label>
-                  <textarea name="businessAddress" value={currentValues.businessAddress} onChange={handleChange} rows={3} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2"></textarea>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">City</label>
-                  <input type="text" name="city" value={currentValues.city} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">State</label>
-                  <input type="text" name="state" value={currentValues.state} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">State Code</label>
-                  <input type="text" name="stateCode" value={currentValues.stateCode} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">PIN Code</label>
-                  <input type="text" name="pinCode" value={currentValues.pinCode} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Country</label>
-                  <input type="text" name="country" value={currentValues.country} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Phone</label>
-                  <input type="text" name="phone" value={currentValues.phone} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Email</label>
-                  <input type="email" name="email" value={currentValues.email} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Website</label>
-                  <input type="text" name="website" value={currentValues.website} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
+        {/* 1. COMPANY PROFILE */}
+        {activeTab === "business" && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-base font-bold text-[#17211B]">Company Profile</h3>
+              <p className="text-xs text-[#68756C] mt-0.5">
+                Legal and organizational information displayed on Tax Invoices and Statements.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  Business / Brand Name *
+                </label>
+                <input
+                  type="text"
+                  name="businessName"
+                  value={currentValues.businessName || "KVJ Analytics"}
+                  onChange={handleChange}
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  Legal Registered Name
+                </label>
+                <input
+                  type="text"
+                  name="legalName"
+                  value={currentValues.legalName || "KVJ Analytics Private Limited"}
+                  onChange={handleChange}
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  Official Email Address
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={currentValues.email || "finance@kvjanalytics.com"}
+                  onChange={handleChange}
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  Phone / Contact Number
+                </label>
+                <input
+                  type="text"
+                  name="phone"
+                  value={currentValues.phone || "+91 98765 43210"}
+                  onChange={handleChange}
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
               </div>
             </div>
-          )}
 
-          {/* 2. TAX INFORMATION */}
-          {activeTab === 'tax' && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-theme-text border-b pb-2">Tax Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">GSTIN</label>
-                  <input type="text" name="gstin" value={currentValues.gstin} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">PAN</label>
-                  <input type="text" name="pan" value={currentValues.pan} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Default GST Registration State</label>
-                  <input type="text" name="defaultGstState" value={currentValues.defaultGstState} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Default State Code</label>
-                  <input type="text" name="defaultGstStateCode" value={currentValues.defaultGstStateCode} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                Registered Business Address
+              </label>
+              <textarea
+                rows={2}
+                name="businessAddress"
+                value={currentValues.businessAddress || "Kochi, Kerala, India - 682001"}
+                onChange={handleChange}
+                className="w-full border border-[#D9E3DC] rounded-xl p-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* 2. GST & TAX */}
+        {activeTab === "tax" && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-base font-bold text-[#17211B]">GST & Tax Configuration</h3>
+              <p className="text-xs text-[#68756C] mt-0.5">
+                Goods and Services Tax (GSTIN) and Permanent Account Number (PAN).
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  GSTIN (15-digit GST Number) *
+                </label>
+                <input
+                  type="text"
+                  name="gstin"
+                  value={currentValues.gstin || "32ABCDE1234F1Z5"}
+                  onChange={handleChange}
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white font-mono focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  PAN (10-digit Permanent Account Number) *
+                </label>
+                <input
+                  type="text"
+                  name="pan"
+                  value={currentValues.pan || "ABCDE1234F"}
+                  onChange={handleChange}
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white font-mono focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  State of Registration
+                </label>
+                <select
+                  name="state"
+                  value={currentValues.state || "Kerala"}
+                  onChange={handleChange}
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="Kerala">Kerala (32)</option>
+                  <option value="Karnataka">Karnataka (29)</option>
+                  <option value="Tamil Nadu">Tamil Nadu (33)</option>
+                  <option value="Maharashtra">Maharashtra (27)</option>
+                  <option value="Delhi">Delhi (07)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  State Code
+                </label>
+                <input
+                  type="text"
+                  name="stateCode"
+                  value={currentValues.stateCode || "32"}
+                  onChange={handleChange}
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* 3. INVOICE SETTINGS */}
-          {activeTab === 'invoice' && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-theme-text border-b pb-2">Invoice Settings</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Invoice Prefix</label>
-                  <input type="text" name="invoicePrefix" value={currentValues.invoicePrefix} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Proforma Invoice Prefix</label>
-                  <input type="text" name="proformaPrefix" value={currentValues.proformaPrefix} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Starting Invoice Number</label>
-                  <input type="text" name="startingInvoiceNumber" value={currentValues.startingInvoiceNumber} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Starting Proforma Number</label>
-                  <input type="text" name="startingProformaNumber" value={currentValues.startingProformaNumber} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Invoice Number Format</label>
-                  <input type="text" name="invoiceNumberFormat" value={currentValues.invoiceNumberFormat} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Default Currency</label>
-                  <input type="text" name="defaultCurrency" value={currentValues.defaultCurrency} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-theme-text">Default Payment Terms</label>
-                  <textarea name="defaultPaymentTerms" value={currentValues.defaultPaymentTerms} onChange={handleChange} rows={2} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2"></textarea>
-                </div>
+        {/* 3. BANK ACCOUNTS */}
+        {activeTab === "bank" && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-base font-bold text-[#17211B]">Bank Details & UPI</h3>
+              <p className="text-xs text-[#68756C] mt-0.5">
+                Primary and secondary bank settlement details shown on customer Tax Invoices.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  Bank Settlement Details (Shown on Invoice PDF)
+                </label>
+                <textarea
+                  rows={3}
+                  name="bankDetails"
+                  value={
+                    currentValues.bankDetails ||
+                    "Bank: HDFC Bank\nA/C Name: KVJ Analytics\nA/C No: 50200012345678\nIFSC: HDFC0001234"
+                  }
+                  onChange={handleChange}
+                  className="w-full border border-[#D9E3DC] rounded-xl p-3 text-xs bg-white font-mono focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  UPI ID for QR Code
+                </label>
+                <input
+                  type="text"
+                  name="upiId"
+                  value={currentValues.upiId || "kvjanalytics@hdfcbank"}
+                  onChange={handleChange}
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* 4. FINANCIAL YEAR SETTINGS */}
-          {activeTab === 'financial_year' && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-theme-text border-b pb-2">Financial Year Settings</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Current Financial Year</label>
-                  <input type="text" name="currentFinancialYear" value={currentValues.currentFinancialYear} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Financial Year Start Month</label>
-                  <select name="financialYearStartMonth" value={currentValues.financialYearStartMonth} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2">
-                    <option value="January">January</option>
-                    <option value="April">April</option>
-                    <option value="July">July</option>
-                    <option value="October">October</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Financial Year End Month</label>
-                  <select name="financialYearEndMonth" value={currentValues.financialYearEndMonth} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2">
-                    <option value="December">December</option>
-                    <option value="March">March</option>
-                    <option value="June">June</option>
-                    <option value="September">September</option>
-                  </select>
-                </div>
+        {/* 4. INVOICE PREFERENCES */}
+        {activeTab === "invoice" && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-base font-bold text-[#17211B]">Invoice Preferences</h3>
+              <p className="text-xs text-[#68756C] mt-0.5">
+                Prefixes, sequence formatting, terms and signature configuration.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  Invoice Number Prefix
+                </label>
+                <input
+                  type="text"
+                  name="invoicePrefix"
+                  value={currentValues.invoicePrefix || "INV-2026-"}
+                  onChange={handleChange}
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  Proforma Number Prefix
+                </label>
+                <input
+                  type="text"
+                  name="proformaPrefix"
+                  value={currentValues.proformaPrefix || "PI-2026-"}
+                  onChange={handleChange}
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  Standard Payment Terms (Days)
+                </label>
+                <input
+                  type="text"
+                  name="defaultPaymentTerms"
+                  value={currentValues.defaultPaymentTerms || "30"}
+                  onChange={handleChange}
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
               </div>
             </div>
-          )}
 
-          {/* 5. BUSINESS PREFERENCES */}
-          {activeTab === 'preferences' && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-theme-text border-b pb-2">Business Preferences</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Default Country</label>
-                  <input type="text" name="defaultCountry" value={currentValues.defaultCountry} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Default State</label>
-                  <input type="text" name="defaultState" value={currentValues.defaultState} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Date Format</label>
-                  <select name="dateFormat" value={currentValues.dateFormat} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2">
-                    <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Number Format</label>
-                  <select name="numberFormat" value={currentValues.numberFormat} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2">
-                    <option value="en-IN">Indian (1,00,000.00)</option>
-                    <option value="en-US">US/International (100,000.00)</option>
-                    <option value="de-DE">European (100.000,00)</option>
-                  </select>
-                </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                Terms & Conditions (Shown on PDF)
+              </label>
+              <textarea
+                rows={3}
+                name="termsAndConditions"
+                value={
+                  currentValues.termsAndConditions ||
+                  "1. Payment is due within standard credit period.\n2. Please mention invoice number in all remittances."
+                }
+                onChange={handleChange}
+                className="w-full border border-[#D9E3DC] rounded-xl p-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* 5. SYSTEM DISPLAY */}
+        {activeTab === "display" && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-base font-bold text-[#17211B]">System Display & Formatting</h3>
+              <p className="text-xs text-[#68756C] mt-0.5">
+                Currency symbols, Indian numeral grouping, and table pagination settings.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  Currency Symbol
+                </label>
+                <input
+                  type="text"
+                  name="defaultCurrency"
+                  value="INR (₹)"
+                  disabled
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-gray-50 text-[#17211B] font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
+                  Numeral Grouping
+                </label>
+                <input
+                  type="text"
+                  name="numberFormat"
+                  value="Indian Lakhs / Crores (en-IN)"
+                  disabled
+                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-gray-50 text-[#17211B] font-medium"
+                />
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* 6. INVOICE DISPLAY SETTINGS */}
-          {activeTab === 'display' && (
-            <div className="space-y-6">
-              <h2 className="text-lg font-semibold text-theme-text border-b pb-2">Invoice Display Settings</h2>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Business Logo (URL)</label>
-                  <input type="text" name="businessLogo" value={currentValues.businessLogo} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" placeholder="https://example.com/logo.png" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Invoice Header Text</label>
-                  <textarea name="invoiceHeader" value={currentValues.invoiceHeader} onChange={handleChange} rows={2} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2"></textarea>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Invoice Footer Text</label>
-                  <textarea name="invoiceFooter" value={currentValues.invoiceFooter} onChange={handleChange} rows={2} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2"></textarea>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Terms and Conditions</label>
-                  <textarea name="termsAndConditions" value={currentValues.termsAndConditions} onChange={handleChange} rows={4} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2"></textarea>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">Bank Details</label>
-                  <textarea name="bankDetails" value={currentValues.bankDetails} onChange={handleChange} rows={3} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" placeholder="Bank Name:&#10;Account No:&#10;IFSC:"></textarea>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-theme-text">UPI ID</label>
-                  <input type="text" name="upiId" value={currentValues.upiId} onChange={handleChange} className="mt-1 block w-full rounded-md border-theme-border shadow-sm focus:border-theme-primary focus:ring-theme-primary sm:text-sm border p-2" />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="mt-6 pt-4 border-t border-theme-border flex justify-between items-center bg-theme-surface sticky bottom-0">
-          <button 
-            type="button" 
+        {/* Bottom Form Actions */}
+        <div className="pt-4 border-t border-[#D9E3DC] flex justify-between items-center">
+          <button
+            type="button"
             onClick={handleReset}
-            className="text-theme-text-muted hover:text-red-600 px-4 py-2 text-sm font-medium transition-colors"
+            className="px-4 py-2 border border-[#D9E3DC] rounded-xl text-xs font-bold hover:bg-[#F4F7F3] text-[#17211B] transition-colors"
           >
             Reset to Defaults
           </button>
-          <div className="flex gap-4">
-            {isDirty && (
-              <button 
-                type="button" 
-                onClick={() => { setFormValues({}); setIsDirty(false); }}
-                className="px-4 py-2 border border-theme-border rounded-md text-sm font-medium text-theme-text hover:bg-theme-surface-hover transition-colors"
-              >
-                Cancel Changes
-              </button>
-            )}
-            <button 
-              type="button" 
-              onClick={handleSave}
-              className="bg-theme-primary text-white px-6 py-2 rounded-md hover:bg-theme-primary-dark focus:outline-none focus:ring-2 focus:ring-theme-primary focus:ring-offset-2 transition-colors font-medium shadow-sm disabled:opacity-50"
-              disabled={!isDirty}
-            >
-              Save Settings
-            </button>
-          </div>
+
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-6 py-2 bg-[#1b5e4b] hover:bg-[#136f58] text-white rounded-xl text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
+          >
+            {isSaving ? "Saving Changes..." : "Save Changes"}
+          </button>
         </div>
       </div>
     </div>

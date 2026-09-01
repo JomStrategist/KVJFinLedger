@@ -1,8 +1,8 @@
 import { requireAuth } from "@/lib/auth-utils";
 import { BankTransferService } from "@/services/bank-transfer.service";
-import { BankTransfersClient } from "../bank-transfers/BankTransfersClient";
+import { BankTransfersClient } from "./BankTransfersClient";
 
-export default async function FinancePage() {
+export default async function BankTransfersPage() {
   await requireAuth();
 
   const transfers = await BankTransferService.getBankTransfers();

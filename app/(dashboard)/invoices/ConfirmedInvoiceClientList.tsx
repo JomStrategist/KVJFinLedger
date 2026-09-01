@@ -3,6 +3,8 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { TaxInvoiceStatus } from "@prisma/client";
+import { InvoicePaymentModal } from "./InvoicePaymentModal";
+import { useRouter } from "next/navigation";
 
 export function ConfirmedInvoiceClientList({
   initialInvoices,
@@ -11,11 +13,15 @@ export function ConfirmedInvoiceClientList({
   initialInvoices: any[];
   initialCustomers?: any[];
 }) {
+  const router = useRouter();
   const [invoices] = useState(initialInvoices);
   const [search, setSearch] = useState("");
   const [customerFilter, setCustomerFilter] = useState<string>("ALL");
   const [customerTypeFilter, setCustomerTypeFilter] = useState<string>("ALL");
-  const [statusFilter, setStatusFilter] = useState<TaxInvoiceStatus | "ALL">("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  // Selected invoice for payment modal
+  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<any | null>(null);
 
   const customerOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -60,142 +66,231 @@ export function ConfirmedInvoiceClientList({
       customerTypeFilter === "ALL" ||
       actualCustomerType === customerTypeFilter;
 
-    const matchesStatus = statusFilter === "ALL" || invoice.status === statusFilter;
+    let matchesStatus = true;
+    if (statusFilter === "PAID") {
+      matchesStatus = invoice.status === "PAID";
+    } else if (statusFilter === "PARTIALLY_PAID") {
+      matchesStatus = invoice.status === "PARTIALLY_PAID";
+    } else if (statusFilter === "UNPAID") {
+      matchesStatus = invoice.status === "CONFIRMED";
+    } else if (statusFilter !== "ALL") {
+      matchesStatus = invoice.status === statusFilter;
+    }
 
     return matchesSearch && matchesCustomer && matchesCustomerType && matchesStatus;
   });
 
-  const getStatusColor = (status: TaxInvoiceStatus) => {
+  const getStatusBadge = (status: TaxInvoiceStatus) => {
     switch (status) {
-      case "CONFIRMED": return "bg-theme-surface-hover text-blue-800";
-      case "PAID": return "bg-emerald-100 text-emerald-800";
-      case "PARTIALLY_PAID": return "bg-orange-100 text-orange-800";
-      case "CANCELLED": return "bg-red-100 text-red-800";
-      default: return "bg-theme-surface-hover text-theme-text";
+      case "PAID":
+        return <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-[#E5F3EC] text-[#0B5F46] tracking-wider">PAID</span>;
+      case "PARTIALLY_PAID":
+        return <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FFF3D8] text-[#B27A17] tracking-wider">PARTIALLY PAID</span>;
+      case "CONFIRMED":
+        return <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FBEAEA] text-[#B94B4B] tracking-wider">UNPAID</span>;
+      case "CANCELLED":
+        return <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-gray-100 text-gray-700 tracking-wider">CANCELLED</span>;
+      default:
+        return <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-theme-surface-hover text-theme-text">{status}</span>;
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <div className="bg-theme-surface border border-theme-border rounded-xl shadow-sm p-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center">
-        <div className="flex-1 relative">
-          <input
-            type="text"
-            placeholder="Search by invoice number or customer..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-theme-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface"
-          />
-          <svg className="w-5 h-5 text-theme-text-muted absolute left-3 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+      {/* Main Card Container */}
+      <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 space-y-5">
+        {/* Filters Toolbar */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[240px]">
+            <input
+              type="text"
+              placeholder="Search invoice / customer"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-[41px] px-3.5 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white placeholder-[#68756C]"
+            />
+          </div>
+
+          {/* All Customers Dropdown */}
+          <select
+            value={customerFilter}
+            onChange={(e) => setCustomerFilter(e.target.value)}
+            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[150px]"
+          >
+            <option value="ALL">All Customers</option>
+            {customerOptions.map((cust) => (
+              <option key={cust.id} value={cust.id}>
+                {cust.name}
+              </option>
+            ))}
+          </select>
+
+          {/* All Status Dropdown */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[130px]"
+          >
+            <option value="ALL">All Status</option>
+            <option value="PAID">Paid</option>
+            <option value="PARTIALLY_PAID">Partially Paid</option>
+            <option value="UNPAID">Unpaid</option>
+          </select>
+
+          {/* All Types Dropdown */}
+          <select
+            value={customerTypeFilter}
+            onChange={(e) => setCustomerTypeFilter(e.target.value)}
+            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[130px]"
+          >
+            <option value="ALL">All Types</option>
+            <option value="B2B">Domestic B2B</option>
+            <option value="B2B_EXPORT">Export</option>
+            <option value="B2C">B2C</option>
+          </select>
         </div>
 
-        {/* All Customers Dropdown */}
-        <select
-          value={customerFilter}
-          onChange={(e) => setCustomerFilter(e.target.value)}
-          className="border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface min-w-[150px]"
-        >
-          <option value="ALL">All Customers</option>
-          {customerOptions.map((cust) => (
-            <option key={cust.id} value={cust.id}>
-              {cust.name}
-            </option>
-          ))}
-        </select>
-
-        {/* All Customer Type Dropdown */}
-        <select
-          value={customerTypeFilter}
-          onChange={(e) => setCustomerTypeFilter(e.target.value)}
-          className="border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface min-w-[160px]"
-        >
-          <option value="ALL">All Customer Types</option>
-          <option value="B2B">B2B</option>
-          <option value="B2C">B2C</option>
-          <option value="B2B_EXPORT">B2B Export</option>
-        </select>
-
-        {/* Status Dropdown */}
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          className="border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface min-w-[150px]"
-        >
-          <option value="ALL">All Statuses</option>
-          <option value="CONFIRMED">Confirmed</option>
-          <option value="PAID">Paid</option>
-          <option value="PARTIALLY_PAID">Partially Paid</option>
-          <option value="CANCELLED">Cancelled</option>
-        </select>
-      </div>
-
-      {/* Table */}
-      <div className="bg-theme-surface rounded-xl shadow-sm border border-theme-border overflow-hidden">
+        {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left border-collapse min-w-[980px]">
             <thead>
-              <tr className="bg-theme-surface-hover border-b border-theme-border text-xs uppercase text-theme-text-muted font-semibold">
-                <th className="px-6 py-3">Invoice Number</th>
-                <th className="px-6 py-3">Customer</th>
-                <th className="px-6 py-3">Date</th>
-                <th className="px-6 py-3 text-right">Net Amount</th>
-                <th className="px-6 py-3">Status</th>
-                <th className="px-6 py-3 text-right">Actions</th>
+              <tr className="border-b border-[#D9E3DC] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
+                <th className="py-3 px-2">INVOICE</th>
+                <th className="py-3 px-3">CUSTOMER</th>
+                <th className="py-3 px-3">TYPE</th>
+                <th className="py-3 px-3 text-right">TOTAL</th>
+                <th className="py-3 px-3 text-right">PAID</th>
+                <th className="py-3 px-3 text-right">OUTSTANDING</th>
+                <th className="py-3 px-3">TDS</th>
+                <th className="py-3 px-3 text-center">STATUS</th>
+                <th className="py-3 px-2 text-right">ACTION</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-theme-border">
+            <tbody className="divide-y divide-[#E9EEE9] text-xs">
               {filteredInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-theme-text-muted">
-                    No tax invoices found. Convert a Proforma Invoice to create one.
+                  <td colSpan={9} className="py-12 text-center text-[#68756C]">
+                    No invoices found matching your criteria.
                   </td>
                 </tr>
               ) : (
-                filteredInvoices.map((invoice) => (
-                  <tr key={invoice.id} className="hover:bg-theme-surface-hover/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <Link href={`/invoices/${invoice.id}`} className="font-medium text-theme-primary hover:underline">
-                        {invoice.invoiceNumber}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="font-medium text-theme-text">{invoice.customerNameSnapshot || invoice.customer?.legalName}</p>
-                      {(invoice.businessNameSnapshot || invoice.customer?.tradeName) && (
-                        <p className="text-xs text-theme-text-muted">{invoice.businessNameSnapshot || invoice.customer?.tradeName}</p>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-theme-text-muted">
-                      {new Date(invoice.invoiceDate).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <p className="font-medium text-theme-text">₹{invoice.netAmount.toString()}</p>
-                      {Number(invoice.tdsAmount) > 0 && (
-                        <p className="text-xs text-red-500">inc. TDS</p>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
-                        {invoice.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right text-sm">
-                      <Link
-                        href={`/invoices/${invoice.id}`}
-                        className="text-theme-text-muted hover:text-theme-primary font-medium"
-                      >
-                        View Details
-                      </Link>
-                    </td>
-                  </tr>
-                ))
+                filteredInvoices.map((invoice) => {
+                  const payments = invoice.payments || [];
+                  const totalPaid = payments.reduce((sum: number, p: any) => sum + Number(p.paymentAmount), 0);
+                  const totalTdsDeducted = payments.reduce((sum: number, p: any) => sum + Number(p.tdsAmount), 0);
+                  const totalSettled = totalPaid + totalTdsDeducted;
+                  const totalGross = Number(invoice.grossAmount || invoice.netAmount);
+                  const outstanding = Math.max(0, totalGross - totalSettled);
+
+                  const tdsRate = Number(invoice.tdsRate || 0);
+                  const tdsAmount = Number(invoice.tdsAmount || 0);
+
+                  const customerType = invoice.customer?.customerType || "B2B";
+                  const formattedType = customerType === "B2B_EXPORT" ? "Export" : customerType === "B2B" ? "Domestic B2B" : "B2C";
+
+                  return (
+                    <tr key={invoice.id} className="hover:bg-[#F9FAF8] transition-colors">
+                      {/* Invoice */}
+                      <td className="py-4 px-2 font-bold text-[#17211B]">
+                        <Link href={`/invoices/${invoice.id}`} className="hover:text-[#177B55]">
+                          {invoice.invoiceNumber}
+                        </Link>
+                      </td>
+
+                      {/* Customer with GSTIN */}
+                      <td className="py-4 px-3">
+                        <p className="font-bold text-[#17211B]">
+                          {invoice.customerNameSnapshot || invoice.customer?.legalName || invoice.businessNameSnapshot}
+                        </p>
+                        {invoice.gstinSnapshot ? (
+                          <p className="text-[11px] text-[#7B877F] mt-0.5">
+                            GSTIN · {invoice.gstinSnapshot}
+                          </p>
+                        ) : invoice.customer?.gstin ? (
+                          <p className="text-[11px] text-[#7B877F] mt-0.5">
+                            GSTIN · {invoice.customer.gstin}
+                          </p>
+                        ) : customerType === "B2B_EXPORT" ? (
+                          <p className="text-[11px] text-[#7B877F] mt-0.5">Export Customer</p>
+                        ) : (
+                          <p className="text-[11px] text-[#7B877F] mt-0.5">Unregistered</p>
+                        )}
+                      </td>
+
+                      {/* Type */}
+                      <td className="py-4 px-3 text-[#17211B] font-medium">
+                        {formattedType}
+                      </td>
+
+                      {/* Total */}
+                      <td className="py-4 px-3 text-right font-bold text-[#17211B]">
+                        ₹{totalGross.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
+                      </td>
+
+                      {/* Paid */}
+                      <td className="py-4 px-3 text-right text-[#17211B] font-medium">
+                        ₹{totalPaid.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
+                      </td>
+
+                      {/* Outstanding */}
+                      <td className="py-4 px-3 text-right font-medium text-[#17211B]">
+                        ₹{outstanding.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
+                      </td>
+
+                      {/* TDS */}
+                      <td className="py-4 px-3 whitespace-nowrap">
+                        {tdsAmount > 0 ? (
+                          <span className="text-[#17211B] font-medium">
+                            {tdsRate > 0 ? `${tdsRate}% · ` : "10% · "}₹{tdsAmount.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
+                          </span>
+                        ) : (
+                          <span className="text-[#7B877F]">—</span>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-4 px-3 text-center">
+                        {getStatusBadge(invoice.status)}
+                      </td>
+
+                      {/* Action */}
+                      <td className="py-4 px-2 text-right space-x-2 whitespace-nowrap">
+                        {invoice.status !== "PAID" && invoice.status !== "CANCELLED" && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedInvoiceForPayment(invoice)}
+                            className="bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
+                          >
+                            Payment
+                          </button>
+                        )}
+                        <Link
+                          href={`/invoices/${invoice.id}`}
+                          className="inline-block bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {selectedInvoiceForPayment && (
+        <InvoicePaymentModal
+          invoice={selectedInvoiceForPayment}
+          onClose={() => setSelectedInvoiceForPayment(null)}
+          onSuccess={() => {
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }
