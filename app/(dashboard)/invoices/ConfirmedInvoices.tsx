@@ -27,15 +27,6 @@ export async function ConfirmedInvoices({
 
   return (
     <div className="space-y-6 mt-6">
-      <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4">
-        <Link 
-          href="/proforma-invoices/new" 
-          className="px-4 py-2 bg-theme-primary text-white rounded-lg text-sm font-medium hover:bg-theme-primary-dark transition-colors"
-        >
-          Create Proforma
-        </Link>
-      </div>
-
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-theme-surface p-4 rounded-xl border border-theme-border shadow-sm">
