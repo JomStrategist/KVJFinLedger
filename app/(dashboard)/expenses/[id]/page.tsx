@@ -118,6 +118,20 @@ export default async function ExpenseDetailPage({
                 <span>Expense Date</span>
                 <span className="font-medium text-theme-text">{new Date(expense.expenseDate).toLocaleDateString()}</span>
               </div>
+              <div className="flex justify-between text-theme-text-muted">
+                <span>Paid By</span>
+                <span className="font-medium text-theme-text">
+                  {expense.paidBy === "EMPLOYEE" ? (
+                    <span className="inline-flex items-center gap-1 text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded text-xs">
+                      Employee: {expense.employee?.name || "Employee"}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center text-theme-text bg-theme-surface-hover px-2 py-0.5 rounded text-xs">
+                      Company
+                    </span>
+                  )}
+                </span>
+              </div>
               {expense.category && (
                 <div className="flex justify-between text-theme-text-muted">
                   <span>Category</span>

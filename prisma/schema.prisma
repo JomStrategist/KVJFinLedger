@@ -25,6 +25,7 @@ model User {
   mustResetPassword Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+  expenses          Expense[]
 }
 
 model CompanySettings {
@@ -316,6 +317,10 @@ model Expense {
 
   categoryId        String?
   category          ExpenseCategory? @relation("ExpenseCategory", fields: [categoryId], references: [id])
+
+  paidBy            String?  @default("COMPANY")
+  employeeId        String?
+  employee          User?    @relation(fields: [employeeId], references: [id])
 
   status            ExpenseStatus @default(DRAFT)
   paymentStatus     PaymentStatus @default(UNPAID)

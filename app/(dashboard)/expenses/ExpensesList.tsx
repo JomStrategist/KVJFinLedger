@@ -133,7 +133,14 @@ export async function ExpensesList({
                       <Link href={`/expenses/${expense.id}`} className="font-medium text-theme-primary hover:underline block">
                         {expense.expenseNumber}
                       </Link>
-                      <span className="text-xs text-theme-text-muted">{new Date(expense.expenseDate).toLocaleDateString()}</span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-theme-text-muted">{new Date(expense.expenseDate).toLocaleDateString()}</span>
+                        {expense.paidBy === "EMPLOYEE" && (
+                          <span className="text-[10px] bg-indigo-50 text-indigo-700 font-medium px-1.5 py-0.5 rounded border border-indigo-100">
+                            Employee: {expense.employee?.name || "Paid"}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-theme-text mt-1 truncate max-w-xs">{expense.description || <span className="italic text-theme-text-muted">Multiple items</span>}</p>
                     </td>
                     <td className="px-6 py-4 font-medium text-theme-text">

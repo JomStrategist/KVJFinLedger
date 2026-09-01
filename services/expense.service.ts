@@ -49,6 +49,7 @@ export class ExpenseService {
       include: {
         vendor: true,
         category: true,
+        employee: true,
       }
     });
   }
@@ -65,6 +66,7 @@ export class ExpenseService {
         },
         vendor: true,
         category: true,
+        employee: true,
       },
     });
   }
@@ -92,8 +94,10 @@ export class ExpenseService {
           description: data.description || null,
           vendorId: data.vendorId || null,
           categoryId: data.categoryId || null,
+          paidBy: data.paidBy || "COMPANY",
+          employeeId: data.paidBy === "EMPLOYEE" ? data.employeeId || null : null,
           status: "DRAFT",
-          paymentStatus: "UNPAID",
+          paymentStatus: data.paymentStatus || (data.paidBy === "EMPLOYEE" ? "UNPAID" : "PAID"),
 
           subtotal: data.subtotal,
           discountAmount: data.discountAmount || 0,
@@ -158,6 +162,9 @@ export class ExpenseService {
           description: data.description || null,
           vendorId: data.vendorId || null,
           categoryId: data.categoryId || null,
+          paidBy: data.paidBy || "COMPANY",
+          employeeId: data.paidBy === "EMPLOYEE" ? data.employeeId || null : null,
+          paymentStatus: data.paymentStatus || current.paymentStatus,
 
           subtotal: data.subtotal,
           discountAmount: data.discountAmount || 0,
