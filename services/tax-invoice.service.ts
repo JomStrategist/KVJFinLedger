@@ -51,6 +51,9 @@ export class TaxInvoiceService {
 
     return await prisma.taxInvoice.findMany({
       where,
+      include: {
+        customer: true,
+      },
       orderBy: { createdAt: "desc" },
     });
   }

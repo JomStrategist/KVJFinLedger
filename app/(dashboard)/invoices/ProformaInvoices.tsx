@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { ProformaInvoiceService } from "@/services/proforma-invoice.service";
+import { CustomerService } from "@/services/customer.service";
 import { ProformaInvoiceClientList } from "./ProformaInvoiceClientList";
 
 export async function ProformaInvoices() {
-  const invoices = await ProformaInvoiceService.getProformaInvoices();
+  const [invoices, customers] = await Promise.all([
+    ProformaInvoiceService.getProformaInvoices(),
+    CustomerService.getCustomers(),
+  ]);
 
   // Summary Cards Data
   const totalItems = invoices.length;
@@ -37,7 +41,7 @@ export async function ProformaInvoices() {
         </div>
       </div>
 
-      <ProformaInvoiceClientList initialInvoices={invoices} />
+      <ProformaInvoiceClientList initialInvoices={invoices} initialCustomers={customers} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProformaInvoiceStatus } from "@prisma/client";
@@ -9,8 +9,10 @@ import { convertProformaToTaxInvoiceAction } from "./actions";
 
 export function ProformaInvoiceClientList({
   initialInvoices,
+  initialCustomers = [],
 }: {
   initialInvoices: any[]; // Using any to avoid complex nested Prisma typings inline
+  initialCustomers?: any[];
 }) {
   const router = useRouter();
   const [invoices, setInvoices] = useState(initialInvoices);
@@ -18,22 +20,56 @@ export function ProformaInvoiceClientList({
   const [isConverting, startConvertTransition] = useTransition();
 
   const [search, setSearch] = useState("");
+  const [customerFilter, setCustomerFilter] = useState<string>("ALL");
+  const [customerTypeFilter, setCustomerTypeFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<ProformaInvoiceStatus | "ALL">("ALL");
 
   // Conversion modal state
   const [convertingInvoice, setConvertingInvoice] = useState<any | null>(null);
   const [convertError, setConvertError] = useState<string | null>(null);
 
+  // Derive unique customers for dropdown
+  const customerOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    if (Array.isArray(initialCustomers)) {
+      initialCustomers.forEach((c: any) => {
+        if (c?.id) {
+          map.set(c.id, c.tradeName || c.legalName);
+        }
+      });
+    }
+    invoices.forEach((inv: any) => {
+      if (inv.customer?.id) {
+        map.set(inv.customer.id, inv.customer.tradeName || inv.customer.legalName);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [initialCustomers, invoices]);
+
   const filteredInvoices = invoices.filter((invoice) => {
-    const searchLower = search.toLowerCase();
+    const searchLower = search.toLowerCase().trim();
     const matchesSearch =
+      !searchLower ||
       invoice.invoiceNumber.toLowerCase().includes(searchLower) ||
-      invoice.customer.legalName.toLowerCase().includes(searchLower) ||
-      (invoice.customer.tradeName && invoice.customer.tradeName.toLowerCase().includes(searchLower));
+      (invoice.customer?.legalName && invoice.customer.legalName.toLowerCase().includes(searchLower)) ||
+      (invoice.customer?.tradeName && invoice.customer.tradeName.toLowerCase().includes(searchLower)) ||
+      (invoice.customer?.gstin && invoice.customer.gstin.toLowerCase().includes(searchLower));
+
+    const matchesCustomer =
+      customerFilter === "ALL" ||
+      invoice.customerId === customerFilter ||
+      invoice.customer?.id === customerFilter;
+
+    const actualCustomerType = invoice.customerType || invoice.customer?.customerType;
+    const matchesCustomerType =
+      customerTypeFilter === "ALL" ||
+      actualCustomerType === customerTypeFilter;
 
     const matchesStatus = statusFilter === "ALL" || invoice.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesCustomer && matchesCustomerType && matchesStatus;
   });
 
   const getStatusColor = (status: ProformaInvoiceStatus) => {
@@ -89,20 +125,47 @@ export function ProformaInvoiceClientList({
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="bg-theme-surface border border-theme-border rounded-xl shadow-sm p-4 flex flex-col md:flex-row gap-4">
+      <div className="bg-theme-surface border border-theme-border rounded-xl shadow-sm p-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center">
         <div className="flex-1 relative">
           <input
             type="text"
             placeholder="Search by Invoice Number or Customer..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-theme-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary"
+            className="w-full pl-10 pr-4 py-2 border border-theme-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface"
           />
-          <svg className="w-5 h-5 text-theme-text-muted absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-theme-text-muted absolute left-3 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
 
+        {/* All Customers Dropdown */}
+        <select
+          value={customerFilter}
+          onChange={(e) => setCustomerFilter(e.target.value)}
+          className="border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface min-w-[150px]"
+        >
+          <option value="ALL">All Customers</option>
+          {customerOptions.map((cust) => (
+            <option key={cust.id} value={cust.id}>
+              {cust.name}
+            </option>
+          ))}
+        </select>
+
+        {/* All Customer Type Dropdown */}
+        <select
+          value={customerTypeFilter}
+          onChange={(e) => setCustomerTypeFilter(e.target.value)}
+          className="border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface min-w-[160px]"
+        >
+          <option value="ALL">All Customer Types</option>
+          <option value="B2B">B2B</option>
+          <option value="B2C">B2C</option>
+          <option value="B2B_EXPORT">B2B Export</option>
+        </select>
+
+        {/* Status Dropdown */}
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as any)}
