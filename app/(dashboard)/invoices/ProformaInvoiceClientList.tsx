@@ -243,9 +243,12 @@ export function ProformaInvoiceClientList({
                     {/* GST */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       {totalGstAmount > 0 ? (
-                        <span className="text-theme-text font-medium">
-                          {effectiveGstRate > 0 ? `${effectiveGstRate}% · ` : ""}₹{totalGstAmount.toLocaleString("en-IN")}
-                        </span>
+                        <div>
+                          <p className="font-semibold text-theme-text">₹{totalGstAmount.toLocaleString("en-IN")}</p>
+                          {effectiveGstRate > 0 && (
+                            <p className="text-xs text-theme-text-muted mt-0.5">{effectiveGstRate}%</p>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-theme-text-muted">—</span>
                       )}
@@ -253,9 +256,12 @@ export function ProformaInvoiceClientList({
                     {/* TDS */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       {effectiveTdsAmount > 0 ? (
-                        <span className="text-theme-text font-medium">
-                          {effectiveTdsRate > 0 ? `${effectiveTdsRate}% · ` : ""}₹{effectiveTdsAmount.toLocaleString("en-IN")}
-                        </span>
+                        <div>
+                          <p className="font-semibold text-theme-text">₹{effectiveTdsAmount.toLocaleString("en-IN")}</p>
+                          {effectiveTdsRate > 0 && (
+                            <p className="text-xs text-theme-text-muted mt-0.5">{effectiveTdsRate}%</p>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-theme-text-muted">—</span>
                       )}
@@ -307,8 +313,8 @@ export function ProformaInvoiceClientList({
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
+                );
+              }))}
             </tbody>
           </table>
         </div>

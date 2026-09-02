@@ -255,9 +255,12 @@ export function ConfirmedInvoiceClientList({
                       {/* GST */}
                       <td className="py-4 px-3 whitespace-nowrap">
                         {totalGstAmount > 0 ? (
-                          <span className="text-[#17211B] font-medium">
-                            {effectiveGstRate > 0 ? `${effectiveGstRate}% · ` : ""}₹{totalGstAmount.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
-                          </span>
+                          <div>
+                            <p className="font-bold text-[#17211B]">₹{totalGstAmount.toLocaleString("en-IN", { minimumFractionDigits: 0 })}</p>
+                            {effectiveGstRate > 0 && (
+                              <p className="text-[11px] text-[#7B877F] mt-0.5">{effectiveGstRate}%</p>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-[#7B877F]">—</span>
                         )}
@@ -266,9 +269,12 @@ export function ConfirmedInvoiceClientList({
                       {/* TDS */}
                       <td className="py-4 px-3 whitespace-nowrap">
                         {effectiveTdsAmount > 0 ? (
-                          <span className="text-[#17211B] font-medium">
-                            {effectiveTdsRate > 0 ? `${effectiveTdsRate}% · ` : ""}₹{effectiveTdsAmount.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
-                          </span>
+                          <div>
+                            <p className="font-bold text-[#17211B]">₹{effectiveTdsAmount.toLocaleString("en-IN", { minimumFractionDigits: 0 })}</p>
+                            {effectiveTdsRate > 0 && (
+                              <p className="text-[11px] text-[#7B877F] mt-0.5">{effectiveTdsRate}%</p>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-[#7B877F]">—</span>
                         )}
