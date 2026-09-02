@@ -66,7 +66,7 @@ export class DashboardService {
         }),
         prisma.taxInvoice.findMany({
           where: invoiceWhere,
-          include: { customer: true, payments: true }
+          include: { customer: true, payments: true, items: { include: { incomeCategory: true } } }
         }),
         prisma.expense.findMany({
           where: expenseWhere,
@@ -187,7 +187,36 @@ export class DashboardService {
       percentage: totalExpenseAmount > 0 ? (c.amount / totalExpenseAmount) * 100 : 0
     })).sort((a, b) => b.amount - a.amount);
 
-    // 5. Revenue by Top Customers
+    // 5. Revenue by Income Category & Group
+    const revenueCategoryMap: Record<string, { category: string; group: string; amount: number }> = {};
+    for (const inv of invoices) {
+      if (inv.items && inv.items.length > 0) {
+        for (const item of inv.items) {
+          const catName = item.categoryNameSnapshot || item.incomeCategory?.name || "Service Revenue";
+          const groupName = item.statementGroupSnapshot || item.incomeCategory?.statementGroup || "Revenue from Operations";
+          const amount = Number(item.taxableAmount || item.totalAmount || 0);
+
+          if (!revenueCategoryMap[catName]) {
+            revenueCategoryMap[catName] = { category: catName, group: groupName, amount: 0 };
+          }
+          revenueCategoryMap[catName].amount += amount;
+        }
+      } else {
+        const catName = "Service Revenue";
+        const groupName = "Revenue from Operations";
+        const net = Number(inv.netAmount || inv.subtotal || 0);
+        if (!revenueCategoryMap[catName]) {
+          revenueCategoryMap[catName] = { category: catName, group: groupName, amount: 0 };
+        }
+        revenueCategoryMap[catName].amount += net;
+      }
+    }
+    const revenueCategories = Object.values(revenueCategoryMap).map(r => ({
+      ...r,
+      percentage: totalRevenue > 0 ? (r.amount / totalRevenue) * 100 : 0
+    })).sort((a, b) => b.amount - a.amount);
+
+    // 6. Revenue by Top Customers
     const customerMap: Record<string, { customer: string; amount: number }> = {};
     let totalInvoiceRevenue = 0;
     for (const inv of invoices) {
@@ -275,6 +304,7 @@ export class DashboardService {
       trends,
       monthlySummary,
       expenseCategories,
+      revenueCategories,
       topCustomers,
       topExpenses,
       recentTransactions,
@@ -303,6 +333,11 @@ export class DashboardService {
   static async getExpenseByCategory(filters?: DateFilter) {
     const data = await this.getUnifiedDashboardData(filters);
     return data.expenseCategories;
+  }
+
+  static async getRevenueByCategory(filters?: DateFilter) {
+    const data = await this.getUnifiedDashboardData(filters);
+    return data.revenueCategories;
   }
 
   static async getRevenueByCustomer(filters?: DateFilter) {

@@ -24,12 +24,14 @@ export default async function ProfitLossPage({
     kpis,
     trends,
     expenseCategories,
+    revenueCategories,
     topCustomers,
     monthlySummary
   ] = await Promise.all([
     DashboardService.getDashboardKPIs(filters),
     DashboardService.getRevenueVsExpenseTrend(filters),
     DashboardService.getExpenseByCategory(filters),
+    DashboardService.getRevenueByCategory(filters),
     DashboardService.getRevenueByCustomer(filters),
     DashboardService.getMonthlyFinancialSummary(filters),
   ]);
@@ -123,9 +125,21 @@ export default async function ProfitLossPage({
         <div className="p-6">
           <div className="mb-6">
             <h4 className="font-bold text-theme-text text-lg border-b pb-2 mb-4">REVENUE</h4>
-            <div className="flex justify-between items-center py-2 px-4">
-              <span className="text-theme-text">Sales Revenue</span>
-              <span className="font-medium">{formatCurrency(kpis.totalRevenue)}</span>
+            <div className="space-y-1">
+              {revenueCategories.map((rev, idx) => (
+                <div key={idx} className="flex justify-between items-center py-2 px-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-theme-text font-medium">{rev.category}</span>
+                    <span className="text-[11px] text-theme-text-muted font-mono bg-theme-surface-hover px-1.5 py-0.5 rounded">
+                      {rev.group}
+                    </span>
+                  </div>
+                  <span className="font-medium">{formatCurrency(rev.amount)}</span>
+                </div>
+              ))}
+              {revenueCategories.length === 0 && (
+                <div className="py-2 px-4 text-theme-text-muted italic">No revenue recorded.</div>
+              )}
             </div>
             <div className="flex justify-between items-center py-3 px-4 bg-theme-surface-hover font-bold mt-2 border-t">
               <span className="text-theme-text">TOTAL REVENUE</span>

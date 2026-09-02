@@ -25,6 +25,7 @@ export type CreateProformaInvoiceInput = {
   customerAddress?: string;
   items: {
     productId: string;
+    incomeCategoryId?: string | null;
     description?: string | null;
     quantity: number;
     unitPrice: number;
@@ -108,7 +109,7 @@ export class ProformaInvoiceService {
     const isInclusive = Boolean(data.isGstInclusive);
     const appliedRate = data.globalGstRate || 0;
 
-    const mappedItems = data.items.map(item => {
+    const mappedItems = await Promise.all(data.items.map(async item => {
       const rawGross = Number((item.quantity * item.unitPrice).toFixed(2));
       const discountAmount = Number(((rawGross * item.discountPercent) / 100).toFixed(2));
       let taxableAmount = 0;
@@ -120,13 +121,23 @@ export class ProformaInvoiceService {
         taxableAmount = Number((rawGross - discountAmount).toFixed(2));
       }
 
+      let category = null;
+      if (item.incomeCategoryId) {
+        category = await prisma.expenseCategory.findUnique({ where: { id: item.incomeCategoryId } });
+      }
+
       return {
         ...item,
         grossAmount: rawGross,
         discountAmount,
         taxableAmount,
+        incomeCategoryId: item.incomeCategoryId || null,
+        categoryNameSnapshot: category?.name || null,
+        categoryCodeSnapshot: category?.code || null,
+        statementGroupSnapshot: category?.statementGroup || null,
+        financialTypeSnapshot: category?.financialType || "INCOME",
       };
-    });
+    }));
 
     return TaxEngine.calculateInvoiceTaxes({
       items: mappedItems.map(item => ({
@@ -193,6 +204,11 @@ export class ProformaInvoiceService {
             sgstAmount: item.sgstAmount,
             totalGST: item.totalGST,
             totalAmount: item.totalAmount,
+            incomeCategoryId: item.incomeCategoryId || null,
+            categoryNameSnapshot: item.categoryNameSnapshot || null,
+            categoryCodeSnapshot: item.categoryCodeSnapshot || null,
+            statementGroupSnapshot: item.statementGroupSnapshot || null,
+            financialTypeSnapshot: item.financialTypeSnapshot || "INCOME",
           }))
         }
       }
@@ -251,6 +267,11 @@ export class ProformaInvoiceService {
               sgstAmount: item.sgstAmount,
               totalGST: item.totalGST,
               totalAmount: item.totalAmount,
+              incomeCategoryId: item.incomeCategoryId || null,
+              categoryNameSnapshot: item.categoryNameSnapshot || null,
+              categoryCodeSnapshot: item.categoryCodeSnapshot || null,
+              statementGroupSnapshot: item.statementGroupSnapshot || null,
+              financialTypeSnapshot: item.financialTypeSnapshot || "INCOME",
             }))
           }
         }

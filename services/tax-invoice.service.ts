@@ -164,7 +164,7 @@ export class TaxInvoiceService {
       include: {
         customer: true,
         items: {
-          include: { product: true }
+          include: { product: true, incomeCategory: true }
         }
       }
     });
@@ -267,7 +267,12 @@ export class TaxInvoiceService {
               igstAmount: item.igstAmount,
               totalGST: item.totalGST,
               
-              totalAmount: item.totalAmount
+              totalAmount: item.totalAmount,
+              incomeCategoryId: item.incomeCategoryId || null,
+              categoryNameSnapshot: item.categoryNameSnapshot || item.incomeCategory?.name || null,
+              categoryCodeSnapshot: item.categoryCodeSnapshot || item.incomeCategory?.code || null,
+              statementGroupSnapshot: item.statementGroupSnapshot || item.incomeCategory?.statementGroup || null,
+              financialTypeSnapshot: item.financialTypeSnapshot || item.incomeCategory?.financialType || "INCOME",
             }))
           }
         }

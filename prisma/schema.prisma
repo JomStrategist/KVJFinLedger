@@ -202,6 +202,13 @@ model ProformaInvoiceItem {
   tdsRate           Float @default(0)
   tdsAmount         Float @default(0)
 
+  incomeCategoryId       String?          @db.ObjectId
+  incomeCategory         ExpenseCategory? @relation("ProformaIncomeCategory", fields: [incomeCategoryId], references: [id])
+  categoryNameSnapshot   String?
+  categoryCodeSnapshot   String?
+  statementGroupSnapshot String?
+  financialTypeSnapshot  String?
+
   totalAmount       Float
 }
 
@@ -314,6 +321,13 @@ model TaxInvoiceItem {
   igstRate        Float @default(0)
   igstAmount      Float @default(0)
 
+  incomeCategoryId       String?          @db.ObjectId
+  incomeCategory         ExpenseCategory? @relation("TaxInvoiceIncomeCategory", fields: [incomeCategoryId], references: [id])
+  categoryNameSnapshot   String?
+  categoryCodeSnapshot   String?
+  statementGroupSnapshot String?
+  financialTypeSnapshot  String?
+
   totalGST        Float @default(0)
   totalAmount     Float
 }
@@ -400,6 +414,8 @@ model ExpenseCategory {
 
   expenses                Expense[]                @relation("ExpenseCategory")
   expenseItems            ExpenseItem[]            @relation("ExpenseItemCategory")
+  proformaItems           ProformaInvoiceItem[]    @relation("ProformaIncomeCategory")
+  taxInvoiceItems         TaxInvoiceItem[]         @relation("TaxInvoiceIncomeCategory")
 
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt

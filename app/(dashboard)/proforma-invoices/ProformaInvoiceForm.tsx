@@ -16,6 +16,7 @@ type FormProps = {
   initialData?: any;
   customers: any[];
   products: any[];
+  categories?: any[];
 };
 
 const PAYMENT_TERMS_OPTIONS = [
@@ -47,7 +48,7 @@ const getFinancialYearsList = () => {
   });
 };
 
-export function ProformaInvoiceForm({ initialData, customers: initialCustomers, products: initialProducts }: FormProps) {
+export function ProformaInvoiceForm({ initialData, customers: initialCustomers, products: initialProducts, categories: initialCategories = [] }: FormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +56,12 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
 
   const [customers, setCustomers] = useState(initialCustomers);
   const [products, setProducts] = useState(initialProducts);
+  const [categoriesList, setCategoriesList] = useState<any[]>(initialCategories);
+
+  const incomeCategories = useMemo(() => {
+    return categoriesList.filter((c) => (c.financialType || "INCOME").toUpperCase() === "INCOME" && (c.isActive ?? true));
+  }, [categoriesList]);
+
   const [modalConfig, setModalConfig] = useState<{ type: string; itemId?: string } | null>(null);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -92,6 +99,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
     initialData?.items?.map((i: any) => ({
       id: Math.random().toString(),
       productId: i.productId,
+      incomeCategoryId: i.incomeCategoryId || i.incomeCategory?.id || "",
       description: i.description || "",
       hsnSacCode: products.find(p => p.id === i.productId)?.hsnSacCode || "",
       quantity: Number(i.quantity) || 1,
@@ -104,6 +112,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
       {
         id: Math.random().toString(),
         productId: products[0]?.id || "",
+        incomeCategoryId: products[0]?.defaultIncomeCategoryId || incomeCategories[0]?.id || "",
         description: products[0]?.description || "",
         hsnSacCode: products[0]?.hsnSacCode || "",
         quantity: 1,
@@ -242,19 +251,21 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
   const revGstBaseAmount = calculationResult.taxableAmount;
 
   const handleAddItem = () => {
+    const defaultProduct = products[0];
     setItems([
       ...items,
       {
         id: Math.random().toString(),
-        productId: "",
-        description: "",
-        hsnSacCode: "",
+        productId: defaultProduct?.id || "",
+        incomeCategoryId: defaultProduct?.defaultIncomeCategoryId || incomeCategories[0]?.id || "",
+        description: defaultProduct?.description || "",
+        hsnSacCode: defaultProduct?.hsnSacCode || "",
         quantity: 1,
-        unit: "Piece",
-        unitPrice: 0,
+        unit: defaultProduct?.unit || "Piece",
+        unitPrice: Number(defaultProduct?.sellingPrice || 0),
         discountPercent: 0,
         isGstEnabled: true,
-        gstRate: 0,
+        gstRate: Number(defaultProduct?.gstRate || 18),
       }
     ]);
   };
@@ -279,6 +290,9 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
             updated.unit = product.unit || "Piece";
             updated.unitPrice = Number(product.customPrice || product.sellingPrice || 0);
             updated.gstRate = Number(product.gstRate || 18);
+            if (product.defaultIncomeCategoryId) {
+              updated.incomeCategoryId = product.defaultIncomeCategoryId;
+            }
           }
         }
         return updated;
@@ -308,6 +322,11 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
       setProducts((prev) => [...prev, newRecord]);
       if (modalConfig.itemId) {
         handleItemChange(modalConfig.itemId, "productId", newRecord.id);
+      }
+    } else if (modalConfig?.type === "category" && newRecord) {
+      setCategoriesList((prev) => [...prev, newRecord]);
+      if (modalConfig.itemId) {
+        handleItemChange(modalConfig.itemId, "incomeCategoryId", newRecord.id);
       }
     }
     setModalConfig(null);
@@ -538,7 +557,8 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
             <table className="w-full text-left min-w-[750px]">
               <thead>
                 <tr className="bg-theme-surface-hover text-[11px] uppercase text-theme-text-muted font-bold tracking-wider border-b border-theme-border">
-                  <th className="px-4 py-3 w-72">Item & Description</th>
+                  <th className="px-4 py-3 w-64">Item & Description</th>
+                  <th className="px-3 py-3 w-48">Income Category *</th>
                   <th className="px-3 py-3 w-28">HSN / SAC</th>
                   <th className="px-3 py-3 w-20">Qty</th>
                   <th className="px-3 py-3 w-32">Rate</th>
@@ -578,6 +598,30 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                           onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
                           className="w-full border border-theme-border/60 rounded-md px-2.5 py-1 text-xs bg-theme-surface text-theme-text-muted"
                         />
+                      </td>
+                      <td className="px-3 py-3">
+                        <select
+                          value={item.incomeCategoryId || ""}
+                          onChange={(e) => {
+                            if (e.target.value === "ADD_NEW_CATEGORY") {
+                              setModalConfig({ type: "category", itemId: item.id });
+                            } else {
+                              handleItemChange(item.id, "incomeCategoryId", e.target.value);
+                            }
+                          }}
+                          required
+                          className="w-full border border-theme-border rounded-lg px-2 py-1.5 text-xs font-semibold focus:ring-1 focus:ring-theme-primary bg-theme-surface text-[#177B55]"
+                        >
+                          <option value="">Select Category...</option>
+                          {incomeCategories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name} ({c.code || "INC"})
+                            </option>
+                          ))}
+                          <option value="ADD_NEW_CATEGORY" className="font-bold text-theme-primary bg-theme-surface-hover">
+                            + Add Income Category...
+                          </option>
+                        </select>
                       </td>
                       <td className="px-3 py-3">
                         <input

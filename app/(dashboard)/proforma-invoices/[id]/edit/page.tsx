@@ -1,6 +1,7 @@
 import { ProformaInvoiceForm } from "../../ProformaInvoiceForm";
 import { CustomerService } from "@/services/customer.service";
 import { ProductService } from "@/services/product.service";
+import { ExpenseCategoryService } from "@/services/expense-category.service";
 import { ProformaInvoiceService } from "@/services/proforma-invoice.service";
 import { notFound, redirect } from "next/navigation";
 
@@ -11,10 +12,11 @@ export default async function EditProformaInvoicePage({
 }) {
   const resolvedParams = await params;
   const id = resolvedParams.id;
-  const [invoice, customers, products] = await Promise.all([
+  const [invoice, customers, products, categories] = await Promise.all([
     ProformaInvoiceService.getProformaInvoiceById(id),
     CustomerService.getCustomers({ isActive: true }),
     ProductService.getProducts({ isActive: true }),
+    ExpenseCategoryService.getExpenseCategories({ isActive: true }),
   ]);
 
   if (!invoice) {
@@ -39,6 +41,7 @@ export default async function EditProformaInvoicePage({
         initialData={JSON.parse(JSON.stringify(invoice))} 
         customers={JSON.parse(JSON.stringify(customers))} 
         products={JSON.parse(JSON.stringify(products))} 
+        categories={JSON.parse(JSON.stringify(categories))}
       />
     </div>
   );
