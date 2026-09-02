@@ -31,12 +31,10 @@ export function getInvoiceTypeCode(params?: {
     return 'PO';
   }
   const type = params?.customerType?.toUpperCase();
-  if (type === 'B2B_EXPORT' || type === 'EXPORT' || type === 'EXP') {
-    return 'EXP';
-  }
   if (type === 'B2C') {
     return 'B2C';
   }
+  // Export, B2B inside Kerala, and B2B outside Kerala all use 'B2B'
   return 'B2B';
 }
 
