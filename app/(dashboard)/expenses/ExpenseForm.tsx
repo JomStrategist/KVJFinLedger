@@ -380,11 +380,15 @@ export function ExpenseForm({
                       onChange={e => handleItemCategoryChange(index, e.target.value)}
                       className="w-full border border-theme-border rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-theme-primary focus:border-transparent text-xs bg-theme-surface"
                     >
-                      <option value="">Select Category</option>
-                      {categories.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                      <option value="ADD_NEW" className="font-bold text-theme-primary">+ Add Custom Category</option>
+                      <option value="">Select Category...</option>
+                      {categories
+                        .filter((c) => (c.financialType || "EXPENSE").toUpperCase() === "EXPENSE")
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      <option value="ADD_NEW" className="font-bold text-theme-primary">+ Add New Category...</option>
                     </select>
                   </td>
                   <td className="py-2.5 px-2">
