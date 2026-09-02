@@ -209,16 +209,16 @@ export function ConfirmedInvoiceClientList({
                   const formattedType = customerType === "B2B_EXPORT" ? "Export" : customerType === "B2B" ? "B2B" : "B2C";
 
                   return (
-                    <tr key={invoice.id} className="hover:bg-[#F9FAF8] transition-colors">
+                    <tr key={invoice.id} className="hover:bg-[#F9FAF8] transition-colors align-middle">
                       {/* Invoice */}
-                      <td className="py-4 px-2 font-bold text-[#17211B]">
+                      <td className="py-4 px-2 font-bold text-[#17211B] align-middle">
                         <Link href={`/invoices/${invoice.id}`} className="hover:text-[#177B55]">
                           {invoice.invoiceNumber}
                         </Link>
                       </td>
 
                       {/* Customer with GSTIN */}
-                      <td className="py-4 px-3">
+                      <td className="py-4 px-3 align-middle">
                         <p className="font-bold text-[#17211B]">
                           {invoice.customerNameSnapshot || invoice.customer?.legalName || invoice.businessNameSnapshot}
                         </p>
@@ -238,27 +238,27 @@ export function ConfirmedInvoiceClientList({
                       </td>
 
                       {/* Type */}
-                      <td className="py-4 px-3 text-[#17211B] font-medium">
+                      <td className="py-4 px-3 text-[#17211B] font-medium align-middle">
                         {formattedType}
                       </td>
 
                       {/* Total */}
-                      <td className="py-4 px-3 text-right font-bold text-[#17211B]">
+                      <td className="py-4 px-3 text-right font-bold text-[#17211B] align-middle">
                         ₹{totalGross.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
                       </td>
 
                       {/* Paid */}
-                      <td className="py-4 px-3 text-right text-[#17211B] font-medium">
+                      <td className="py-4 px-3 text-right text-[#17211B] font-medium align-middle">
                         ₹{totalPaid.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
                       </td>
 
                       {/* Outstanding */}
-                      <td className="py-4 px-3 text-right font-medium text-[#17211B]">
+                      <td className="py-4 px-3 text-right font-medium text-[#17211B] align-middle">
                         ₹{outstanding.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
                       </td>
 
                       {/* GST */}
-                      <td className="py-4 px-3 whitespace-nowrap">
+                      <td className="py-4 px-3 whitespace-nowrap align-middle">
                         {totalGstAmount > 0 ? (
                           <div>
                             <p className="font-bold text-[#17211B]">₹{totalGstAmount.toLocaleString("en-IN", { minimumFractionDigits: 0 })}</p>
@@ -272,7 +272,7 @@ export function ConfirmedInvoiceClientList({
                       </td>
 
                       {/* TDS */}
-                      <td className="py-4 px-3 whitespace-nowrap">
+                      <td className="py-4 px-3 whitespace-nowrap align-middle">
                         {effectiveTdsAmount > 0 ? (
                           <div>
                             <p className="font-bold text-[#17211B]">₹{effectiveTdsAmount.toLocaleString("en-IN", { minimumFractionDigits: 0 })}</p>
@@ -286,27 +286,29 @@ export function ConfirmedInvoiceClientList({
                       </td>
 
                       {/* Status */}
-                      <td className="py-4 px-3 text-center">
+                      <td className="py-4 px-3 text-center align-middle">
                         {getStatusBadge(invoice.status)}
                       </td>
 
                       {/* Action */}
-                      <td className="py-4 px-2 text-right space-x-2 whitespace-nowrap">
-                        {invoice.status !== "PAID" && invoice.status !== "CANCELLED" && (
-                          <button
-                            type="button"
-                            onClick={() => setSelectedInvoiceForPayment(invoice)}
-                            className="bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
+                      <td className="py-4 px-2 text-right align-middle whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                          {invoice.status !== "PAID" && invoice.status !== "CANCELLED" && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedInvoiceForPayment(invoice)}
+                              className="h-8 px-3 inline-flex items-center justify-center bg-white border border-[#D9E3DC] rounded-xl text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs cursor-pointer"
+                            >
+                              Payment
+                            </button>
+                          )}
+                          <Link
+                            href={`/invoices/${invoice.id}`}
+                            className="h-8 px-3 inline-flex items-center justify-center bg-white border border-[#D9E3DC] rounded-xl text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
                           >
-                            Payment
-                          </button>
-                        )}
-                        <Link
-                          href={`/invoices/${invoice.id}`}
-                          className="inline-block bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
-                        >
-                          View
-                        </Link>
+                            View
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );
