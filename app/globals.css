@@ -35,22 +35,41 @@ input[type="number"] {
 }
 
 @media print {
-  /* Hide sidebar, header, and buttons */
+  /* Hide header, sidebar, navigation, buttons, and action links */
+  header,
   aside, 
   nav,
   button,
+  .print\:hidden,
   .no-print,
   a[href^="/"] {
     display: none !important;
   }
   
-  /* Reset margins for main content */
+  /* Reset layout & scroll containers for clean document printing */
+  html,
+  body,
   main,
-  .p-6,
+  div {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  
   body {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
   }
 }
 

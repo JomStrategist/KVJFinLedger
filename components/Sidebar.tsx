@@ -151,7 +151,7 @@ export function Sidebar({ userRole }: { userRole?: string }) {
   return (
     <aside 
       style={{ backgroundColor: "#0F766E" }}
-      className={`text-white min-h-screen flex flex-col transition-all duration-300 ease-in-out relative z-20 shrink-0 ${sidebarWidth}`}
+      className={`text-white min-h-screen flex flex-col transition-all duration-300 ease-in-out relative z-20 shrink-0 print:hidden ${sidebarWidth}`}
     >
       {/* Brand & Collapse Header */}
       <div className={`flex items-center pt-5 pb-4 border-b border-white/10 ${isCollapsed ? "justify-center px-0" : "justify-between px-4"}`}>
