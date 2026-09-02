@@ -164,7 +164,34 @@ export class ExpenseCategoryService {
       }
     }
 
-    const code = data.code?.trim() || `CAT-${name.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6)}-001`;
+    let code = data.code?.trim();
+    if (!code) {
+      const prefixMap: Record<string, string> = {
+        EXPENSE: "EXP",
+        INCOME: "INC",
+        ASSET: "AST",
+        LIABILITY: "LIAB",
+        EQUITY: "EQ",
+      };
+      const prefix = prefixMap[finTypeCode] || "CAT";
+      const cleaned = name.replace(/[^a-zA-Z0-9\s]/g, "").trim();
+      const words = cleaned.split(/\s+/).filter(Boolean);
+      let abbr = "";
+      if (words.length >= 2) {
+        abbr = words.map((w) => w[0]).join("").slice(0, 4).toUpperCase();
+      } else if (words.length === 1) {
+        abbr = words[0].slice(0, 3).toUpperCase();
+      }
+      abbr = abbr || "GEN";
+
+      let seq = 1;
+      let candidate = `${prefix}-${abbr}-${String(seq).padStart(3, "0")}`;
+      while (await prisma.expenseCategory.findUnique({ where: { code: candidate } })) {
+        seq++;
+        candidate = `${prefix}-${abbr}-${String(seq).padStart(3, "0")}`;
+      }
+      code = candidate;
+    }
 
     const existingName = await prisma.expenseCategory.findUnique({
       where: { name }

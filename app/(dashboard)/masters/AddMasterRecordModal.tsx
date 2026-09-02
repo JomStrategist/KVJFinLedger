@@ -96,11 +96,34 @@ export function AddMasterRecordModal({
     }
   }, [initialDbTypes, initialDbGroups, initialDbNatures]);
 
-  // Category State
-  const [categoryName, setCategoryName] = useState(initialData?.name || "");
-  const [categoryCode, setCategoryCode] = useState(initialData?.code || "");
-  const [parentCategoryId, setParentCategoryId] = useState(initialData?.parentId || "");
-  const [financialType, setFinancialType] = useState(initialData?.financialType || "EXPENSE");
+function generateAutoCategoryCode(name: string, type: string) {
+  if (!name.trim()) return "";
+  const prefixMap: Record<string, string> = {
+    EXPENSE: "EXP",
+    INCOME: "INC",
+    ASSET: "AST",
+    LIABILITY: "LIAB",
+    EQUITY: "EQ",
+  };
+  const prefix = prefixMap[type.toUpperCase()] || "CAT";
+  const cleaned = name.replace(/[^a-zA-Z0-9\s]/g, "").trim();
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  let abbr = "";
+  if (words.length >= 2) {
+    abbr = words.map((w) => w[0]).join("").slice(0, 4).toUpperCase();
+  } else if (words.length === 1) {
+    abbr = words[0].slice(0, 3).toUpperCase();
+  }
+  abbr = abbr || "GEN";
+  return `${prefix}-${abbr}-001`;
+}
+
+// Category State
+const [categoryName, setCategoryName] = useState(initialData?.name || "");
+const [categoryCode, setCategoryCode] = useState(initialData?.code || "");
+const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(Boolean(initialData?.code));
+const [parentCategoryId, setParentCategoryId] = useState(initialData?.parentId || "");
+const [financialType, setFinancialType] = useState(initialData?.financialType || "EXPENSE");
 
   // Dynamically filtered Statement Groups & Account Natures based on selected Financial Type
   const filteredGroups = dbGroups.filter(
@@ -624,7 +647,13 @@ export function AddMasterRecordModal({
                     required
                     placeholder="e.g. Printing & Designing"
                     value={categoryName}
-                    onChange={(e) => setCategoryName(e.target.value)}
+                    onChange={(e) => {
+                      const newName = e.target.value;
+                      setCategoryName(newName);
+                      if (!isCodeManuallyEdited || !categoryCode) {
+                        setCategoryCode(generateAutoCategoryCode(newName, financialType));
+                      }
+                    }}
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                   />
                 </div>
@@ -637,7 +666,18 @@ export function AddMasterRecordModal({
                     required
                     placeholder="e.g. EXP-PRT-001"
                     value={categoryCode}
-                    onChange={(e) => setCategoryCode(e.target.value.toUpperCase())}
+                    onChange={(e) => {
+                      const val = e.target.value.toUpperCase();
+                      setCategoryCode(val);
+                      if (val.trim()) {
+                        setIsCodeManuallyEdited(true);
+                      } else {
+                        setIsCodeManuallyEdited(false);
+                        if (categoryName) {
+                          setCategoryCode(generateAutoCategoryCode(categoryName, financialType));
+                        }
+                      }
+                    }}
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
                   />
                 </div>
@@ -651,6 +691,9 @@ export function AddMasterRecordModal({
                     onChange={(e) => {
                       const newType = e.target.value;
                       setFinancialType(newType);
+                      if (!isCodeManuallyEdited && categoryName) {
+                        setCategoryCode(generateAutoCategoryCode(categoryName, newType));
+                      }
                       const newGroups = dbGroups.filter(
                         (g) => (g.financialType?.code || g.financialTypeCode || "").toUpperCase() === newType.toUpperCase()
                       );
