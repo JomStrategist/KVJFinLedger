@@ -21,6 +21,7 @@ export default async function DashboardPage({
 
   const dashboardData = await DashboardService.getUnifiedDashboardData(filters);
   const {
+    isDbConnected,
     kpis,
     trends,
     recentTransactions,
@@ -31,6 +32,26 @@ export default async function DashboardPage({
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-7">
+      {!isDbConnected && (
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-4.5 rounded-2xl shadow-xs border border-amber-200">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-amber-900">Database Connection Notice — MongoDB Atlas IP Whitelist Required</h3>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Your database queries timed out because MongoDB Atlas is rejecting TLS connections from your current network IP. Data entered while disconnected was not saved to the cloud database.
+              </p>
+              <div className="mt-2 bg-white/80 border border-amber-300/80 p-2.5 rounded-xl text-xs font-medium text-amber-950 font-mono">
+                📍 <strong>Your Current Public IP:</strong> <code className="bg-amber-100 px-1.5 py-0.5 rounded text-amber-900 font-bold">103.182.167.158</code>
+                <br />
+                👉 <strong>Fix:</strong> Log in to <span className="font-bold">MongoDB Atlas</span> → <span className="font-bold">Network Access</span> → Click <span className="font-bold">"Add IP Address"</span> → Add <code className="bg-amber-100 px-1.5 py-0.5 rounded font-bold text-amber-900">103.182.167.158</code> (or <code className="bg-amber-100 px-1.5 py-0.5 rounded font-bold text-amber-900">0.0.0.0/0</code> for everywhere access).
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-theme-border shadow-xs">
         <div>

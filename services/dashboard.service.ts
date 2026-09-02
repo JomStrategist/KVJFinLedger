@@ -59,7 +59,7 @@ export class DashboardService {
     let activeProformas: any[] = [];
 
     try {
-      [txns, invoices, expenses, activeProformas] = await Promise.all([
+      const [txnsRes, invoicesRes, expensesRes, activeProformasRes] = await Promise.allSettled([
         prisma.financialTransaction.findMany({
           where: txnWhere,
           orderBy: { transactionDate: "asc" }
@@ -77,9 +77,16 @@ export class DashboardService {
           where: proformaWhere,
         })
       ]);
+
+      txns = txnsRes.status === "fulfilled" ? (txnsRes.value as any[]) : [];
+      invoices = invoicesRes.status === "fulfilled" ? (invoicesRes.value as any[]) : [];
+      expenses = expensesRes.status === "fulfilled" ? (expensesRes.value as any[]) : [];
+      activeProformas = activeProformasRes.status === "fulfilled" ? (activeProformasRes.value as any[]) : [];
     } catch (error) {
       console.error("Dashboard database fetch error:", error);
     }
+
+    const isDbConnected = txns.length > 0 || invoices.length > 0 || expenses.length > 0 || activeProformas.length > 0;
 
     // 1. KPIs
     let totalRevenue = 0;
@@ -259,6 +266,7 @@ export class DashboardService {
     }
 
     return {
+      isDbConnected,
       kpis,
       trends,
       monthlySummary,
