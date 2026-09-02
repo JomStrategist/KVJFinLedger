@@ -114,7 +114,7 @@ export class ExpenseCategoryService {
     const dbType = (prisma as any).financialType?.findUnique
       ? await (prisma as any).financialType.findUnique({
           where: { code: finTypeCode }
-        })
+        }).catch(() => null)
       : null;
 
     // 2. Verify Statement Group belongs to selected Financial Type
@@ -125,7 +125,7 @@ export class ExpenseCategoryService {
           financialTypeId: dbType?.id,
           name: { equals: data.statementGroup.trim(), mode: "insensitive" }
         }
-      });
+      }).catch(() => null);
     }
 
     // 3. Verify Account Nature belongs to selected Financial Type
@@ -136,7 +136,7 @@ export class ExpenseCategoryService {
           financialTypeId: dbType?.id,
           name: { equals: data.accountNature.trim(), mode: "insensitive" }
         }
-      });
+      }).catch(() => null);
     }
 
     // 4. Verify Parent Category compatibility
