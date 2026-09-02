@@ -1,53 +1,61 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-
 async function main() {
-  const email = process.env.SEED_ADMIN_EMAIL || "admin@example.com";
-  const password = process.env.SEED_ADMIN_PASSWORD || "admin123";
+  const adminAccounts = [
+    { name: "System Administrator", email: process.env.SEED_ADMIN_EMAIL || "admin@example.com", password: process.env.SEED_ADMIN_PASSWORD || "admin123" },
+    { name: "Jomon Joseph", email: "info@thestrategist.co.in", password: "admin123" },
+  ];
 
-  // Check if admin already exists
-  const existingAdmin = await prisma.user.findFirst({
-    where: { role: "ADMIN" },
-  });
-
-  if (!existingAdmin) {
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    await prisma.user.create({
-      data: {
-        name: "System Administrator",
-        email: email,
-        password: hashedPassword,
-        role: "ADMIN",
-      },
+  for (const admin of adminAccounts) {
+    const existingAdmin = await prisma.user.findFirst({
+      where: { email: admin.email },
     });
-    console.log(`Seeded admin user with email: ${email}`);
-  } else {
-    console.log("Admin user already exists. Skipping admin seed.");
+
+    if (!existingAdmin) {
+      const hashedPassword = await bcrypt.hash(admin.password, 10);
+      await prisma.user.create({
+        data: {
+          name: admin.name,
+          email: admin.email,
+          password: hashedPassword,
+          role: "ADMIN",
+          roleTitle: "Administrator",
+          isActive: true,
+        },
+      });
+      console.log(`Seeded admin user: ${admin.email}`);
+    } else {
+      console.log(`Admin user ${admin.email} already exists.`);
+    }
   }
 
-  const userEmail = "user@example.com";
-  const userPassword = "user123";
+  const userAccounts = [
+    { name: "Standard User", email: "user@example.com", password: "user123" },
+    { name: "Ajay Thomas", email: "mail@thestrategist.co.in", password: "user123" },
+  ];
 
-  const existingUser = await prisma.user.findFirst({
-    where: { email: userEmail },
-  });
-
-  if (!existingUser) {
-    const hashedUserPassword = await bcrypt.hash(userPassword, 10);
-
-    await prisma.user.create({
-      data: {
-        name: "Standard User",
-        email: userEmail,
-        password: hashedUserPassword,
-        role: "USER",
-      },
+  for (const user of userAccounts) {
+    const existingUser = await prisma.user.findFirst({
+      where: { email: user.email },
     });
-    console.log(`Seeded standard user with email: ${userEmail}`);
-  } else {
-    console.log("Standard user already exists. Skipping user seed.");
+
+    if (!existingUser) {
+      const hashedPassword = await bcrypt.hash(user.password, 10);
+      await prisma.user.create({
+        data: {
+          name: user.name,
+          email: user.email,
+          password: hashedPassword,
+          role: "USER",
+          roleTitle: "Assigned User",
+          isActive: true,
+        },
+      });
+      console.log(`Seeded standard user: ${user.email}`);
+    } else {
+      console.log(`User ${user.email} already exists.`);
+    }
   }
 }
 

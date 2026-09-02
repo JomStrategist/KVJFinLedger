@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { PrismaClient, ProductType } from "@prisma/client";
-
+import { ProductType } from "@prisma/client";
 
 export type CreateProductInput = {
   name: string;
@@ -8,7 +7,7 @@ export type CreateProductInput = {
   type: ProductType;
   hsnSacCode: string;
   unit: string;
-  sellingPrice: string | number; // Handling decimal input via string or number
+  sellingPrice: string | number;
   customPrice?: string | number | null;
   purchasePrice?: string | number | null;
   gstRate: string | number;
@@ -66,13 +65,16 @@ export class ProductService {
   static async createProduct(data: CreateProductInput) {
     return await prisma.product.create({
       data: {
-        ...data,
-        // Convert string inputs to Prisma Decimal using string constructor if necessary, Prisma Decimal accepts strings or numbers
-        sellingPrice: data.sellingPrice,
-        customPrice: data.customPrice || null,
-        purchasePrice: data.purchasePrice || null,
-        gstRate: data.gstRate,
-        cessRate: data.cessRate || null,
+        name: data.name,
+        description: data.description || null,
+        type: data.type,
+        hsnSacCode: data.hsnSacCode,
+        unit: data.unit,
+        sellingPrice: Number(data.sellingPrice),
+        customPrice: data.customPrice ? Number(data.customPrice) : null,
+        purchasePrice: data.purchasePrice ? Number(data.purchasePrice) : null,
+        gstRate: Number(data.gstRate),
+        cessRate: data.cessRate ? Number(data.cessRate) : null,
       },
     });
   }
@@ -81,9 +83,16 @@ export class ProductService {
    * Update an existing product
    */
   static async updateProduct(id: string, data: UpdateProductInput) {
+    const payload: any = { ...data };
+    if (data.sellingPrice !== undefined) payload.sellingPrice = Number(data.sellingPrice);
+    if (data.customPrice !== undefined) payload.customPrice = data.customPrice ? Number(data.customPrice) : null;
+    if (data.purchasePrice !== undefined) payload.purchasePrice = data.purchasePrice ? Number(data.purchasePrice) : null;
+    if (data.gstRate !== undefined) payload.gstRate = Number(data.gstRate);
+    if (data.cessRate !== undefined) payload.cessRate = data.cessRate ? Number(data.cessRate) : null;
+
     return await prisma.product.update({
       where: { id },
-      data,
+      data: payload,
     });
   }
 

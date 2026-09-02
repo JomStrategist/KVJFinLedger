@@ -1,4 +1,4 @@
-// This is your Prisma schema file,
+// This is your Prisma schema file for MongoDB,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
@@ -7,8 +7,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -17,7 +17,7 @@ enum Role {
 }
 
 model RoleDefinition {
-  id          String   @id @default(uuid())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String   @unique
   description String?
   isSystem    Boolean  @default(false)
@@ -29,7 +29,7 @@ model RoleDefinition {
 }
 
 model User {
-  id                String          @id @default(uuid())
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
   name              String
   username          String?         @unique
   email             String          @unique
@@ -39,7 +39,7 @@ model User {
   password          String
   role              Role            @default(USER)
   roleTitle         String?         @default("Administrator")
-  roleDefinitionId  String?
+  roleDefinitionId  String?         @db.ObjectId
   roleDefinition    RoleDefinition? @relation(fields: [roleDefinitionId], references: [id])
   permissions       Json?
   isActive          Boolean         @default(true)
@@ -51,7 +51,7 @@ model User {
 }
 
 model CompanySettings {
-  id                    String   @id @default(uuid())
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
   businessName          String
   businessAddress       String
   GSTIN                 String?
@@ -71,7 +71,7 @@ enum CustomerType {
 }
 
 model Customer {
-  id                    String       @id @default(uuid())
+  id                    String       @id @default(auto()) @map("_id") @db.ObjectId
   customerType          CustomerType
   gstRegistrationStatus String?      @default("REGISTERED")
   legalName             String
@@ -101,22 +101,23 @@ enum ProductType {
 }
 
 model Product {
-  id                   String   @id @default(uuid())
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
   name                 String
   description          String?
   type                 ProductType
   hsnSacCode           String
   unit                 String
-  sellingPrice         Decimal
-  customPrice          Decimal?
-  purchasePrice        Decimal?
-  gstRate              Decimal
-  cessRate             Decimal?
+  sellingPrice         Float
+  customPrice          Float?
+  purchasePrice        Float?
+  gstRate              Float
+  cessRate             Float?
   isActive             Boolean  @default(true)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   proformaInvoiceItems ProformaInvoiceItem[]
   expenseItems         ExpenseItem[]
+  taxInvoiceItems      TaxInvoiceItem[]
 }
 
 enum ProformaInvoiceStatus {
@@ -130,25 +131,25 @@ enum ProformaInvoiceStatus {
 }
 
 model ProformaInvoice {
-  id              String   @id @default(cuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   invoiceNumber   String   @unique
-  customerId      String
+  customerId      String   @db.ObjectId
   customer        Customer @relation(fields: [customerId], references: [id])
   invoiceDate     DateTime @default(now())
   customerType    String?
   financialYear   String?
   status          ProformaInvoiceStatus @default(DRAFT)
-  subtotal        Decimal
-  totalDiscount   Decimal @default(0)
-  totalCGST       Decimal @default(0)
-  totalSGST       Decimal @default(0)
-  totalIGST       Decimal @default(0)
-  totalTax        Decimal @default(0)
-  tdsRate         Decimal @default(0)
-  tdsAmount       Decimal @default(0)
-  grossAmount     Decimal @default(0)
-  netAmount       Decimal @default(0)
-  totalAmount     Decimal
+  subtotal        Float
+  totalDiscount   Float @default(0)
+  totalCGST       Float @default(0)
+  totalSGST       Float @default(0)
+  totalIGST       Float @default(0)
+  totalTax        Float @default(0)
+  tdsRate         Float @default(0)
+  tdsAmount       Float @default(0)
+  grossAmount     Float @default(0)
+  netAmount       Float @default(0)
+  totalAmount     Float
   notes           String?
   isPurchaseOrder Boolean @default(false)
   createdAt       DateTime @default(now())
@@ -157,29 +158,29 @@ model ProformaInvoice {
 }
 
 model ProformaInvoiceItem {
-  id                String   @id @default(cuid())
-  proformaInvoiceId String
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  proformaInvoiceId String   @db.ObjectId
   proformaInvoice   ProformaInvoice @relation(fields: [proformaInvoiceId], references: [id], onDelete: Cascade)
-  productId         String
-  product           Product @relation(fields: [productId], references: [id])
+  productId         String   @db.ObjectId
+  product           Product  @relation(fields: [productId], references: [id])
   description       String?
-  quantity          Decimal
+  quantity          Float
   unit              String
-  unitPrice         Decimal
-  discountPercent   Decimal @default(0)
-  taxableAmount     Decimal
+  unitPrice         Float
+  discountPercent   Float @default(0)
+  taxableAmount     Float
   isGstEnabled      Boolean @default(true)
-  gstRate           Decimal
-  cgstAmount        Decimal @default(0)
-  sgstAmount        Decimal @default(0)
-  igstAmount        Decimal @default(0)
-  totalGST          Decimal @default(0)
+  gstRate           Float
+  cgstAmount        Float @default(0)
+  sgstAmount        Float @default(0)
+  igstAmount        Float @default(0)
+  totalGST          Float @default(0)
   
   isTdsEnabled      Boolean @default(true)
-  tdsRate           Decimal @default(0)
-  tdsAmount         Decimal @default(0)
+  tdsRate           Float @default(0)
+  tdsAmount         Float @default(0)
 
-  totalAmount       Decimal
+  totalAmount       Float
 }
 
 enum TaxInvoiceStatus {
@@ -190,12 +191,12 @@ enum TaxInvoiceStatus {
 }
 
 model TaxInvoice {
-  id              String   @id @default(cuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   invoiceNumber   String   @unique
   sourceProformaId String?  @unique
   
   // Relations
-  customerId      String
+  customerId      String   @db.ObjectId
   customer        Customer @relation(fields: [customerId], references: [id])
   
   // Snapshots
@@ -209,20 +210,20 @@ model TaxInvoice {
   invoiceDate     DateTime @default(now())
   status          TaxInvoiceStatus @default(CONFIRMED)
 
-  subtotal        Decimal
-  totalDiscount   Decimal @default(0)
-  taxableAmount   Decimal
+  subtotal        Float
+  totalDiscount   Float @default(0)
+  taxableAmount   Float
 
-  totalCGST       Decimal @default(0)
-  totalSGST       Decimal @default(0)
-  totalIGST       Decimal @default(0)
-  totalGST        Decimal @default(0)
+  totalCGST       Float @default(0)
+  totalSGST       Float @default(0)
+  totalIGST       Float @default(0)
+  totalGST        Float @default(0)
 
-  tdsRate         Decimal?
-  tdsAmount       Decimal @default(0)
+  tdsRate         Float?
+  tdsAmount       Float @default(0)
 
-  grossAmount     Decimal
-  netAmount       Decimal
+  grossAmount     Float
+  netAmount       Float
 
   notes           String?
   cancellationReason String?
@@ -236,54 +237,55 @@ model TaxInvoice {
 }
 
 model InvoicePayment {
-  id              String      @id @default(cuid())
-  taxInvoiceId    String
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  taxInvoiceId    String      @db.ObjectId
   taxInvoice      TaxInvoice  @relation(fields: [taxInvoiceId], references: [id], onDelete: Cascade)
   paymentDate     DateTime    @default(now())
-  paymentAmount   Decimal
+  paymentAmount   Float
   isTdsDeducted   Boolean     @default(false)
-  tdsRate         Decimal     @default(0)
-  tdsAmount       Decimal     @default(0)
-  bankReceipt     Decimal
+  tdsRate         Float       @default(0)
+  tdsAmount       Float       @default(0)
+  bankReceipt     Float
   reference       String?
   remarks         String?
   createdAt       DateTime    @default(now())
 }
 
 model TaxInvoiceItem {
-  id            String   @id @default(cuid())
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
 
-  taxInvoiceId  String
+  taxInvoiceId  String   @db.ObjectId
   taxInvoice    TaxInvoice @relation(fields: [taxInvoiceId], references: [id], onDelete: Cascade)
 
-  productId     String?
+  productId     String?  @db.ObjectId
+  product       Product? @relation(fields: [productId], references: [id])
 
   // Snapshots
   name          String
   description   String?
   hsnSacCode    String
   
-  quantity      Decimal
+  quantity      Float
   unit          String
-  unitPrice     Decimal
+  unitPrice     Float
 
-  discountPercent Decimal @default(0)
-  discountAmount  Decimal @default(0)
+  discountPercent Float @default(0)
+  discountAmount  Float @default(0)
 
-  taxableAmount   Decimal
+  taxableAmount   Float
 
-  gstRate         Decimal
-  cgstRate        Decimal @default(0)
-  cgstAmount      Decimal @default(0)
+  gstRate         Float
+  cgstRate        Float @default(0)
+  cgstAmount      Float @default(0)
 
-  sgstRate        Decimal @default(0)
-  sgstAmount      Decimal @default(0)
+  sgstRate        Float @default(0)
+  sgstAmount      Float @default(0)
 
-  igstRate        Decimal @default(0)
-  igstAmount      Decimal @default(0)
+  igstRate        Float @default(0)
+  igstAmount      Float @default(0)
 
-  totalGST        Decimal @default(0)
-  totalAmount     Decimal
+  totalGST        Float @default(0)
+  totalAmount     Float
 }
 
 // ----------------------------------------------------------------------------
@@ -291,11 +293,11 @@ model TaxInvoiceItem {
 // ----------------------------------------------------------------------------
 
 model ExpenseCategory {
-  id              String   @id @default(cuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   name            String   @unique
   description     String?
-  parentId        String?
-  parent          ExpenseCategory? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  parentId        String?  @db.ObjectId
+  parent          ExpenseCategory? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   children        ExpenseCategory[] @relation("CategoryHierarchy")
   hierarchyLevel  Int      @default(1)
   financialType   String   @default("EXPENSE")
@@ -311,7 +313,7 @@ model ExpenseCategory {
 }
 
 model Vendor {
-  id                    String   @id @default(cuid())
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
   name                  String
   businessName          String?
   vendorType            String?  @default("B2B")
@@ -326,7 +328,7 @@ model Vendor {
   state                 String?
   stateCode             String?
   country               String?  @default("India")
-  defaultCategoryId     String?
+  defaultCategoryId     String?  @db.ObjectId
   defaultCategory       ExpenseCategory? @relation("VendorDefaultCategory", fields: [defaultCategoryId], references: [id])
   isActive              Boolean  @default(true)
 
@@ -351,40 +353,40 @@ enum PaymentStatus {
 }
 
 model Expense {
-  id                String   @id @default(cuid())
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
 
   expenseNumber     String   @unique
 
   expenseDate       DateTime
   description       String?
 
-  vendorId          String?
+  vendorId          String?  @db.ObjectId
   vendor            Vendor?  @relation(fields: [vendorId], references: [id])
 
-  categoryId        String?
+  categoryId        String?  @db.ObjectId
   category          ExpenseCategory? @relation("ExpenseCategory", fields: [categoryId], references: [id])
 
   paidBy            String?  @default("COMPANY")
-  employeeId        String?
+  employeeId        String?  @db.ObjectId
   employee          User?    @relation(fields: [employeeId], references: [id])
 
   status            ExpenseStatus @default(DRAFT)
   paymentStatus     PaymentStatus @default(UNPAID)
 
-  subtotal          Decimal
-  discountAmount    Decimal @default(0)
-  taxableAmount     Decimal
+  subtotal          Float
+  discountAmount    Float @default(0)
+  taxableAmount     Float
 
-  inputCGST         Decimal @default(0)
-  inputSGST         Decimal @default(0)
-  inputIGST         Decimal @default(0)
-  totalInputGST     Decimal @default(0)
+  inputCGST         Float @default(0)
+  inputSGST         Float @default(0)
+  inputIGST         Float @default(0)
+  totalInputGST     Float @default(0)
 
-  tdsRate           Decimal?
-  tdsAmount         Decimal @default(0)
+  tdsRate           Float?
+  tdsAmount         Float @default(0)
 
-  grossAmount       Decimal
-  netAmount         Decimal
+  grossAmount       Float
+  netAmount         Float
 
   notes             String?
 
@@ -398,48 +400,48 @@ model Expense {
 }
 
 model ExpenseItem {
-  id              String   @id @default(cuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
 
-  expenseId       String
-  expense         Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  expenseId       String   @db.ObjectId
+  expense         Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
 
-  productId       String?
+  productId       String?  @db.ObjectId
   product         Product? @relation(fields: [productId], references: [id])
 
-  vendorId        String?
+  vendorId        String?  @db.ObjectId
   vendor          Vendor?  @relation(fields: [vendorId], references: [id])
 
-  categoryId      String?
+  categoryId      String?  @db.ObjectId
   category        ExpenseCategory? @relation("ExpenseItemCategory", fields: [categoryId], references: [id])
 
   date            DateTime?
 
   hsnSacCode      String?
 
-  quantity        Decimal @default(1)
+  quantity        Float    @default(1)
   unit            String?
 
-  unitPrice       Decimal
+  unitPrice       Float
 
-  gstRate         Decimal @default(0)
+  gstRate         Float    @default(0)
 
-  taxableAmount   Decimal
+  taxableAmount   Float
 
-  cgstRate        Decimal @default(0)
-  cgstAmount      Decimal @default(0)
+  cgstRate        Float    @default(0)
+  cgstAmount      Float    @default(0)
 
-  sgstRate        Decimal @default(0)
-  sgstAmount      Decimal @default(0)
+  sgstRate        Float    @default(0)
+  sgstAmount      Float    @default(0)
 
-  igstRate        Decimal @default(0)
-  igstAmount      Decimal @default(0)
+  igstRate        Float    @default(0)
+  igstAmount      Float    @default(0)
 
-  totalGST        Decimal @default(0)
+  totalGST        Float    @default(0)
 
-  tdsRate         Decimal @default(0)
-  tdsAmount       Decimal @default(0)
+  tdsRate         Float    @default(0)
+  tdsAmount       Float    @default(0)
 
-  totalAmount     Decimal
+  totalAmount     Float
 }
 
 // ----------------------------------------------------------------------------
@@ -452,7 +454,7 @@ enum FinancialTransactionType {
 }
 
 model FinancialTransaction {
-  id              String   @id @default(cuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
 
   transactionNumber String @unique
 
@@ -462,15 +464,15 @@ model FinancialTransaction {
 
   description     String
 
-  amount          Decimal
+  amount          Float
 
-  taxableAmount   Decimal @default(0)
+  taxableAmount   Float    @default(0)
 
-  totalGST        Decimal @default(0)
+  totalGST        Float    @default(0)
 
-  tdsAmount       Decimal @default(0)
+  tdsAmount       Float    @default(0)
 
-  netAmount       Decimal
+  netAmount       Float
 
   paymentStatus   PaymentStatus @default(UNPAID)
 
@@ -482,11 +484,11 @@ model FinancialTransaction {
 }
 
 model BankTransfer {
-  id          String   @id @default(cuid())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   date        DateTime @default(now())
   fromAccount String
   toAccount   String
-  amount      Decimal
+  amount      Float
   reference   String?
   description String?
   createdAt   DateTime @default(now())
@@ -494,10 +496,10 @@ model BankTransfer {
 }
 
 model OpeningBalance {
-  id            String   @id @default(cuid())
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
   financialYear String
   position      String
-  amount        Decimal
+  amount        Float
   type          String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { PrismaClient, FinancialTransactionType, PaymentStatus, Prisma } from "@prisma/client";
-
+import { PrismaClient, FinancialTransactionType, PaymentStatus } from "@prisma/client";
 
 export class FinancialTransactionService {
   private static async generateTransactionNumber(tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<string> {
@@ -25,11 +24,11 @@ export class FinancialTransactionService {
     sourceId: string;
     transactionDate: Date;
     description: string;
-    amount: Prisma.Decimal | number;
-    taxableAmount: Prisma.Decimal | number;
-    totalGST: Prisma.Decimal | number;
-    tdsAmount: Prisma.Decimal | number;
-    netAmount: Prisma.Decimal | number;
+    amount: number | any;
+    taxableAmount: number | any;
+    totalGST: number | any;
+    tdsAmount: number | any;
+    netAmount: number | any;
   }) {
     const existing = await tx.financialTransaction.findFirst({
       where: { sourceType: "TAX_INVOICE", sourceId: data.sourceId }
@@ -49,11 +48,11 @@ export class FinancialTransactionService {
         sourceId: data.sourceId,
         transactionDate: data.transactionDate,
         description: data.description,
-        amount: data.amount,
-        taxableAmount: data.taxableAmount,
-        totalGST: data.totalGST,
-        tdsAmount: data.tdsAmount,
-        netAmount: data.netAmount,
+        amount: Number(data.amount),
+        taxableAmount: Number(data.taxableAmount),
+        totalGST: Number(data.totalGST),
+        tdsAmount: Number(data.tdsAmount),
+        netAmount: Number(data.netAmount),
         paymentStatus: "UNPAID",
       }
     });
@@ -63,11 +62,11 @@ export class FinancialTransactionService {
     sourceId: string;
     transactionDate: Date;
     description: string;
-    amount: Prisma.Decimal | number;
-    taxableAmount: Prisma.Decimal | number;
-    totalGST: Prisma.Decimal | number;
-    tdsAmount: Prisma.Decimal | number;
-    netAmount: Prisma.Decimal | number;
+    amount: number | any;
+    taxableAmount: number | any;
+    totalGST: number | any;
+    tdsAmount: number | any;
+    netAmount: number | any;
   }) {
     const existing = await tx.financialTransaction.findFirst({
       where: { sourceType: "EXPENSE", sourceId: data.sourceId }
@@ -87,11 +86,11 @@ export class FinancialTransactionService {
         sourceId: data.sourceId,
         transactionDate: data.transactionDate,
         description: data.description,
-        amount: data.amount,
-        taxableAmount: data.taxableAmount,
-        totalGST: data.totalGST,
-        tdsAmount: data.tdsAmount,
-        netAmount: data.netAmount,
+        amount: Number(data.amount),
+        taxableAmount: Number(data.taxableAmount),
+        totalGST: Number(data.totalGST),
+        tdsAmount: Number(data.tdsAmount),
+        netAmount: Number(data.netAmount),
         paymentStatus: "UNPAID",
       }
     });

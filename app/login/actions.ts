@@ -13,15 +13,12 @@ export async function authenticate(
     if (error instanceof AuthError) {
       switch (error.type) {
         case 'CredentialsSignin':
-          return 'Invalid credentials or inactive account.';
+          return 'Invalid email address or password.';
         default:
-          return `Auth Error: ${error.type} - Cause: ${error.cause ? String(error.cause) : 'None'} - Msg: ${error.message}`;
+          return 'Invalid email address or password.';
       }
     }
-    // If it's a redirect, throw it so Next.js handles it
-    if ((error as any)?.message?.includes('NEXT_REDIRECT')) {
-      throw error;
-    }
-    return `Server Error: ${error instanceof Error ? error.message : String(error)}`;
+    // Re-throw Next.js redirect errors so navigation succeeds
+    throw error;
   }
 }
