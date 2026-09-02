@@ -178,13 +178,16 @@ export function ConfirmedInvoiceClientList({
                 filteredInvoices.map((invoice) => {
                   const payments = invoice.payments || [];
                   const totalPaid = payments.reduce((sum: number, p: any) => sum + Number(p.paymentAmount), 0);
-                  const totalTdsDeducted = payments.reduce((sum: number, p: any) => sum + Number(p.tdsAmount), 0);
-                  const totalSettled = totalPaid + totalTdsDeducted;
+                  const totalTdsDeducted = payments.reduce((sum: number, p: any) => sum + Number(p.tdsAmount || 0), 0);
+                  const totalSettled = totalPaid;
                   const totalGross = Number(invoice.grossAmount || invoice.netAmount);
                   const outstanding = Math.max(0, totalGross - totalSettled);
 
-                  const tdsRate = Number(invoice.tdsRate || 0);
-                  const tdsAmount = Number(invoice.tdsAmount || 0);
+                  const effectiveTdsAmount = totalTdsDeducted > 0 ? totalTdsDeducted : Number(invoice.tdsAmount || 0);
+                  const paymentWithTds = payments.find((p: any) => Number(p.tdsRate) > 0 || Number(p.tdsAmount) > 0);
+                  const effectiveTdsRate = Number(invoice.tdsRate || 0) > 0 
+                    ? Number(invoice.tdsRate) 
+                    : (paymentWithTds ? Number(paymentWithTds.tdsRate || 10) : (totalTdsDeducted > 0 ? 10 : 0));
 
                   const customerType = invoice.customer?.customerType || "B2B";
                   const formattedType = customerType === "B2B_EXPORT" ? "Export" : customerType === "B2B" ? "Domestic B2B" : "B2C";
@@ -240,9 +243,9 @@ export function ConfirmedInvoiceClientList({
 
                       {/* TDS */}
                       <td className="py-4 px-3 whitespace-nowrap">
-                        {tdsAmount > 0 ? (
+                        {effectiveTdsAmount > 0 ? (
                           <span className="text-[#17211B] font-medium">
-                            {tdsRate > 0 ? `${tdsRate}% · ` : "10% · "}₹{tdsAmount.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
+                            {effectiveTdsRate > 0 ? `${effectiveTdsRate}% · ` : ""}₹{effectiveTdsAmount.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
                           </span>
                         ) : (
                           <span className="text-[#7B877F]">—</span>

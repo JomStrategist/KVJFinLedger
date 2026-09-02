@@ -99,11 +99,10 @@ export class TaxInvoiceService {
         }
       });
 
-      // 2. Compute total settlements
+      // 2. Compute total settlements (paymentAmount already includes bankReceipt + tdsAmount)
       const allPayments = [...invoice.payments, payment];
       const totalPaidAmount = allPayments.reduce((sum, p) => sum + Number(p.paymentAmount), 0);
-      const totalTdsDeducted = allPayments.reduce((sum, p) => sum + Number(p.tdsAmount), 0);
-      const totalSettled = totalPaidAmount + totalTdsDeducted;
+      const totalSettled = totalPaidAmount;
 
       const invoiceTotal = Number(invoice.grossAmount);
       let newStatus: TaxInvoiceStatus = "CONFIRMED";

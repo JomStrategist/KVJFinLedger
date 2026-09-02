@@ -96,12 +96,8 @@ export class DashboardService {
 
       const invoiceTotal = Number(inv.netAmount || inv.grossAmount || (inv as any).totalAmount || 0);
       const paidAmount = (inv.payments || []).reduce((sum, p) => sum + Number(p.paymentAmount || 0), 0);
-      const tdsDeducted = (inv.payments || []).reduce(
-        (sum, p) => sum + (p.isTdsDeducted ? Number(p.tdsAmount || 0) : 0),
-        0
-      );
 
-      const balanceRemaining = invoiceTotal - paidAmount - tdsDeducted;
+      const balanceRemaining = invoiceTotal - paidAmount;
       if (balanceRemaining > 0) {
         outstandingReceivables += balanceRemaining;
       }
@@ -193,7 +189,10 @@ export class DashboardService {
     const outputGST = invoices.reduce((sum, inv) => sum + Number(inv.totalGST || 0), 0);
     const inputGST = expenses.reduce((sum, exp) => sum + Number(exp.totalInputGST || 0), 0);
     const netGST = outputGST - inputGST;
-    const tdsReceivable = invoices.reduce((sum, inv) => sum + Number(inv.tdsAmount || 0), 0);
+    const tdsReceivable = invoices.reduce((sum, inv) => {
+      const paymentTds = (inv.payments || []).reduce((pSum, p) => pSum + Number(p.tdsAmount || 0), 0);
+      return sum + (paymentTds > 0 ? paymentTds : Number(inv.tdsAmount || 0));
+    }, 0);
     const tdsPayable = expenses.reduce((sum, exp) => sum + Number(exp.tdsAmount || 0), 0);
 
     // 8. Recent Transactions

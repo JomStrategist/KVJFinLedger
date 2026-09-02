@@ -19,7 +19,7 @@ export function InvoicePaymentModal({
   const payments: any[] = invoice.payments || [];
   const totalPaidAmount = payments.reduce((sum, p) => sum + Number(p.paymentAmount), 0);
   const totalTdsDeducted = payments.reduce((sum, p) => sum + Number(p.tdsAmount), 0);
-  const totalSettled = totalPaidAmount + totalTdsDeducted;
+  const totalSettled = totalPaidAmount;
   const invoiceTotal = Number(invoice.grossAmount || invoice.netAmount);
   const outstanding = Math.max(0, invoiceTotal - totalSettled);
 
