@@ -196,6 +196,8 @@ export function ProformaInvoiceClientList({
                 <th className="px-6 py-4">Customer</th>
                 <th className="px-6 py-4">Date</th>
                 <th className="px-6 py-4 text-right">Amount</th>
+                <th className="px-6 py-4">GST</th>
+                <th className="px-6 py-4">TDS</th>
                 <th className="px-6 py-4 text-center">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
@@ -203,12 +205,25 @@ export function ProformaInvoiceClientList({
             <tbody className="divide-y divide-theme-border text-sm">
               {filteredInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-theme-text-muted">
+                  <td colSpan={8} className="px-6 py-8 text-center text-theme-text-muted">
                     No proforma invoices found. Create your first proforma invoice to begin billing.
                   </td>
                 </tr>
               ) : (
-                filteredInvoices.map((invoice) => (
+                filteredInvoices.map((invoice) => {
+                  const totalGstAmount = Number(invoice.totalTax || invoice.totalGST || 0);
+                  const taxableAmt = Number(invoice.subtotal - (invoice.totalDiscount || 0));
+                  let effectiveGstRate = 0;
+                  if (invoice.items && invoice.items.length > 0) {
+                    effectiveGstRate = Number(invoice.items[0].gstRate || 0);
+                  } else if (taxableAmt > 0 && totalGstAmount > 0) {
+                    effectiveGstRate = Math.round((totalGstAmount / taxableAmt) * 100);
+                  }
+
+                  const effectiveTdsAmount = Number(invoice.tdsAmount || 0);
+                  const effectiveTdsRate = Number(invoice.tdsRate || 0);
+
+                  return (
                   <tr key={invoice.id} className="hover:bg-theme-surface-hover transition-colors">
                     <td className="px-6 py-4 font-medium text-theme-text">
                       <Link href={`/proforma-invoices/${invoice.id}`} className="hover:text-theme-primary">
@@ -223,7 +238,27 @@ export function ProformaInvoiceClientList({
                       {new Date(invoice.invoiceDate).toLocaleDateString("en-IN")}
                     </td>
                     <td className="px-6 py-4 text-right font-medium text-theme-text">
-                      ₹{invoice.totalAmount.toString()}
+                      ₹{Number(invoice.totalAmount || invoice.netAmount || 0).toLocaleString("en-IN")}
+                    </td>
+                    {/* GST */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {totalGstAmount > 0 ? (
+                        <span className="text-theme-text font-medium">
+                          {effectiveGstRate > 0 ? `${effectiveGstRate}% · ` : ""}₹{totalGstAmount.toLocaleString("en-IN")}
+                        </span>
+                      ) : (
+                        <span className="text-theme-text-muted">—</span>
+                      )}
+                    </td>
+                    {/* TDS */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {effectiveTdsAmount > 0 ? (
+                        <span className="text-theme-text font-medium">
+                          {effectiveTdsRate > 0 ? `${effectiveTdsRate}% · ` : ""}₹{effectiveTdsAmount.toLocaleString("en-IN")}
+                        </span>
+                      ) : (
+                        <span className="text-theme-text-muted">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>

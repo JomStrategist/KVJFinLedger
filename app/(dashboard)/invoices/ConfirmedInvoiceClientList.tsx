@@ -162,6 +162,7 @@ export function ConfirmedInvoiceClientList({
                 <th className="py-3 px-3 text-right">TOTAL</th>
                 <th className="py-3 px-3 text-right">PAID</th>
                 <th className="py-3 px-3 text-right">OUTSTANDING</th>
+                <th className="py-3 px-3">GST</th>
                 <th className="py-3 px-3">TDS</th>
                 <th className="py-3 px-3 text-center">STATUS</th>
                 <th className="py-3 px-2 text-right">ACTION</th>
@@ -170,7 +171,7 @@ export function ConfirmedInvoiceClientList({
             <tbody className="divide-y divide-[#E9EEE9] text-xs">
               {filteredInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-[#68756C]">
+                  <td colSpan={10} className="py-12 text-center text-[#68756C]">
                     No invoices found matching your criteria.
                   </td>
                 </tr>
@@ -188,6 +189,16 @@ export function ConfirmedInvoiceClientList({
                   const effectiveTdsRate = Number(invoice.tdsRate || 0) > 0 
                     ? Number(invoice.tdsRate) 
                     : (paymentWithTds ? Number(paymentWithTds.tdsRate || 10) : (totalTdsDeducted > 0 ? 10 : 0));
+
+                  const totalGstAmount = Number(invoice.totalGST || invoice.totalTax || 0);
+                  const taxableAmt = Number(invoice.taxableAmount || (invoice.subtotal - invoice.totalDiscount) || 0);
+                  
+                  let effectiveGstRate = 0;
+                  if (invoice.items && invoice.items.length > 0) {
+                    effectiveGstRate = Number(invoice.items[0].gstRate || 0);
+                  } else if (taxableAmt > 0 && totalGstAmount > 0) {
+                    effectiveGstRate = Math.round((totalGstAmount / taxableAmt) * 100);
+                  }
 
                   const customerType = invoice.customer?.customerType || "B2B";
                   const formattedType = customerType === "B2B_EXPORT" ? "Export" : customerType === "B2B" ? "Domestic B2B" : "B2C";
@@ -239,6 +250,17 @@ export function ConfirmedInvoiceClientList({
                       {/* Outstanding */}
                       <td className="py-4 px-3 text-right font-medium text-[#17211B]">
                         ₹{outstanding.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
+                      </td>
+
+                      {/* GST */}
+                      <td className="py-4 px-3 whitespace-nowrap">
+                        {totalGstAmount > 0 ? (
+                          <span className="text-[#17211B] font-medium">
+                            {effectiveGstRate > 0 ? `${effectiveGstRate}% · ` : ""}₹{totalGstAmount.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
+                          </span>
+                        ) : (
+                          <span className="text-[#7B877F]">—</span>
+                        )}
                       </td>
 
                       {/* TDS */}
