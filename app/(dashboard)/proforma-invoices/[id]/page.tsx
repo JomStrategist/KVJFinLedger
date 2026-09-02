@@ -120,7 +120,7 @@ export default async function ProformaInvoiceDetailPage({
         <div className="px-6 sm:px-8 print:px-5"><hr className="border-gray-200" /></div>
 
         {/* Billed To & Supply Info */}
-        <div className="p-6 sm:p-8 py-4 sm:py-6 print:p-5 print:py-3 flex flex-col md:flex-row justify-between items-start gap-6 md:gap-8">
+        <div className="p-6 sm:p-8 py-4 sm:py-6 print:p-5 print:py-3 flex flex-row justify-between items-start gap-4">
           <div className="space-y-1 text-xs sm:text-sm max-w-md">
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">BILLED TO:</h3>
             <p className="font-bold text-gray-900 text-base">{invoice.customer.legalName}</p>
@@ -133,7 +133,7 @@ export default async function ProformaInvoiceDetailPage({
             <p className="text-gray-600">Place / Country: <strong className="text-gray-900">{[invoice.customer.city, invoice.customer.state, "India"].filter(Boolean).join(", ")}</strong></p>
           </div>
 
-          <div className="text-left md:text-right space-y-1 text-xs sm:text-sm self-start md:self-auto">
+          <div className="text-right space-y-1 text-xs sm:text-sm flex flex-col items-end">
             {invoice.customer.gstin && (
               <p><span className="text-gray-500 font-medium">GSTIN:</span> <strong className="text-gray-900">{invoice.customer.gstin}</strong></p>
             )}

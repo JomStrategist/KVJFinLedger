@@ -937,7 +937,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
             </div>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
+          <div className="flex flex-row justify-between items-start gap-4 text-sm text-gray-600">
             <div>
               <h4 className="font-bold text-gray-800 text-xs uppercase mb-1">BILLED TO:</h4>
               {selectedCustomer ? (
@@ -950,7 +950,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                 <p className="text-gray-400 italic">Select a customer</p>
               )}
             </div>
-            <div className="sm:text-right space-y-1 text-xs sm:text-sm self-start md:self-auto">
+            <div className="text-right space-y-1 text-xs sm:text-sm flex flex-col items-end">
               {customerGstin && (
                 <p><span className="text-gray-500 font-medium">GSTIN:</span> <strong className="text-gray-900">{customerGstin}</strong></p>
               )}
@@ -1135,7 +1135,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 text-sm text-gray-600">
+            <div className="flex flex-row justify-between items-start gap-4 text-sm text-gray-600">
               <div>
                 <h4 className="font-bold text-gray-800 text-xs uppercase mb-1">BILLED TO:</h4>
                 <div className="space-y-1 max-w-md">
@@ -1144,7 +1144,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                   <p>Place / Country: <strong className="text-gray-900">{placeCountry}</strong></p>
                 </div>
               </div>
-              <div className="text-right space-y-1 text-xs sm:text-sm">
+              <div className="text-right space-y-1 text-xs sm:text-sm flex flex-col items-end">
                 {customerGstin && (
                   <p><span className="text-gray-500 font-medium">GSTIN:</span> <strong className="text-gray-900">{customerGstin}</strong></p>
                 )}
