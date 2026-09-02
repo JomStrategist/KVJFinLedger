@@ -366,7 +366,7 @@ export function ExpenseModal({
                         </td>
                         <td className="py-2 px-3">
                           <select
-                            value={row.categoryId || defaultCategoryId}
+                            value={row.categoryId || ""}
                             onChange={(e) => {
                               if (e.target.value === "ADD_NEW") {
                                 setActiveItemCategoryIndex(idx);
@@ -377,6 +377,7 @@ export function ExpenseModal({
                             }}
                             className="w-full border border-[#D9E3DC] rounded-lg px-2 py-1 text-xs bg-white font-medium text-[#17211B]"
                           >
+                            <option value="">Select Category...</option>
                             {categoryList.map((c) => (
                               <option key={c.id} value={c.id}>
                                 {c.name}
