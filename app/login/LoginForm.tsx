@@ -14,14 +14,13 @@ export default function LoginForm() {
     <div className="flex h-screen w-full items-center justify-center bg-theme-surface-hover p-4">
       <div className="w-full max-w-md space-y-6 rounded-2xl bg-theme-surface p-8 shadow-xl border border-theme-border">
         {/* Header */}
-        <div className="text-center">
-          <div className="mx-auto h-12 w-12 rounded-xl bg-theme-primary flex items-center justify-center font-bold text-white shadow-sm text-xl mb-3">
-            KVJ
-          </div>
-          <h1 className="text-2xl font-bold text-theme-text tracking-tight">
-            KVJ Analytics
-          </h1>
-          <p className="mt-1 text-xs text-theme-text-muted font-medium">
+        <div className="text-center flex flex-col items-center">
+          <img
+            src="/kvj-logo.png"
+            alt="KVJ Analytics"
+            className="h-16 w-auto object-contain mb-2"
+          />
+          <p className="text-xs text-theme-text-muted font-medium tracking-wide">
             Financial Management System
           </p>
         </div>
