@@ -29,7 +29,10 @@ function getDatabaseUrl(): string {
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 const existingClient = globalForPrisma.prisma;
-const isStaleClient = existingClient && !(existingClient as any).financialType;
+const isStaleClient =
+  existingClient &&
+  (!(existingClient as any).financialType ||
+    !((existingClient as any)._dmmf?.modelMap?.ProformaInvoiceItem?.fields?.some((f: any) => f.name === 'incomeCategoryId')));
 
 export const prisma =
   (existingClient && !isStaleClient)

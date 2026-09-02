@@ -92,6 +92,7 @@ export class ProformaInvoiceService {
           items: {
             include: {
               product: true,
+              incomeCategory: true,
             }
           },
         },
