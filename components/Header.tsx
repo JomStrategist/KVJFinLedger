@@ -1,8 +1,7 @@
 import { auth } from '@/auth';
 import { LogoutButton } from './LogoutButton';
-export async function Header() {
-  const session = await auth();
-  const user = session?.user;
+export async function Header({ user: userProp }: { user?: any } = {}) {
+  const user = userProp !== undefined ? userProp : (await auth())?.user;
 
   return (
     <header className="bg-theme-surface border-b border-theme-border h-16 flex items-center justify-between px-6 shrink-0">

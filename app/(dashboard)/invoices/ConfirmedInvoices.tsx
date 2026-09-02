@@ -7,8 +7,10 @@ export async function ConfirmedInvoices({
 }: {
   searchParams?: { q?: string; status?: any };
 }) {
-  const invoices = await TaxInvoiceService.getTaxInvoices();
-  const customers = await CustomerService.getCustomers();
+  const [invoices, customers] = await Promise.all([
+    TaxInvoiceService.getTaxInvoices(),
+    CustomerService.getCustomers(),
+  ]);
 
   return (
     <div className="space-y-6">

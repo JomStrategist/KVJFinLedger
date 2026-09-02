@@ -8,10 +8,12 @@ import { MastersClient } from "./MastersClient";
 export default async function MastersPage() {
   await requireAuth();
 
-  const customers = await CustomerService.getCustomers();
-  const vendors = await VendorService.getVendors();
-  const products = await ProductService.getProducts();
-  const categories = await ExpenseCategoryService.getExpenseCategories();
+  const [customers, vendors, products, categories] = await Promise.all([
+    CustomerService.getCustomers(),
+    VendorService.getVendors(),
+    ProductService.getProducts(),
+    ExpenseCategoryService.getExpenseCategories(),
+  ]);
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">

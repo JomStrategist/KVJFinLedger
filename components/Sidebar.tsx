@@ -111,12 +111,8 @@ export function Sidebar({ userRole }: { userRole?: string }) {
     localStorage.setItem("sidebarCollapsed", String(newState));
   };
 
-  const handleLinkClick = (href: string, e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleLinkClick = (href: string) => {
     setOptimisticHref(href);
-    startTransition(() => {
-      router.push(href);
-    });
   };
 
   const isItemActive = (href: string) => {
@@ -195,7 +191,7 @@ export function Sidebar({ userRole }: { userRole?: string }) {
               <li key={item.name} className="relative group">
                 <Link
                   href={item.href}
-                  onClick={(e) => handleLinkClick(item.href, e)}
+                  onClick={() => handleLinkClick(item.href)}
                   className={`flex items-center rounded-lg text-sm transition-all duration-150 ${
                     isCollapsed ? "justify-center p-3" : "px-3 py-2.5"
                   } ${

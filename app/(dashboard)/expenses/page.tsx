@@ -8,13 +8,15 @@ import { ExpensesClientList } from './ExpensesClientList';
 export default async function ExpensesPage() {
   await requireAuth();
 
-  const expenses = await ExpenseService.getExpenses();
-  const categories = await ExpenseCategoryService.getExpenseCategories();
-  const vendors = await VendorService.getVendors();
-  const users = await prisma.user.findMany({
-    where: { isActive: true },
-    select: { id: true, name: true, email: true },
-  });
+  const [expenses, categories, vendors, users] = await Promise.all([
+    ExpenseService.getExpenses(),
+    ExpenseCategoryService.getExpenseCategories(),
+    VendorService.getVendors(),
+    prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, email: true },
+    }),
+  ]);
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
