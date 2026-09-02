@@ -709,54 +709,28 @@ const handleCreateParent = async () => {
 
           {activeType === "category" && (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    {financialType === "INCOME"
-                      ? "Income Category Name *"
-                      : financialType === "EXPENSE"
-                      ? "Expense Category Name *"
-                      : "Category Name *"}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder={financialType === "INCOME" ? "e.g. Training Revenue" : "e.g. Printing & Designing"}
-                    value={categoryName}
-                    onChange={(e) => {
-                      const newName = e.target.value;
-                      setCategoryName(newName);
-                      if (!isCodeManuallyEdited || !categoryCode) {
-                        setCategoryCode(generateAutoCategoryCode(newName, financialType));
-                      }
-                    }}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    Category Code *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder={financialType === "INCOME" ? "e.g. INC-TRN-001" : "e.g. EXP-PRT-001"}
-                    value={categoryCode}
-                    onChange={(e) => {
-                      const val = e.target.value.toUpperCase();
-                      setCategoryCode(val);
-                      if (val.trim()) {
-                        setIsCodeManuallyEdited(true);
-                      } else {
-                        setIsCodeManuallyEdited(false);
-                        if (categoryName) {
-                          setCategoryCode(generateAutoCategoryCode(categoryName, financialType));
-                        }
-                      }
-                    }}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1">
+                  Category Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={
+                    financialType === "INCOME"
+                      ? "e.g. Consulting Revenue"
+                      : "e.g. Printing & Designing"
+                  }
+                  value={categoryName}
+                  onChange={(e) => {
+                    const newName = e.target.value;
+                    setCategoryName(newName);
+                    if (!isCodeManuallyEdited || !categoryCode) {
+                      setCategoryCode(generateAutoCategoryCode(newName, financialType));
+                    }
+                  }}
+                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -788,11 +762,7 @@ const handleCreateParent = async () => {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    {financialType === "INCOME"
-                      ? "Parent Income Category"
-                      : financialType === "EXPENSE"
-                      ? "Parent Expense Category"
-                      : "Parent Category"}
+                    Parent Category
                   </label>
                   <select
                     value={isCreatingParent ? "ADD_NEW_PARENT" : parentCategoryId}
@@ -825,7 +795,7 @@ const handleCreateParent = async () => {
                 <div className="p-3 bg-[#F4F7F3] border border-[#177B55]/30 rounded-xl space-y-2 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-[#177B55]">
-                      Create & Select New {financialType === "INCOME" ? "Income" : "Expense"} Parent Category
+                      Create & Select New Parent Category
                     </span>
                     <button
                       type="button"
@@ -860,62 +830,19 @@ const handleCreateParent = async () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    {financialType === "INCOME"
-                      ? "Income Group *"
-                      : financialType === "EXPENSE"
-                      ? "Expense Group *"
-                      : "Financial Statement Group *"}
-                  </label>
-                  <select
-                    value={statementGroup}
-                    onChange={(e) => setStatementGroup(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  >
-                    {groupsToRender.map((sgName) => (
-                      <option key={sgName} value={sgName}>{sgName}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Status *</label>
-                  <select
-                    value={categoryIsActive ? "true" : "false"}
-                    onChange={(e) => setCategoryIsActive(e.target.value === "true")}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  >
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">Description / Notes</label>
-                <input
-                  type="text"
-                  placeholder={
-                    financialType === "INCOME"
-                      ? "e.g. Revenue from executive training & software workshops"
-                      : "e.g. Expenses for printing brochures, stickers and marketing materials."
-                  }
-                  value={categoryDescription}
-                  onChange={(e) => setCategoryDescription(e.target.value)}
-                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                />
-              </div>
-
               {/* Accounting Derived Details Info Bar */}
               <div className="p-2.5 bg-[#F4F7F3] border border-[#D9E3DC] rounded-xl flex items-center justify-between text-[11px] text-[#68756C]">
                 <div>
-                  <span className="font-bold">Financial Statement (Auto):</span>{" "}
+                  <span className="font-bold">Financial Statement:</span>{" "}
                   <span className="font-semibold text-[#177B55]">{derivedFinancialStatement}</span>
                 </div>
                 <div>
-                  <span className="font-bold">Normal Balance (Auto):</span>{" "}
+                  <span className="font-bold">Normal Balance:</span>{" "}
                   <span className="font-semibold text-[#177B55]">{derivedNormalBalance}</span>
+                </div>
+                <div>
+                  <span className="font-bold">Group:</span>{" "}
+                  <span className="font-semibold text-[#177B55]">{statementGroup}</span>
                 </div>
               </div>
             </div>
