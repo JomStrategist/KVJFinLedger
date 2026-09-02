@@ -915,29 +915,6 @@ const handleCreateParent = async () => {
                   <span className="font-semibold text-[#177B55]">{derivedNormalBalance}</span>
                 </div>
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">Description / Notes</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Expenses for printing brochures, stickers and marketing materials."
-                  value={categoryDescription}
-                  onChange={(e) => setCategoryDescription(e.target.value)}
-                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">Status *</label>
-                <select
-                  value={categoryIsActive ? "ACTIVE" : "INACTIVE"}
-                  onChange={(e) => setCategoryIsActive(e.target.value === "ACTIVE")}
-                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                </select>
-              </div>
             </div>
           )}
 
