@@ -24,7 +24,7 @@ export class ExpenseCategoryService {
     }
 
     try {
-      return await prisma.expenseCategory.findMany({
+      let cats = await prisma.expenseCategory.findMany({
         where,
         orderBy: { name: "asc" },
         include: {
@@ -35,6 +35,23 @@ export class ExpenseCategoryService {
           }
         }
       });
+
+      if (cats.length === 0 && !search) {
+        await ExpenseCategoryService.seedDefaultCategories();
+        cats = await prisma.expenseCategory.findMany({
+          where,
+          orderBy: { name: "asc" },
+          include: {
+            parent: true,
+            children: true,
+            _count: {
+              select: { expenses: true }
+            }
+          }
+        });
+      }
+
+      return cats;
     } catch (error) {
       console.warn("ExpenseCategoryService.getExpenseCategories error:", error);
       return [];
