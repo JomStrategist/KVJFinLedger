@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
+import { signOut } from "next-auth/react";
 
 const navItems = [
   {
@@ -88,7 +89,7 @@ const navItems = [
   }
 ];
 
-export function Sidebar({ userRole }: { userRole?: string }) {
+export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -223,12 +224,49 @@ export function Sidebar({ userRole }: { userRole?: string }) {
         </ul>
       </nav>
 
-      {/* Footer info in sidebar */}
-      {!isCollapsed && (
-        <div className="p-4 border-t border-white/10 text-[11px] text-white/60 text-center">
-          KVJ Analytics • FY 2026–27
-        </div>
-      )}
+      {/* Left Panel Bottom - User Profile & Logout */}
+      <div className="border-t border-white/15 p-3 bg-black/15 shrink-0">
+        {!isCollapsed ? (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-9 w-9 rounded-full bg-emerald-800 border border-white/20 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
+                {user?.name?.[0] || 'J'}
+              </div>
+              <div className="min-w-0 leading-tight">
+                <p className="text-xs font-bold text-white truncate">{user?.name || 'Jomon Joseph'}</p>
+                <p className="text-[10px] font-semibold text-emerald-200/80 tracking-wider uppercase truncate">
+                  {(user as any)?.role || userRole || 'ADMIN'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              className="px-2 py-1 rounded-md text-xs font-semibold text-red-200 hover:text-white hover:bg-red-600/30 border border-red-400/20 transition-colors shrink-0 flex items-center gap-1"
+              title="Logout"
+            >
+              <span>Logout</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2 py-1 relative group">
+            <div className="h-9 w-9 rounded-full bg-emerald-800 border border-white/20 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+              {user?.name?.[0] || 'J'}
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              className="p-1.5 rounded-md text-red-200 hover:text-white hover:bg-red-600/30 border border-red-400/20 transition-colors"
+              title="Logout"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#17211B] text-white text-xs font-semibold rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap border border-white/10 pointer-events-none">
+              {user?.name || 'Jomon Joseph'} ({(user as any)?.role || userRole || 'ADMIN'})
+            </div>
+          </div>
+        )}
+      </div>
     </aside>
   );
 }

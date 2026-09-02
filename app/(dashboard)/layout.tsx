@@ -20,7 +20,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-theme-bg text-theme-text">
-      <Sidebar userRole={role} />
+      <Sidebar userRole={role} user={session?.user} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header user={session?.user} />
         <main className="flex-1 overflow-y-auto bg-theme-bg">
