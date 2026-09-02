@@ -17,15 +17,8 @@ export function OpeningClosingClient({
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Default opening components matching the specification
-  const [openingItems, setOpeningItems] = useState<OpeningItem[]>([
-    { id: "1", position: "Bank Balance", amount: 1000000, type: "Asset" },
-    { id: "2", position: "Accounts Receivable", amount: 200000, type: "Asset" },
-    { id: "3", position: "GST Receivable", amount: 20000, type: "Asset" },
-    { id: "4", position: "GST Payable", amount: 40000, type: "Liability" },
-    { id: "5", position: "TDS Receivable", amount: 15000, type: "Asset" },
-    { id: "6", position: "Other Liabilities", amount: 60000, type: "Liability" },
-  ]);
+  // Dynamic state without hardcoded dummy items
+  const [openingItems, setOpeningItems] = useState<OpeningItem[]>([]);
 
   // Modal Form State
   const [newPosition, setNewPosition] = useState("");
@@ -49,10 +42,18 @@ export function OpeningClosingClient({
     setIsModalOpen(false);
   };
 
-  // KPI Calculations
-  const fyOpening = 1000000;
-  const currentClosing = 2055000;
-  const nextFyOpening = 2055000;
+  // Dynamic KPI Calculations from recorded items
+  const totalAssets = openingItems
+    .filter((item) => item.type === "Asset")
+    .reduce((sum, item) => sum + item.amount, 0);
+
+  const totalLiabilities = openingItems
+    .filter((item) => item.type === "Liability")
+    .reduce((sum, item) => sum + item.amount, 0);
+
+  const fyOpening = totalAssets - totalLiabilities;
+  const currentClosing = fyOpening;
+  const nextFyOpening = currentClosing;
 
   return (
     <div className="space-y-6">
@@ -119,19 +120,27 @@ export function OpeningClosingClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E9EEE9] text-xs">
-              {openingItems.map((item) => (
-                <tr key={item.id} className="hover:bg-[#F9FAF8] transition-colors">
-                  <td className="py-4 px-3 font-semibold text-[#17211B]">
-                    {item.position}
-                  </td>
-                  <td className="py-4 px-4 text-right font-medium text-[#17211B]">
-                    {formatCurrency(item.amount)}
-                  </td>
-                  <td className="py-4 px-4 text-[#17211B] font-medium">
-                    {item.type}
+              {openingItems.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="py-12 text-center text-[#68756C]">
+                    No opening balance components recorded. Click &quot;+ Add Opening Balance&quot; to create one.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                openingItems.map((item) => (
+                  <tr key={item.id} className="hover:bg-[#F9FAF8] transition-colors">
+                    <td className="py-4 px-3 font-semibold text-[#17211B]">
+                      {item.position}
+                    </td>
+                    <td className="py-4 px-4 text-right font-medium text-[#17211B]">
+                      {formatCurrency(item.amount)}
+                    </td>
+                    <td className="py-4 px-4 text-[#17211B] font-medium">
+                      {item.type}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
