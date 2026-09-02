@@ -16,6 +16,19 @@ interface ExpenseItemRow {
   amount: number;
 }
 
+const FALLBACK_CATEGORIES = [
+  { id: "cat_operating_exp", name: "Operating Expense" },
+  { id: "cat_office_supplies", name: "Office Supplies" },
+  { id: "cat_printing_design", name: "Printing & Designing" },
+  { id: "cat_software_sub", name: "Software & Subscriptions" },
+  { id: "cat_utilities", name: "Utilities" },
+  { id: "cat_travel_transport", name: "Travel & Transportation" },
+  { id: "cat_prof_fees", name: "Professional Fees" },
+  { id: "cat_staff_welfare", name: "Staff Welfare" },
+  { id: "cat_repairs_maint", name: "Repairs & Maintenance" },
+  { id: "cat_other_exp", name: "Other Expenses" },
+];
+
 export function ExpenseModal({
   expense,
   vendors = [],
@@ -39,7 +52,9 @@ export function ExpenseModal({
   // Vendor & Category list state & Add modal state
   const [vendorList, setVendorList] = useState(vendors);
   const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
-  const [categoryList, setCategoryList] = useState(categories);
+
+  const initialCategoryList = categories && categories.length > 0 ? categories : FALLBACK_CATEGORIES;
+  const [categoryList, setCategoryList] = useState(initialCategoryList);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [activeItemCategoryIndex, setActiveItemCategoryIndex] = useState<number | null>(null);
 
@@ -54,8 +69,8 @@ export function ExpenseModal({
   const [employeeId, setEmployeeId] = useState(expense?.employeeId || "");
 
   // Section 2: Items
-  const defaultCategoryId = categories[0]?.id || "";
-  const defaultCategoryName = categories[0]?.name || "Operating Expense";
+  const defaultCategoryId = initialCategoryList[0]?.id || "";
+  const defaultCategoryName = initialCategoryList[0]?.name || "Operating Expense";
 
   const initialItems: ExpenseItemRow[] = (expense?.items && expense.items.length > 0)
     ? expense.items.map((i: any) => ({
@@ -365,7 +380,7 @@ export function ExpenseModal({
                         </td>
                         <td className="py-2 px-3">
                           <select
-                            value={row.categoryId}
+                            value={row.categoryId || defaultCategoryId}
                             onChange={(e) => {
                               if (e.target.value === "ADD_NEW") {
                                 setActiveItemCategoryIndex(idx);
@@ -376,12 +391,14 @@ export function ExpenseModal({
                             }}
                             className="w-full border border-[#D9E3DC] rounded-lg px-2 py-1 text-xs bg-white font-medium text-[#17211B]"
                           >
-                            <option value="ADD_NEW" className="font-bold text-[#177B55]">+ Add New Category...</option>
                             {categoryList.map((c) => (
                               <option key={c.id} value={c.id}>
                                 {c.name}
                               </option>
                             ))}
+                            <option value="ADD_NEW" className="font-bold text-[#177B55]">
+                              + Add New Category...
+                            </option>
                           </select>
                         </td>
                         <td className="py-2 px-2">
