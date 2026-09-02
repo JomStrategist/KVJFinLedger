@@ -772,10 +772,6 @@ const handleCreateParent = async () => {
                   <span className="font-bold">Normal Balance:</span>{" "}
                   <span className="font-semibold text-[#177B55]">{derivedNormalBalance}</span>
                 </div>
-                <div>
-                  <span className="font-bold">Accounting Group:</span>{" "}
-                  <span className="font-semibold text-[#177B55]">{statementGroup}</span>
-                </div>
               </div>
             </div>
           )}
