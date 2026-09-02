@@ -8,7 +8,19 @@ export async function authenticate(
   formData: FormData,
 ) {
   try {
-    await signIn('credentials', Object.fromEntries(formData));
+    const rawData = Object.fromEntries(formData);
+    const email = (rawData.email as string)?.trim()?.toLowerCase();
+    const password = rawData.password as string;
+
+    if (!email || !password) {
+      return 'Please enter both email address and password.';
+    }
+
+    await signIn('credentials', {
+      email,
+      password,
+      redirectTo: '/dashboard',
+    });
   } catch (error) {
     if (error instanceof AuthError) {
       switch (error.type) {

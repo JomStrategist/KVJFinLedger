@@ -4,7 +4,6 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
 
-
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   secret: process.env.AUTH_SECRET,
@@ -17,8 +16,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+        const email = (credentials.email as string).trim().toLowerCase();
+
+        const user = await prisma.user.findFirst({
+          where: {
+            email: { equals: email, mode: "insensitive" },
+          },
         });
 
         if (!user || !user.isActive) return null;
