@@ -897,21 +897,41 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
 
         {/* Live Invoice Preview Card */}
         <div className="bg-white border border-theme-border rounded-xl shadow-lg p-6 sm:p-8 text-black space-y-6">
-          <div className="flex justify-between items-start border-b border-gray-200 pb-4">
+          {/* Top Header: Logo + Company Info (Left), Title & Invoice Meta (Right) */}
+          <div className="pb-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start gap-8">
             <div>
-              <h2 className="text-xl font-bold uppercase tracking-wider text-gray-800">
-                {isPurchaseOrder ? "Purchase Order Preview" : "Proforma Invoice Preview"}
-              </h2>
-              {isExport && (
-                <span className="inline-block mt-1 px-2.5 py-0.5 bg-blue-100 text-blue-800 font-bold rounded text-xs uppercase tracking-wider">
-                  B2B Export
-                </span>
-              )}
+              {/* KVJ Analytics Official Logo */}
+              <img src="/kvj-logo.png" alt="KVJ Analytics" className="h-12 w-auto mb-3 object-contain" />
+              <div className="space-y-0.5 text-xs text-gray-600">
+                <p className="font-bold text-gray-900 text-sm">KVJ Analytics</p>
+                <p>III- Floor, Lalan Towers</p>
+                <p>Banerji Road, Kochi, Kerala - 682031</p>
+                <p className="pt-1"><span className="text-gray-500 font-medium">Mobile:</span> <strong className="text-gray-900 font-semibold">+91 99618 13730</strong></p>
+                <p><span className="text-gray-500 font-medium">Phone:</span> <strong className="text-gray-900 font-semibold">0484 4059310</strong></p>
+              </div>
             </div>
-            <div className="text-right text-xs text-gray-500">
-              <p><strong className="text-gray-700">Financial Year:</strong> {financialYear}</p>
-              <p><strong className="text-gray-700">Date:</strong> {invoiceDate}</p>
-              <p><strong className="text-gray-700">Payment Terms:</strong> {paymentTerms}</p>
+            
+            <div className="flex flex-col items-start md:items-end text-left md:text-right">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1e3a8a] tracking-tight mb-3 uppercase">
+                {isPurchaseOrder ? "PURCHASE ORDER" : "PROFORMA INVOICE"}
+              </h2>
+              
+              <table className="text-xs sm:text-sm">
+                <tbody>
+                  <tr>
+                    <td className="text-gray-500 pr-3 py-0.5 text-right">Proforma No:</td>
+                    <td className="font-bold text-gray-900 text-right">{initialData?.invoiceNumber || "Auto-assigned on Save"}</td>
+                  </tr>
+                  <tr>
+                    <td className="text-gray-500 pr-3 py-0.5 text-right">Date:</td>
+                    <td className="font-semibold text-gray-900 text-right">{invoiceDate}</td>
+                  </tr>
+                  <tr>
+                    <td className="text-gray-500 pr-3 py-0.5 text-right">GSTIN:</td>
+                    <td className="font-bold text-gray-900 text-right">32BIDPK3118B1Z2</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
           
@@ -1048,19 +1068,48 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
       {showPreviewModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl border border-theme-border w-full max-w-4xl shadow-2xl max-h-[90vh] overflow-y-auto my-8 p-8 space-y-6 text-black">
-            <div className="flex justify-between items-center border-b border-gray-200 pb-4">
-              <h2 className="text-xl font-bold text-gray-800 uppercase">
-                {isPurchaseOrder ? "Purchase Order Preview" : "Proforma Invoice Preview"}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShowPreviewModal(false)}
-                className="text-gray-500 hover:text-gray-800 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+            <div className="flex justify-between items-start border-b border-gray-200 pb-4">
+              <div>
+                <img src="/kvj-logo.png" alt="KVJ Analytics" className="h-12 w-auto mb-3 object-contain" />
+                <div className="space-y-0.5 text-xs text-gray-600">
+                  <p className="font-bold text-gray-900 text-sm">KVJ Analytics</p>
+                  <p>III- Floor, Lalan Towers</p>
+                  <p>Banerji Road, Kochi, Kerala - 682031</p>
+                  <p className="pt-1"><span className="text-gray-500 font-medium">Mobile:</span> <strong className="text-gray-900 font-semibold">+91 99618 13730</strong></p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end text-right">
+                <div className="flex items-center gap-4 mb-2">
+                  <h2 className="text-2xl font-extrabold text-[#1e3a8a] tracking-tight uppercase">
+                    {isPurchaseOrder ? "PURCHASE ORDER" : "PROFORMA INVOICE"}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setShowPreviewModal(false)}
+                    className="text-gray-500 hover:text-gray-800 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <table className="text-xs sm:text-sm">
+                  <tbody>
+                    <tr>
+                      <td className="text-gray-500 pr-3 py-0.5 text-right">Proforma No:</td>
+                      <td className="font-bold text-gray-900 text-right">{initialData?.invoiceNumber || "Auto-assigned on Save"}</td>
+                    </tr>
+                    <tr>
+                      <td className="text-gray-500 pr-3 py-0.5 text-right">Date:</td>
+                      <td className="font-semibold text-gray-900 text-right">{invoiceDate}</td>
+                    </tr>
+                    <tr>
+                      <td className="text-gray-500 pr-3 py-0.5 text-right">GSTIN:</td>
+                      <td className="font-bold text-gray-900 text-right">32BIDPK3118B1Z2</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-6 text-sm text-gray-600">
