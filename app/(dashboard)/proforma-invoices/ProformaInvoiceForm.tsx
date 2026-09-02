@@ -917,13 +917,13 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
             <div>
-              <h4 className="font-bold text-gray-800 text-xs uppercase mb-1">Billed To:</h4>
+              <h4 className="font-bold text-gray-800 text-xs uppercase mb-1">BILLED TO:</h4>
               {selectedCustomer ? (
-                <div className="space-y-0.5">
+                <div className="space-y-1 max-w-md">
                   <p className="font-bold text-gray-900 text-base">{selectedCustomer.legalName}</p>
-                  {customerAddress && <p>{customerAddress}</p>}
-                  <p>Place / Country: <strong>{placeCountry}</strong></p>
-                  {customerGstin && <p>GSTIN: <strong>{customerGstin}</strong></p>}
+                  {customerAddress && <p className="whitespace-pre-line break-words leading-snug">{customerAddress}</p>}
+                  <p>Place / Country: <strong className="text-gray-900">{placeCountry}</strong></p>
+                  {customerGstin && <p>GSTIN: <strong className="text-gray-900">{customerGstin}</strong></p>}
                 </div>
               ) : (
                 <p className="text-gray-400 italic">Select a customer</p>
@@ -931,9 +931,9 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
             </div>
             <div className="sm:text-right space-y-0.5">
               <h4 className="font-bold text-gray-800 text-xs uppercase mb-1">Tax & Supply:</h4>
-              <p>Place of Supply: <strong>{placeCountry}</strong></p>
-              {effectiveGstRate > 0 && <p>Applicable GST Rate: <strong>{effectiveGstRate}%</strong></p>}
-              {isTdsApplicable === "YES" && <p>TDS Rate: <strong>{calculationResult.tdsRate}%</strong></p>}
+              <p>Place of Supply: <strong className="text-gray-900">{placeCountry}</strong></p>
+              {effectiveGstRate > 0 && <p>Applicable GST Rate: <strong className="text-gray-900">{effectiveGstRate}%</strong></p>}
+              {isTdsApplicable === "YES" && <p>TDS Rate: <strong className="text-gray-900">{calculationResult.tdsRate}%</strong></p>}
             </div>
           </div>
 
@@ -1065,12 +1065,13 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
 
             <div className="grid grid-cols-2 gap-6 text-sm text-gray-600">
               <div>
-                <h4 className="font-bold text-gray-800 text-xs uppercase mb-1">Customer Details:</h4>
-                <p className="font-bold text-gray-900 text-base">{selectedCustomer?.legalName || "Customer Name"}</p>
-                {customerAddress && <p>{customerAddress}</p>}
-                <p>Place / Country: <strong>{placeCountry}</strong></p>
-                {customerGstin && <p>GSTIN: <strong>{customerGstin}</strong></p>}
-                <p>Type: <strong>{customerType}</strong></p>
+                <h4 className="font-bold text-gray-800 text-xs uppercase mb-1">BILLED TO:</h4>
+                <div className="space-y-1 max-w-md">
+                  <p className="font-bold text-gray-900 text-base">{selectedCustomer?.legalName || "Customer Name"}</p>
+                  {customerAddress && <p className="whitespace-pre-line break-words leading-snug">{customerAddress}</p>}
+                  <p>Place / Country: <strong className="text-gray-900">{placeCountry}</strong></p>
+                  {customerGstin && <p>GSTIN: <strong className="text-gray-900">{customerGstin}</strong></p>}
+                </div>
               </div>
               <div className="text-right space-y-1">
                 <p><strong className="text-gray-700">Financial Year:</strong> {financialYear}</p>

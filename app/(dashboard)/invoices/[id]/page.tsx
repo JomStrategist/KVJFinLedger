@@ -108,17 +108,21 @@ export default async function TaxInvoiceDetailPage({
         {/* Billed To & Supply Info */}
         <div className="p-8 py-6 flex flex-col md:flex-row justify-between items-start gap-8">
           <div className="space-y-1 text-xs sm:text-sm max-w-md">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Billed To</h3>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">BILLED TO:</h3>
             <p className="font-bold text-gray-900 text-base">{invoice.customerNameSnapshot}</p>
-            {invoice.businessNameSnapshot && <p className="text-gray-700">{invoice.businessNameSnapshot}</p>}
-            {invoice.addressSnapshot && <p className="text-gray-600">{invoice.addressSnapshot}</p>}
-            {invoice.stateSnapshot && <p className="text-gray-600">{invoice.stateSnapshot}, India.</p>}
+            {invoice.businessNameSnapshot && invoice.businessNameSnapshot !== invoice.customerNameSnapshot && (
+              <p className="text-gray-700">{invoice.businessNameSnapshot}</p>
+            )}
+            {invoice.addressSnapshot && (
+              <p className="text-gray-600 whitespace-pre-line break-words leading-snug">{invoice.addressSnapshot}</p>
+            )}
+            <p className="text-gray-600">Place / Country: <strong className="text-gray-900">{invoice.stateSnapshot || "Kerala"}, India</strong></p>
+            {invoice.gstinSnapshot && (
+              <p className="text-gray-600">GSTIN: <strong className="text-gray-900">{invoice.gstinSnapshot}</strong></p>
+            )}
           </div>
 
           <div className="text-left md:text-right space-y-1 text-xs sm:text-sm">
-            {invoice.gstinSnapshot && (
-              <p><span className="text-gray-500 font-medium">GSTIN:</span> <strong className="text-gray-900">{invoice.gstinSnapshot}</strong></p>
-            )}
             <p><span className="text-gray-500 font-medium">Place of Supply:</span> <strong className="text-gray-900">{invoice.stateSnapshot || "Kerala"}</strong></p>
             <p><span className="text-gray-500 font-medium">Purchase Order No:</span> <strong className="text-gray-900">NIL</strong></p>
           </div>
