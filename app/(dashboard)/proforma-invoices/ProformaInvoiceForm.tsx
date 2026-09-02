@@ -932,7 +932,6 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
             <div className="sm:text-right space-y-0.5">
               <h4 className="font-bold text-gray-800 text-xs uppercase mb-1">Tax & Supply:</h4>
               <p>Place of Supply: <strong>{placeCountry}</strong></p>
-              <p>GST Treatment: <strong>{gstTreatment}</strong></p>
               {effectiveGstRate > 0 && <p>Applicable GST Rate: <strong>{effectiveGstRate}%</strong></p>}
               {isTdsApplicable === "YES" && <p>TDS Rate: <strong>{calculationResult.tdsRate}%</strong></p>}
             </div>
@@ -1077,7 +1076,6 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                 <p><strong className="text-gray-700">Financial Year:</strong> {financialYear}</p>
                 <p><strong className="text-gray-700">Date:</strong> {invoiceDate}</p>
                 <p><strong className="text-gray-700">Payment Terms:</strong> {paymentTerms}</p>
-                <p><strong className="text-gray-700">GST Treatment:</strong> {gstTreatment}</p>
               </div>
             </div>
 
