@@ -4,16 +4,16 @@ import bcrypt from "bcryptjs";
 async function main() {
   const adminAccounts = [
     { name: "System Administrator", email: process.env.SEED_ADMIN_EMAIL || "admin@example.com", password: process.env.SEED_ADMIN_PASSWORD || "admin123" },
-    { name: "Jomon Joseph", email: "info@thestrategist.co.in", password: "admin123" },
+    { name: "Jomon Joseph", email: "info@thestrategist.co.in", password: "AjayThomas@1" },
   ];
 
   for (const admin of adminAccounts) {
+    const hashedPassword = await bcrypt.hash(admin.password, 10);
     const existingAdmin = await prisma.user.findFirst({
       where: { email: admin.email },
     });
 
     if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash(admin.password, 10);
       await prisma.user.create({
         data: {
           name: admin.name,
@@ -26,7 +26,15 @@ async function main() {
       });
       console.log(`Seeded admin user: ${admin.email}`);
     } else {
-      console.log(`Admin user ${admin.email} already exists.`);
+      await prisma.user.update({
+        where: { id: existingAdmin.id },
+        data: {
+          password: hashedPassword,
+          isActive: true,
+          role: "ADMIN",
+        },
+      });
+      console.log(`Updated password for admin user ${admin.email}.`);
     }
   }
 
