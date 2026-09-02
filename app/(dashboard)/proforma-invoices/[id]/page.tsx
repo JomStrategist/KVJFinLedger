@@ -135,12 +135,12 @@ export default async function ProformaInvoiceDetailPage({
               <p className="text-gray-600 whitespace-pre-line break-words leading-snug">{invoice.customer.address}</p>
             )}
             <p className="text-gray-600">Place / Country: <strong className="text-gray-900">{[invoice.customer.city, invoice.customer.state, "India"].filter(Boolean).join(", ")}</strong></p>
-            {invoice.customer.gstin && (
-              <p className="text-gray-600">GSTIN: <strong className="text-gray-900">{invoice.customer.gstin}</strong></p>
-            )}
           </div>
 
-          <div className="text-left md:text-right space-y-1 text-xs sm:text-sm">
+          <div className="text-left md:text-right space-y-1 text-xs sm:text-sm self-start md:self-auto">
+            {invoice.customer.gstin && (
+              <p><span className="text-gray-500 font-medium">GSTIN:</span> <strong className="text-gray-900">{invoice.customer.gstin}</strong></p>
+            )}
             <p><span className="text-gray-500 font-medium">Place of Supply:</span> <strong className="text-gray-900">{invoice.customer.state || "Kerala"}</strong></p>
             <p><span className="text-gray-500 font-medium">Purchase Order No:</span> <strong className="text-gray-900">NIL</strong></p>
           </div>

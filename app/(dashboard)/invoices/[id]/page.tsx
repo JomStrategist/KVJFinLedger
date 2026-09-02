@@ -117,12 +117,12 @@ export default async function TaxInvoiceDetailPage({
               <p className="text-gray-600 whitespace-pre-line break-words leading-snug">{invoice.addressSnapshot}</p>
             )}
             <p className="text-gray-600">Place / Country: <strong className="text-gray-900">{invoice.stateSnapshot || "Kerala"}, India</strong></p>
-            {invoice.gstinSnapshot && (
-              <p className="text-gray-600">GSTIN: <strong className="text-gray-900">{invoice.gstinSnapshot}</strong></p>
-            )}
           </div>
 
-          <div className="text-left md:text-right space-y-1 text-xs sm:text-sm">
+          <div className="text-left md:text-right space-y-1 text-xs sm:text-sm self-start md:self-auto">
+            {invoice.gstinSnapshot && (
+              <p><span className="text-gray-500 font-medium">GSTIN:</span> <strong className="text-gray-900">{invoice.gstinSnapshot}</strong></p>
+            )}
             <p><span className="text-gray-500 font-medium">Place of Supply:</span> <strong className="text-gray-900">{invoice.stateSnapshot || "Kerala"}</strong></p>
             <p><span className="text-gray-500 font-medium">Purchase Order No:</span> <strong className="text-gray-900">NIL</strong></p>
           </div>

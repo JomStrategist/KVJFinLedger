@@ -923,17 +923,17 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                   <p className="font-bold text-gray-900 text-base">{selectedCustomer.legalName}</p>
                   {customerAddress && <p className="whitespace-pre-line break-words leading-snug">{customerAddress}</p>}
                   <p>Place / Country: <strong className="text-gray-900">{placeCountry}</strong></p>
-                  {customerGstin && <p>GSTIN: <strong className="text-gray-900">{customerGstin}</strong></p>}
                 </div>
               ) : (
                 <p className="text-gray-400 italic">Select a customer</p>
               )}
             </div>
-            <div className="sm:text-right space-y-0.5">
-              <h4 className="font-bold text-gray-800 text-xs uppercase mb-1">Tax & Supply:</h4>
-              <p>Place of Supply: <strong className="text-gray-900">{placeCountry}</strong></p>
-              {effectiveGstRate > 0 && <p>Applicable GST Rate: <strong className="text-gray-900">{effectiveGstRate}%</strong></p>}
-              {isTdsApplicable === "YES" && <p>TDS Rate: <strong className="text-gray-900">{calculationResult.tdsRate}%</strong></p>}
+            <div className="sm:text-right space-y-1 text-xs sm:text-sm self-start md:self-auto">
+              {customerGstin && (
+                <p><span className="text-gray-500 font-medium">GSTIN:</span> <strong className="text-gray-900">{customerGstin}</strong></p>
+              )}
+              <p><span className="text-gray-500 font-medium">Place of Supply:</span> <strong className="text-gray-900">{placeCountry}</strong></p>
+              <p><span className="text-gray-500 font-medium">Purchase Order No:</span> <strong className="text-gray-900">NIL</strong></p>
             </div>
           </div>
 
@@ -1070,13 +1070,14 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                   <p className="font-bold text-gray-900 text-base">{selectedCustomer?.legalName || "Customer Name"}</p>
                   {customerAddress && <p className="whitespace-pre-line break-words leading-snug">{customerAddress}</p>}
                   <p>Place / Country: <strong className="text-gray-900">{placeCountry}</strong></p>
-                  {customerGstin && <p>GSTIN: <strong className="text-gray-900">{customerGstin}</strong></p>}
                 </div>
               </div>
-              <div className="text-right space-y-1">
-                <p><strong className="text-gray-700">Financial Year:</strong> {financialYear}</p>
-                <p><strong className="text-gray-700">Date:</strong> {invoiceDate}</p>
-                <p><strong className="text-gray-700">Payment Terms:</strong> {paymentTerms}</p>
+              <div className="text-right space-y-1 text-xs sm:text-sm">
+                {customerGstin && (
+                  <p><span className="text-gray-500 font-medium">GSTIN:</span> <strong className="text-gray-900">{customerGstin}</strong></p>
+                )}
+                <p><span className="text-gray-500 font-medium">Place of Supply:</span> <strong className="text-gray-900">{placeCountry}</strong></p>
+                <p><span className="text-gray-500 font-medium">Purchase Order No:</span> <strong className="text-gray-900">NIL</strong></p>
               </div>
             </div>
 
