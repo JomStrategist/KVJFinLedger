@@ -64,198 +64,181 @@ export default async function TaxInvoiceDetailPage({
       )}
 
       {/* Printable Invoice Container */}
-      <div className="bg-theme-surface border border-theme-border rounded-xl shadow-sm overflow-hidden print:shadow-none print:border-none print:m-0 print:p-0">
-        {/* Invoice Header */}
-        <div className="p-8 border-b border-theme-border flex flex-col md:flex-row justify-between items-start gap-8">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden print:shadow-none print:border-none print:m-0 print:p-0 text-gray-900 font-sans">
+        {/* Top Header: Logo + Company Info (Left), Title & Invoice Meta (Right) */}
+        <div className="p-8 pb-6 flex flex-col md:flex-row justify-between items-start gap-8">
           <div>
-            <h2 className="text-3xl font-bold text-theme-text tracking-tight">TAX INVOICE</h2>
-            
-            <div className="mt-8 space-y-1 text-sm text-theme-text-muted">
-              <p className="font-bold text-theme-text text-xl">KVJ Analytics</p>
-              <p className="text-xs font-semibold text-theme-primary">IT Services • Training Services • Digital Products</p>
-              <p>123 Business Avenue, Tech Park</p>
-              <p>{BUSINESS_LOCATION.state} - {BUSINESS_LOCATION.stateCode}</p>
-              <p>GSTIN: 27AAAAA0000A1Z5</p>
+            {/* KVJ Analytics Official Logo */}
+            <img src="/kvj-logo.png" alt="KVJ Analytics" className="h-14 w-auto mb-4 object-contain" />
+            <div className="space-y-0.5 text-xs text-gray-600">
+              <p className="font-bold text-gray-900 text-sm">KVJ Analytics</p>
+              <p>III- Floor, Lalan Towers</p>
+              <p>Banerji Road, Kochi, Kerala - 682031</p>
+              <p className="pt-1.5"><span className="text-gray-500 font-medium">Mobile:</span> <strong className="text-gray-900 font-semibold">+91 99618 13730</strong></p>
+              <p><span className="text-gray-500 font-medium">Phone:</span> <strong className="text-gray-900 font-semibold">0484 4059310</strong></p>
             </div>
           </div>
           
-          <div className="flex flex-col items-end text-right">
-            <div className={`px-4 py-1.5 rounded-full border text-sm font-bold tracking-wide mb-6 ${getStatusColor(invoice.status)} print:border-2 print:border-black print:text-black print:bg-theme-surface`}>
-              {invoice.status}
-            </div>
+          <div className="flex flex-col items-start md:items-end text-left md:text-right">
+            <h2 className="text-3xl font-extrabold text-[#1e3a8a] tracking-tight mb-4 uppercase">TAX INVOICE</h2>
             
-            <table className="text-sm">
+            <table className="text-xs sm:text-sm">
               <tbody>
                 <tr>
-                  <td className="text-theme-text-muted pr-6 py-1">Invoice Number:</td>
-                  <td className="font-bold text-theme-text">{invoice.invoiceNumber}</td>
+                  <td className="text-gray-500 pr-4 py-1 text-right">Invoice No:</td>
+                  <td className="font-bold text-gray-900 text-right">{invoice.invoiceNumber}</td>
                 </tr>
                 <tr>
-                  <td className="text-theme-text-muted pr-6 py-1">Invoice Date:</td>
-                  <td className="font-medium text-theme-text">{new Date(invoice.invoiceDate).toLocaleDateString()}</td>
+                  <td className="text-gray-500 pr-4 py-1 text-right">Date:</td>
+                  <td className="font-semibold text-gray-900 text-right">
+                    {new Date(invoice.invoiceDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="text-gray-500 pr-4 py-1 text-right">GSTIN:</td>
+                  <td className="font-bold text-gray-900 text-right">32BIDPK3118B1Z2</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Customer Info (Snapshots) */}
-        <div className="p-8 border-b border-theme-border bg-theme-surface-hover/50 print:bg-theme-surface">
-          <h3 className="text-xs font-bold text-theme-text-muted uppercase tracking-wider mb-3 print:text-black">Billed To</h3>
-          <div className="text-sm text-theme-text space-y-1">
-            <p className="font-bold text-theme-text text-base">{invoice.customerNameSnapshot}</p>
-            {invoice.businessNameSnapshot && <p>{invoice.businessNameSnapshot}</p>}
-            {invoice.addressSnapshot && <p>{invoice.addressSnapshot}</p>}
-            {invoice.stateSnapshot && <p>{invoice.stateSnapshot}</p>}
-            {invoice.stateCodeSnapshot && <p className="pt-2 font-medium">State Code: {invoice.stateCodeSnapshot}</p>}
-            {invoice.gstinSnapshot && <p className="pt-1 font-medium">GSTIN: {invoice.gstinSnapshot}</p>}
+        <div className="px-8"><hr className="border-gray-200" /></div>
+
+        {/* Billed To & Supply Info */}
+        <div className="p-8 py-6 flex flex-col md:flex-row justify-between items-start gap-8">
+          <div className="space-y-1 text-xs sm:text-sm max-w-md">
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Billed To</h3>
+            <p className="font-bold text-gray-900 text-base">{invoice.customerNameSnapshot}</p>
+            {invoice.businessNameSnapshot && <p className="text-gray-700">{invoice.businessNameSnapshot}</p>}
+            {invoice.addressSnapshot && <p className="text-gray-600">{invoice.addressSnapshot}</p>}
+            {invoice.stateSnapshot && <p className="text-gray-600">{invoice.stateSnapshot}, India.</p>}
+          </div>
+
+          <div className="text-left md:text-right space-y-1 text-xs sm:text-sm">
+            {invoice.gstinSnapshot && (
+              <p><span className="text-gray-500 font-medium">GSTIN:</span> <strong className="text-gray-900">{invoice.gstinSnapshot}</strong></p>
+            )}
+            <p><span className="text-gray-500 font-medium">Place of Supply:</span> <strong className="text-gray-900">{invoice.stateSnapshot || "Kerala"}</strong></p>
+            <p><span className="text-gray-500 font-medium">Purchase Order No:</span> <strong className="text-gray-900">NIL</strong></p>
           </div>
         </div>
 
         {/* Items Table */}
-        <div className="p-8">
-          <table className="w-full text-left border-collapse">
+        <div className="p-8 py-4 overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs sm:text-sm">
             <thead>
-              <tr className="border-b-2 border-theme-border text-xs font-bold text-theme-text uppercase tracking-wider">
-                <th className="py-3 pl-2 w-12">No</th>
-                <th className="py-3">Description</th>
-                <th className="py-3 w-32">HSN/SAC</th>
-                <th className="py-3 text-right w-24">Qty</th>
-                <th className="py-3 text-right w-32">Rate</th>
-                <th className="py-3 text-right pr-2 w-36">Amount</th>
+              <tr className="bg-gray-50 border-y border-gray-200 text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <th className="py-3 px-3 w-12 text-center">No</th>
+                <th className="py-3 px-3">Description</th>
+                <th className="py-3 px-3 w-28 text-center">HSN/SAC</th>
+                <th className="py-3 px-3 w-20 text-center">Qty</th>
+                <th className="py-3 px-3 w-32 text-right">Rate</th>
+                <th className="py-3 px-3 w-36 text-right">Amount</th>
               </tr>
             </thead>
-            <tbody className="text-sm text-theme-text">
+            <tbody className="divide-y divide-gray-200 text-gray-800">
               {invoice.items.map((item, index) => (
-                <tr key={item.id} className="border-b border-theme-border">
-                  <td className="py-4 pl-2 text-theme-text-muted">{index + 1}</td>
-                  <td className="py-4">
-                    <p className="font-medium text-theme-text">{item.name}</p>
-                    {item.description && <p className="text-theme-text-muted text-xs mt-1">{item.description}</p>}
+                <tr key={item.id} className="align-top">
+                  <td className="py-3.5 px-3 text-center text-gray-500 font-medium">{index + 1}</td>
+                  <td className="py-3.5 px-3">
+                    <p className="font-semibold text-gray-900">{item.name}</p>
+                    {item.description && <p className="text-gray-500 text-xs mt-0.5">{item.description}</p>}
                   </td>
-                  <td className="py-4 text-theme-text font-mono text-xs">{item.hsnSacCode}</td>
-                  <td className="py-4 text-right">{item.quantity.toString()} {item.unit}</td>
-                  <td className="py-4 text-right">₹{Number(item.unitPrice).toFixed(2)}</td>
-                  <td className="py-4 text-right pr-2 font-medium text-theme-text">₹{Number(item.totalAmount).toFixed(2)}</td>
+                  <td className="py-3.5 px-3 text-center font-mono text-xs text-gray-600">{item.hsnSacCode}</td>
+                  <td className="py-3.5 px-3 text-center">{item.quantity.toString()}</td>
+                  <td className="py-3.5 px-3 text-right font-medium">₹{Number(item.unitPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td className="py-3.5 px-3 text-right font-semibold text-gray-900">₹{Number(item.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* GST Summary Grouping */}
-        {gstSummaryGroups.length > 0 && (
-          <div className="p-8 border-t border-theme-border">
-            <h3 className="text-xs font-bold text-theme-text-muted uppercase tracking-wider mb-4 print:text-black">GST Summary</h3>
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-theme-border text-theme-text-muted font-medium print:text-black">
-                  <th className="pb-2">GST Rate</th>
-                  <th className="pb-2 text-right">Taxable Amt</th>
-                  {isIntraState ? (
-                    <th className="pb-2 text-right">CGST + SGST</th>
-                  ) : (
-                    <th className="pb-2 text-right">IGST</th>
-                  )}
-                  <th className="pb-2 text-right">Total Tax</th>
-                </tr>
-              </thead>
-              <tbody className="text-theme-text">
-                {gstSummaryGroups.map((group) => (
-                  <tr key={group.gstRate} className="border-b border-theme-border last:border-0">
-                    <td className="py-2">{group.gstRate}%</td>
-                    <td className="py-2 text-right">₹{group.taxableAmount.toFixed(2)}</td>
-                    {isIntraState ? (
-                      <td className="py-2 text-right">₹{(group.cgstAmount + group.sgstAmount).toFixed(2)}</td>
-                    ) : (
-                      <td className="py-2 text-right">₹{group.igstAmount.toFixed(2)}</td>
-                    )}
-                    <td className="py-2 text-right font-medium">₹{group.totalTax.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Amount In Words & Bank Details */}
-        <div className="p-8 border-t border-theme-border flex flex-col lg:flex-row justify-between items-start gap-8 bg-theme-surface-hover/50 print:bg-theme-surface">
-          <div className="flex-1 w-full text-sm space-y-6">
-            <div>
-              <h4 className="font-bold text-theme-text mb-2">Total Amount (in words)</h4>
-              <p className="font-medium text-theme-text italic">
-                {numberToWords(Number(invoice.grossAmount || invoice.netAmount))}
-              </p>
-            </div>
-
-            {/* Bank Settlement Details */}
-            <div className="border border-theme-border rounded-xl p-4 bg-white">
-              <h4 className="font-bold text-theme-text mb-2 text-xs uppercase tracking-wider">Payment Details (Bank Settlement)</h4>
-              <div className="text-xs text-theme-text space-y-1 font-mono">
-                <p><span className="font-semibold">Account Name:</span> {invoice.accountNameSnapshot || "KVJ Analytics"}</p>
-                <p><span className="font-semibold">Bank & Branch:</span> {invoice.bankNameSnapshot || "Federal Bank"} ({invoice.branchSnapshot || "Kakkanad Branch"})</p>
-                <p><span className="font-semibold">Account Number:</span> {invoice.accountNumberSnapshot || "15240200004512"}</p>
-                <p><span className="font-semibold">IFSC Code:</span> {invoice.ifscSnapshot || "FDRL0001524"}</p>
-              </div>
-            </div>
-
-            {invoice.notes && (
-              <div className="text-theme-text-muted">
-                <h4 className="font-bold text-theme-text mb-2">Terms & Conditions</h4>
-                <p className="whitespace-pre-wrap">{invoice.notes}</p>
-              </div>
-            )}
-          </div>
-          
-          <div className="w-full lg:w-80 space-y-3 text-sm">
-            <div className="flex justify-between text-theme-text-muted px-2">
-              <span>Subtotal</span>
-              <span>₹{Number(invoice.subtotal).toFixed(2)}</span>
-            </div>
-            {Number(invoice.totalDiscount) > 0 && (
-              <div className="flex justify-between text-red-600 px-2">
-                <span>Discount</span>
-                <span>-₹{Number(invoice.totalDiscount).toFixed(2)}</span>
-              </div>
-            )}
-            
-            {/* Tax Breakdown */}
-            <div className="py-3 border-y border-theme-border space-y-2">
-              <div className="flex justify-between text-theme-text-muted px-2 font-medium">
-                <span>Taxable Amount</span>
-                <span>₹{Number(invoice.taxableAmount).toFixed(2)}</span>
-              </div>
-              
-              {isIntraState ? (
-                <div className="flex justify-between text-theme-text-muted px-2 text-xs">
-                  <span>CGST + SGST</span>
-                  <span>₹{(Number(invoice.totalCGST) + Number(invoice.totalSGST)).toFixed(2)}</span>
+        {/* Totals Block (Matching Official Category Templates) */}
+        <div className="p-8 py-4 flex flex-col md:flex-row justify-end items-end">
+          <div className="w-full md:w-80 space-y-2 text-xs sm:text-sm border-t md:border-t-0 border-gray-200 pt-4 md:pt-0">
+            {/* Intra-State (Kerala CGST + SGST) vs Inter-State (IGST) vs Zero-Rated */}
+            {Number(invoice.totalGST) > 0 ? (
+              <>
+                <div className="flex justify-between text-gray-600 px-2 py-0.5">
+                  <span>Sub Total</span>
+                  <span className="font-semibold text-gray-900">₹{Number(invoice.taxableAmount || invoice.subtotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
-              ) : (
-                <div className="flex justify-between text-theme-text-muted px-2 text-xs">
-                  <span>IGST</span>
-                  <span>₹{Number(invoice.totalIGST).toFixed(2)}</span>
-                </div>
-              )}
-            </div>
+                {isIntraState ? (
+                  <>
+                    <div className="flex justify-between text-gray-600 px-2 py-0.5">
+                      <span>CGST (9%)</span>
+                      <span className="font-medium text-gray-900">₹{(Number(invoice.totalCGST)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600 px-2 py-0.5">
+                      <span>SGST (9%)</span>
+                      <span className="font-medium text-gray-900">₹{(Number(invoice.totalSGST)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex justify-between text-gray-600 px-2 py-0.5">
+                    <span>IGST (18%)</span>
+                    <span className="font-medium text-gray-900">₹{Number(invoice.totalIGST).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+              </>
+            ) : null}
 
-            <div className="flex justify-between items-center text-lg font-bold text-theme-text px-2 pt-3 border-t border-theme-border">
-              <span>Invoice Total</span>
-              <span className="text-theme-primary print:text-black">₹{Number(invoice.grossAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            <div className="flex justify-between items-center text-sm sm:text-base font-bold text-gray-900 px-2 pt-2 border-t border-gray-300">
+              <span>Total Amount</span>
+              <span className="text-gray-900">₹{Number(invoice.grossAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-8 border-t border-theme-border flex justify-between items-end">
-          <div className="text-xs text-theme-text-muted">
-            This is a computer-generated document. No signature required.
+        {/* Amount In Words & Notes */}
+        <div className="p-8 py-4 space-y-3">
+          <div>
+            <h4 className="font-bold text-gray-900 text-xs sm:text-sm mb-1">Amount in Words</h4>
+            <p className="font-medium text-gray-700 italic text-xs sm:text-sm">
+              {numberToWords(Number(invoice.grossAmount || invoice.netAmount))}
+            </p>
           </div>
-          <div className="text-center w-56">
-            <div className="border-b border-gray-400 h-10 mb-2"></div>
-            <p className="text-xs font-bold text-theme-text">For KVJ Analytics</p>
-            <p className="text-[11px] text-theme-text-muted">Authorised Signatory</p>
+
+          {/* Export / SEZ / LUT Note where GST = 0 */}
+          {Number(invoice.totalGST) === 0 && (
+            <p className="text-xs text-gray-700 font-medium pt-1">
+              Supply to SEZ for authorized operations under Letter of Undertaking without payment of Integrated Tax (IGST)
+            </p>
+          )}
+
+          {invoice.notes && (
+            <div className="pt-2 text-xs text-gray-600">
+              <h4 className="font-bold text-gray-800 mb-1">Notes / Terms:</h4>
+              <p className="whitespace-pre-wrap">{invoice.notes}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Payment Details (Bottom Left) & Authorised Signatory (Bottom Right) */}
+        <div className="p-8 pt-6 pb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-8 border-t border-gray-200">
+          <div className="space-y-1 text-xs text-gray-700">
+            <h4 className="font-bold text-gray-900 text-sm mb-2">Payment Details</h4>
+            <p><span className="text-gray-500 font-medium">Bank:</span> <strong className="text-gray-900">{invoice.bankNameSnapshot || "Federal Bank"}</strong></p>
+            <p><span className="text-gray-500 font-medium">Account Name:</span> <strong className="text-gray-900">{invoice.accountNameSnapshot || "KVJ Analytics"}</strong></p>
+            <p><span className="text-gray-500 font-medium">Current Account No:</span> <strong className="text-gray-900 font-mono">{invoice.accountNumberSnapshot || "12830200020507"}</strong></p>
+            <p><span className="text-gray-500 font-medium">IFSC:</span> <strong className="text-gray-900 font-mono">{invoice.ifscSnapshot || "FDRL0001283"}</strong></p>
+            <p><span className="text-gray-500 font-medium">PAN:</span> <strong className="text-gray-900 font-mono">BIDPK3118B</strong></p>
           </div>
+
+          <div className="text-center w-56 self-end">
+            <p className="text-xs font-bold text-gray-900 mb-12">For KVJ Analytics</p>
+            <div className="border-b border-gray-300 w-full mb-1"></div>
+            <p className="text-xs font-bold text-gray-800">Authorised Signatory</p>
+          </div>
+        </div>
+
+        {/* Footer Bar */}
+        <div className="p-4 px-8 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center text-[11px] text-gray-500 gap-2">
+          <span>info@kvjanalytics.in</span>
+          <span>This is a computer-generated invoice</span>
+          <span>www.kvjanalytics.in</span>
         </div>
       </div>
 
