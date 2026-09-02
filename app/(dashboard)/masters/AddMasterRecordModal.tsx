@@ -15,6 +15,38 @@ import {
   getAccountNaturesAction,
 } from "./actions";
 
+const DEFAULT_FINANCIAL_TYPES = [
+  { code: "EXPENSE", name: "Expense", financialStatement: "Profit & Loss", normalBalance: "Debit" },
+  { code: "INCOME", name: "Income", financialStatement: "Profit & Loss", normalBalance: "Credit" },
+  { code: "ASSET", name: "Asset", financialStatement: "Balance Sheet", normalBalance: "Debit" },
+  { code: "LIABILITY", name: "Liability", financialStatement: "Balance Sheet", normalBalance: "Credit" },
+  { code: "EQUITY", name: "Equity", financialStatement: "Balance Sheet", normalBalance: "Credit" },
+];
+
+const DEFAULT_STATEMENT_GROUPS_MAP: Record<string, string[]> = {
+  EXPENSE: [
+    "Administrative Expenses",
+    "Employee Costs",
+    "Professional & Consultancy",
+    "Selling & Marketing Expenses",
+    "Finance Costs",
+    "Depreciation & Amortisation",
+    "Other Expenses",
+  ],
+  INCOME: ["Revenue from Operations", "Other Income"],
+  ASSET: ["Fixed Assets", "Current Assets", "Cash & Cash Equivalents", "Trade Receivables", "Other Current Assets"],
+  LIABILITY: ["Current Liabilities", "Trade Payables", "Statutory Liabilities", "Other Current Liabilities", "Borrowings"],
+  EQUITY: ["Capital", "Retained Earnings", "Reserves"],
+};
+
+const DEFAULT_ACCOUNT_NATURES_MAP: Record<string, string[]> = {
+  EXPENSE: ["Operating Expense", "Finance Cost", "Depreciation", "Other Expense"],
+  INCOME: ["Operating Income", "Other Income"],
+  ASSET: ["Current Asset", "Non-Current Asset", "Fixed Asset", "Cash & Bank", "Trade Receivable", "Other Asset"],
+  LIABILITY: ["Current Liability", "Non-Current Liability", "Trade Payable", "Statutory Liability", "Borrowing", "Other Liability"],
+  EQUITY: ["Capital", "Retained Earnings", "Reserve"],
+};
+
 export function AddMasterRecordModal({
   defaultTab = "customer",
   initialData = null,
@@ -79,22 +111,16 @@ export function AddMasterRecordModal({
   const [dbNatures, setDbNatures] = useState<any[]>(initialDbNatures);
 
   useEffect(() => {
-    if (initialDbTypes.length === 0) {
-      getFinancialTypesAction().then((res) => {
-        if (res.success && res.data) setDbTypes(res.data);
-      });
-    }
-    if (initialDbGroups.length === 0) {
-      getStatementGroupsAction().then((res) => {
-        if (res.success && res.data) setDbGroups(res.data);
-      });
-    }
-    if (initialDbNatures.length === 0) {
-      getAccountNaturesAction().then((res) => {
-        if (res.success && res.data) setDbNatures(res.data);
-      });
-    }
-  }, [initialDbTypes, initialDbGroups, initialDbNatures]);
+    getFinancialTypesAction().then((res) => {
+      if (res.success && res.data && res.data.length > 0) setDbTypes(res.data);
+    });
+    getStatementGroupsAction().then((res) => {
+      if (res.success && res.data && res.data.length > 0) setDbGroups(res.data);
+    });
+    getAccountNaturesAction().then((res) => {
+      if (res.success && res.data && res.data.length > 0) setDbNatures(res.data);
+    });
+  }, []);
 
 function generateAutoCategoryCode(name: string, type: string) {
   if (!name.trim()) return "";
@@ -133,16 +159,24 @@ const [financialType, setFinancialType] = useState(initialData?.financialType ||
     (n) => (n.financialType?.code || n.financialTypeCode || "").toUpperCase() === financialType.toUpperCase()
   );
 
+  const typesToRender = dbTypes.length > 0 ? dbTypes : DEFAULT_FINANCIAL_TYPES;
+  const groupsToRender = filteredGroups.length > 0
+    ? filteredGroups.map((g) => g.name)
+    : (DEFAULT_STATEMENT_GROUPS_MAP[financialType] || ["Administrative Expenses"]);
+  const naturesToRender = filteredNatures.length > 0
+    ? filteredNatures.map((n) => n.name)
+    : (DEFAULT_ACCOUNT_NATURES_MAP[financialType] || ["Operating Expense"]);
+
   const [statementGroup, setStatementGroup] = useState(
-    initialData?.statementGroup || filteredGroups[0]?.name || "Administrative Expenses"
+    initialData?.statementGroup || groupsToRender[0] || "Administrative Expenses"
   );
   const [accountNature, setAccountNature] = useState(
-    initialData?.accountNature || filteredNatures[0]?.name || "Operating Expense"
+    initialData?.accountNature || naturesToRender[0] || "Operating Expense"
   );
   const [categoryDescription, setCategoryDescription] = useState(initialData?.description || "");
   const [categoryIsActive, setCategoryIsActive] = useState(initialData?.isActive ?? true);
 
-  const currentTypeObj = dbTypes.find((t) => t.code.toUpperCase() === financialType.toUpperCase());
+  const currentTypeObj = typesToRender.find((t) => t.code.toUpperCase() === financialType.toUpperCase());
   const derivedFinancialStatement =
     currentTypeObj?.financialStatement ||
     (financialType === "INCOME" || financialType === "EXPENSE" ? "Profit & Loss" : "Balance Sheet");
@@ -705,7 +739,7 @@ const [financialType, setFinancialType] = useState(initialData?.financialType ||
                     }}
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] font-semibold text-[#177B55]"
                   >
-                    {dbTypes.map((ft) => (
+                    {typesToRender.map((ft) => (
                       <option key={ft.id || ft.code} value={ft.code}>{ft.name}</option>
                     ))}
                   </select>
@@ -756,8 +790,8 @@ const [financialType, setFinancialType] = useState(initialData?.financialType ||
                     onChange={(e) => setStatementGroup(e.target.value)}
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                   >
-                    {filteredGroups.map((sg) => (
-                      <option key={sg.id || sg.code || sg.name} value={sg.name}>{sg.name}</option>
+                    {groupsToRender.map((sgName) => (
+                      <option key={sgName} value={sgName}>{sgName}</option>
                     ))}
                   </select>
                 </div>
@@ -770,8 +804,8 @@ const [financialType, setFinancialType] = useState(initialData?.financialType ||
                     onChange={(e) => setAccountNature(e.target.value)}
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                   >
-                    {filteredNatures.map((an) => (
-                      <option key={an.id || an.code || an.name} value={an.name}>{an.name}</option>
+                    {naturesToRender.map((anName) => (
+                      <option key={anName} value={anName}>{anName}</option>
                     ))}
                   </select>
                 </div>
