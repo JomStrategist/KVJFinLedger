@@ -195,12 +195,15 @@ const handleCreateParent = async () => {
   );
 
   const typesToRender = dbTypes.length > 0 ? dbTypes : DEFAULT_FINANCIAL_TYPES;
-  const groupsToRender = filteredGroups.length > 0
+  const rawGroupNames = filteredGroups.length > 0
     ? filteredGroups.map((g) => g.name)
     : (DEFAULT_STATEMENT_GROUPS_MAP[financialType] || ["Administrative Expenses"]);
-  const naturesToRender = filteredNatures.length > 0
+  const groupsToRender = Array.from(new Set(rawGroupNames));
+
+  const rawNatureNames = filteredNatures.length > 0
     ? filteredNatures.map((n) => n.name)
     : (DEFAULT_ACCOUNT_NATURES_MAP[financialType] || ["Operating Expense"]);
+  const naturesToRender = Array.from(new Set(rawNatureNames));
 
   const [statementGroup, setStatementGroup] = useState(
     initialData?.statementGroup || groupsToRender[0] || "Administrative Expenses"
