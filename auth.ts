@@ -13,7 +13,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        roleType: { label: "Role", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -23,8 +22,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
 
         if (!user || !user.isActive) return null;
-
-        if (credentials.roleType && user.role !== credentials.roleType) return null;
 
         const passwordsMatch = await bcrypt.compare(
           credentials.password as string,
