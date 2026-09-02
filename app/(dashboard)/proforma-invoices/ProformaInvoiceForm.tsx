@@ -1034,12 +1034,12 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
           </div>
         </div>
 
-        {/* Bottom Floating Bar (Matching Screenshot 2) */}
-        <div className="fixed bottom-0 right-0 left-0 md:left-64 p-4 bg-theme-surface/95 backdrop-blur-sm border-t border-theme-border flex justify-between items-center z-40 shadow-lg">
+        {/* Sticky Action Bar */}
+        <div className="sticky bottom-4 z-30 bg-theme-surface/95 backdrop-blur-md p-4 rounded-2xl border border-theme-border shadow-xl flex justify-between items-center flex-wrap gap-4 mt-8">
           <button
             type="button"
             onClick={() => router.back()}
-            className="px-5 py-2.5 text-sm font-semibold text-theme-text bg-theme-surface border border-theme-border rounded-xl hover:bg-theme-surface-hover transition-colors"
+            className="px-5 py-2.5 text-sm font-semibold text-theme-text bg-theme-surface border border-theme-border rounded-xl hover:bg-theme-surface-hover transition-colors shadow-sm cursor-pointer"
             disabled={isPending}
           >
             Cancel
@@ -1048,14 +1048,14 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
             <button
               type="button"
               onClick={() => setShowPreviewModal(true)}
-              className="px-5 py-2.5 text-sm font-semibold text-theme-text bg-theme-surface border border-theme-border rounded-xl hover:bg-theme-surface-hover transition-colors shadow-sm"
+              className="px-5 py-2.5 text-sm font-semibold text-theme-text bg-theme-surface border border-theme-border rounded-xl hover:bg-theme-surface-hover transition-colors shadow-sm cursor-pointer"
             >
               Preview Invoice
             </button>
             <button
               type="submit"
               disabled={isPending || items.length === 0}
-              className="px-6 py-2.5 text-sm font-semibold text-white bg-theme-primary rounded-xl hover:bg-theme-primary-dark transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50"
+              className="px-6 py-2.5 text-sm font-semibold text-white bg-theme-primary rounded-xl hover:bg-theme-primary-dark transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {isPending && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
               Save Proforma
