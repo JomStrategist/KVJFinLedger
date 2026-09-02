@@ -67,9 +67,19 @@ input[type="number"] {
     print-color-adjust: exact !important;
   }
 
+  /* Page setup for clean A4 printing */
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 6mm 8mm;
+  }
+
+  /* Prevent awkward page break splits */
+  .printable-card,
+  table,
+  tr,
+  .break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 }
 
