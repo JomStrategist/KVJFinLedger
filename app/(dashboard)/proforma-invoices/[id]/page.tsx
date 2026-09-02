@@ -7,6 +7,7 @@ import { BUSINESS_LOCATION } from "@/lib/config/business";
 import { ConvertToTaxInvoiceButton } from "./ConvertToTaxInvoiceButton";
 import { PrintButton } from "@/app/(dashboard)/invoices/[id]/PrintButton";
 import { formatDate } from "@/lib/utils/format-date";
+import { numberToWords } from "@/lib/utils/number-to-words";
 
 export default async function ProformaInvoiceDetailPage({
   params,
@@ -208,13 +209,29 @@ export default async function ProformaInvoiceDetailPage({
           </div>
         </div>
 
-        {/* Notes */}
-        {invoice.notes && (
-          <div className="p-6 sm:p-8 py-2 sm:py-4 print:p-5 print:py-2 text-xs text-gray-600">
-            <h4 className="font-bold text-gray-800 mb-0.5">Notes / Terms:</h4>
-            <p className="whitespace-pre-wrap">{invoice.notes}</p>
+        {/* Amount In Words & Notes */}
+        <div className="p-6 sm:p-8 py-2 sm:py-4 print:p-5 print:py-2 space-y-2">
+          <div>
+            <h4 className="font-bold text-gray-900 text-xs sm:text-sm mb-0.5">Amount in words:</h4>
+            <p className="font-medium text-gray-700 italic text-xs sm:text-sm">
+              {numberToWords(Number(invoice.totalAmount || invoice.grossAmount))}
+            </p>
           </div>
-        )}
+
+          {/* Export / SEZ / LUT Note where tax = 0 */}
+          {Number(invoice.totalTax || 0) === 0 && (
+            <p className="text-xs text-gray-700 font-medium pt-0.5">
+              Supply to SEZ for authorized operations under Letter of Undertaking without payment of Integrated Tax (IGST)
+            </p>
+          )}
+
+          {invoice.notes && (
+            <div className="pt-1 text-xs text-gray-600">
+              <h4 className="font-bold text-gray-800 mb-0.5">Notes / Terms:</h4>
+              <p className="whitespace-pre-wrap">{invoice.notes}</p>
+            </div>
+          )}
+        </div>
 
         {/* Payment Details (Bottom Left) & Authorised Signatory (Bottom Right) */}
         <div className="p-6 sm:p-8 pt-4 sm:pt-6 pb-6 sm:pb-8 print:p-5 print:py-3 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-8 border-t border-gray-200">

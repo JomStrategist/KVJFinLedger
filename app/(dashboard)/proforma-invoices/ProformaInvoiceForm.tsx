@@ -8,6 +8,7 @@ import { TaxEngine } from "@/lib/tax";
 import { BUSINESS_LOCATION } from "@/lib/config/business";
 import { AddMasterRecordModal } from "../masters/AddMasterRecordModal";
 import { formatDate } from "@/lib/utils/format-date";
+import { numberToWords } from "@/lib/utils/number-to-words";
 
 const GST_RATES = [0, 5, 12, 18, 28];
 
@@ -1033,6 +1034,27 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
               </div>
             </div>
           </div>
+
+          {/* Amount In Words & Notes */}
+          <div className="border-t border-gray-200 pt-4 space-y-2 text-xs sm:text-sm">
+            <div>
+              <h4 className="font-bold text-gray-900 mb-0.5">Amount in words:</h4>
+              <p className="font-medium text-gray-700 italic">
+                {numberToWords(calculationResult.netAmount)}
+              </p>
+            </div>
+            {isExport && (
+              <p className="text-xs text-gray-700 font-medium pt-0.5">
+                Supply to SEZ for authorized operations under Letter of Undertaking without payment of Integrated Tax (IGST)
+              </p>
+            )}
+            {notes && (
+              <div className="pt-1 text-xs text-gray-600">
+                <h4 className="font-bold text-gray-800 mb-0.5">Notes / Terms:</h4>
+                <p className="whitespace-pre-wrap">{notes}</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Sticky Action Bar */}
@@ -1200,6 +1222,27 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                   </span>
                 </div>
               </div>
+            </div>
+
+            {/* Amount In Words & Notes */}
+            <div className="border-t border-gray-200 pt-4 space-y-2 text-xs sm:text-sm">
+              <div>
+                <h4 className="font-bold text-gray-900 mb-0.5">Amount in words:</h4>
+                <p className="font-medium text-gray-700 italic">
+                  {numberToWords(calculationResult.netAmount)}
+                </p>
+              </div>
+              {isExport && (
+                <p className="text-xs text-gray-700 font-medium pt-0.5">
+                  Supply to SEZ for authorized operations under Letter of Undertaking without payment of Integrated Tax (IGST)
+                </p>
+              )}
+              {notes && (
+                <div className="pt-1 text-xs text-gray-600">
+                  <h4 className="font-bold text-gray-800 mb-0.5">Notes / Terms:</h4>
+                  <p className="whitespace-pre-wrap">{notes}</p>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end pt-4 border-t border-gray-200">
