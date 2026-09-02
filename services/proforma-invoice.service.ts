@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { PrismaClient, ProformaInvoiceStatus } from "@prisma/client";
 import { TaxEngine } from "@/lib/tax";
 import { BUSINESS_LOCATION } from "@/lib/config/business";
+import { generateFormattedInvoiceNumber } from "@/lib/invoice-number";
 
 
 export type CreateProformaInvoiceInput = {
@@ -39,28 +40,12 @@ export type CreateProformaInvoiceInput = {
 };
 
 export class ProformaInvoiceService {
-  private static async generateInvoiceNumber(): Promise<string> {
-    const year = new Date().getFullYear();
-    const prefix = `PI-${year}-`;
-    
-    const latestInvoice = await prisma.proformaInvoice.findFirst({
-      where: {
-        invoiceNumber: {
-          startsWith: prefix,
-        },
-      },
-      orderBy: {
-        invoiceNumber: 'desc',
-      },
-    });
-
-    if (!latestInvoice) {
-      return `${prefix}0001`;
-    }
-
-    const lastSequenceStr = latestInvoice.invoiceNumber.replace(prefix, "");
-    const nextSequence = parseInt(lastSequenceStr, 10) + 1;
-    return `${prefix}${nextSequence.toString().padStart(4, "0")}`;
+  private static async generateInvoiceNumber(options?: {
+    customerType?: string | null;
+    isPurchaseOrder?: boolean;
+    date?: Date | string;
+  }): Promise<string> {
+    return await generateFormattedInvoiceNumber(prisma, 'proformaInvoice', options);
   }
 
   static async getProformaInvoices(params?: { search?: string; status?: ProformaInvoiceStatus; customerId?: string }) {
@@ -150,7 +135,11 @@ export class ProformaInvoiceService {
   }
 
   static async createProformaInvoiceWithUnits(data: CreateProformaInvoiceInput) {
-    const invoiceNumber = await this.generateInvoiceNumber();
+    const invoiceNumber = await this.generateInvoiceNumber({
+      customerType: data.customerType,
+      isPurchaseOrder: data.isPurchaseOrder,
+      date: data.invoiceDate,
+    });
     const calculationResult = await this.processCalculations(data);
 
     return await prisma.proformaInvoice.create({

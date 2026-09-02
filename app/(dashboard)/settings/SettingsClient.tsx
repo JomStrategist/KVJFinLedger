@@ -296,7 +296,7 @@ export function SettingsClient() {
                 <input
                   type="text"
                   name="invoicePrefix"
-                  value={currentValues.invoicePrefix || "INV-2026-"}
+                  value={currentValues.invoicePrefix || "KVJ/B2B/26-27/"}
                   onChange={handleChange}
                   className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                 />
@@ -309,7 +309,7 @@ export function SettingsClient() {
                 <input
                   type="text"
                   name="proformaPrefix"
-                  value={currentValues.proformaPrefix || "PI-2026-"}
+                  value={currentValues.proformaPrefix || "KVJ/PI/26-27/"}
                   onChange={handleChange}
                   className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                 />

@@ -1,31 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { PrismaClient, Prisma, TaxInvoiceStatus } from "@prisma/client";
 import { FinancialTransactionService } from "./financial-transaction.service";
-
+import { generateFormattedInvoiceNumber } from "@/lib/invoice-number";
 
 export class TaxInvoiceService {
-  private static async generateInvoiceNumber(tx: Prisma.TransactionClient): Promise<string> {
-    const year = new Date().getFullYear();
-    const prefix = `INV-${year}-`;
-    
-    const latestInvoice = await tx.taxInvoice.findFirst({
-      where: {
-        invoiceNumber: {
-          startsWith: prefix,
-        },
-      },
-      orderBy: {
-        invoiceNumber: 'desc',
-      },
-    });
-
-    if (!latestInvoice) {
-      return `${prefix}0001`;
-    }
-
-    const lastSequenceStr = latestInvoice.invoiceNumber.replace(prefix, "");
-    const nextSequence = parseInt(lastSequenceStr, 10) + 1;
-    return `${prefix}${nextSequence.toString().padStart(4, "0")}`;
+  private static async generateInvoiceNumber(
+    tx: Prisma.TransactionClient,
+    options?: { customerType?: string | null; gstin?: string | null; date?: Date | string }
+  ): Promise<string> {
+    return await generateFormattedInvoiceNumber(tx, 'taxInvoice', options);
   }
 
   static async getTaxInvoices(params?: { search?: string; status?: TaxInvoiceStatus; customerId?: string }) {
@@ -194,7 +177,11 @@ export class TaxInvoiceService {
       : primaryBank;
 
     return await prisma.$transaction(async (tx) => {
-      const invoiceNumber = await this.generateInvoiceNumber(tx);
+      const invoiceNumber = await this.generateInvoiceNumber(tx, {
+        customerType: proforma.customer.customerType,
+        gstin: proforma.customer.gstin,
+        date: proforma.invoiceDate,
+      });
 
       const taxInvoice = await tx.taxInvoice.create({
         data: {
