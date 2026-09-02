@@ -228,12 +228,12 @@ export function SettingsClient() {
 
               <div>
                 <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
-                  PAN (10-digit Permanent Account Number) *
+                  PAN (10-digit Permanent Account Number)
                 </label>
                 <input
                   type="text"
                   name="pan"
-                  value={currentValues.pan || "ABCDE1234F"}
+                  value={currentValues.pan || ""}
                   onChange={handleChange}
                   className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white font-mono focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                 />
