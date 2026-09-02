@@ -4,11 +4,10 @@ import crypto from "crypto";
 export class BankTransferService {
   static async getBankTransfers() {
     try {
-      if ((prisma as any).bankTransfer?.findMany) {
-        const transfers = await (prisma as any).bankTransfer.findMany({
+        const transfers = await prisma.bankTransfer.findMany({
           orderBy: { date: "desc" },
         });
-        if (transfers.length > 0) return transfers;
+        return transfers;
       }
     } catch (e) {
       // Fallback to raw query
@@ -18,69 +17,9 @@ export class BankTransferService {
       const rows = await prisma.$queryRawUnsafe<any[]>(
         `SELECT "id", "date", "fromAccount", "toAccount", "amount", "reference", "description", "createdAt", "updatedAt" FROM "BankTransfer" ORDER BY "date" DESC`
       );
-
-      if (rows && rows.length > 0) {
-        return rows;
-      }
-
-      // If empty, insert sample records
-      const defaultTransfers = [
-        {
-          id: crypto.randomUUID(),
-          date: new Date("2026-08-31"),
-          fromAccount: "HDFC Current",
-          toAccount: "ICICI Current",
-          amount: 50000,
-          reference: "UTR001",
-          description: "Operating funds",
-        },
-        {
-          id: crypto.randomUUID(),
-          date: new Date("2026-08-20"),
-          fromAccount: "ICICI Current",
-          toAccount: "HDFC Current",
-          amount: 100000,
-          reference: "UTR002",
-          description: "Bank balancing",
-        },
-      ];
-
-      for (const t of defaultTransfers) {
-        await prisma.$queryRawUnsafe(
-          `INSERT INTO "BankTransfer" ("id", "date", "fromAccount", "toAccount", "amount", "reference", "description", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
-          t.id,
-          t.date,
-          t.fromAccount,
-          t.toAccount,
-          t.amount,
-          t.reference,
-          t.description
-        );
-      }
-
-      return defaultTransfers;
+      return rows || [];
     } catch (err) {
-      // Return memory fallback if table not ready
-      return [
-        {
-          id: "seed-1",
-          date: new Date("2026-08-31"),
-          fromAccount: "HDFC Current",
-          toAccount: "ICICI Current",
-          amount: 50000,
-          reference: "UTR001",
-          description: "Operating funds",
-        },
-        {
-          id: "seed-2",
-          date: new Date("2026-08-20"),
-          fromAccount: "ICICI Current",
-          toAccount: "HDFC Current",
-          amount: 100000,
-          reference: "UTR002",
-          description: "Bank balancing",
-        },
-      ];
+      return [];
     }
   }
 
