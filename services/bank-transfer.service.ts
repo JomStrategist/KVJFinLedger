@@ -4,11 +4,10 @@ import crypto from "crypto";
 export class BankTransferService {
   static async getBankTransfers() {
     try {
-        const transfers = await prisma.bankTransfer.findMany({
-          orderBy: { date: "desc" },
-        });
-        return transfers;
-      }
+      const transfers = await prisma.bankTransfer.findMany({
+        orderBy: { date: "desc" },
+      });
+      return transfers;
     } catch (e) {
       // Fallback to raw query
     }
