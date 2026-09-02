@@ -709,31 +709,31 @@ const handleCreateParent = async () => {
 
           {activeType === "category" && (
             <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                  Category Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={
-                    financialType === "INCOME"
-                      ? "e.g. Consulting Revenue"
-                      : "e.g. Printing & Designing"
-                  }
-                  value={categoryName}
-                  onChange={(e) => {
-                    const newName = e.target.value;
-                    setCategoryName(newName);
-                    if (!isCodeManuallyEdited || !categoryCode) {
-                      setCategoryCode(generateAutoCategoryCode(newName, financialType));
-                    }
-                  }}
-                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
+                    Category Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={
+                      financialType === "INCOME"
+                        ? "e.g. Consulting Revenue"
+                        : "e.g. Printing & Designing"
+                    }
+                    value={categoryName}
+                    onChange={(e) => {
+                      const newName = e.target.value;
+                      setCategoryName(newName);
+                      if (!isCodeManuallyEdited || !categoryCode) {
+                        setCategoryCode(generateAutoCategoryCode(newName, financialType));
+                      }
+                    }}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-[#68756C] mb-1">Financial Type *</label>
                   <select
@@ -760,78 +760,10 @@ const handleCreateParent = async () => {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    Parent Category
-                  </label>
-                  <select
-                    value={isCreatingParent ? "ADD_NEW_PARENT" : parentCategoryId}
-                    onChange={(e) => {
-                      if (e.target.value === "ADD_NEW_PARENT") {
-                        setIsCreatingParent(true);
-                      } else {
-                        setIsCreatingParent(false);
-                        setParentCategoryId(e.target.value);
-                      }
-                    }}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  >
-                    <option value="">None (Top-Level Category)</option>
-                    <option value="ADD_NEW_PARENT" className="font-bold text-[#177B55]">
-                      + Add New Parent Category...
-                    </option>
-                    {categoryList
-                      .filter((c) => !c.parentId && c.id !== initialData?.id && (c.financialType || "EXPENSE").toUpperCase() === financialType.toUpperCase())
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} ({c.code || "No Code"})
-                        </option>
-                      ))}
-                  </select>
-                </div>
               </div>
 
-              {isCreatingParent && (
-                <div className="p-3 bg-[#F4F7F3] border border-[#177B55]/30 rounded-xl space-y-2 text-xs">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-[#177B55]">
-                      Create & Select New Parent Category
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsCreatingParent(false);
-                        setNewParentName("");
-                        setParentError(null);
-                      }}
-                      className="text-[#68756C] hover:text-red-600 font-bold"
-                    >
-                      ✕ Cancel
-                    </button>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder={financialType === "INCOME" ? "e.g. Operating Revenue" : "e.g. Office Expenses"}
-                      value={newParentName}
-                      onChange={(e) => setNewParentName(e.target.value)}
-                      className="flex-1 h-[34px] border border-[#D9E3DC] rounded-lg px-2.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleCreateParent}
-                      disabled={isPendingParent || !newParentName.trim()}
-                      className="px-3 h-[34px] bg-[#177B55] text-white rounded-lg font-bold text-xs hover:bg-[#136646] disabled:opacity-50"
-                    >
-                      {isPendingParent ? "Adding..." : "Add & Select"}
-                    </button>
-                  </div>
-                  {parentError && <p className="text-red-600 text-[11px] font-semibold">{parentError}</p>}
-                </div>
-              )}
-
               {/* Accounting Derived Details Info Bar */}
-              <div className="p-2.5 bg-[#F4F7F3] border border-[#D9E3DC] rounded-xl flex items-center justify-between text-[11px] text-[#68756C]">
+              <div className="p-3 bg-[#F4F7F3] border border-[#D9E3DC] rounded-xl flex items-center justify-between text-xs text-[#68756C]">
                 <div>
                   <span className="font-bold">Financial Statement:</span>{" "}
                   <span className="font-semibold text-[#177B55]">{derivedFinancialStatement}</span>
@@ -841,7 +773,7 @@ const handleCreateParent = async () => {
                   <span className="font-semibold text-[#177B55]">{derivedNormalBalance}</span>
                 </div>
                 <div>
-                  <span className="font-bold">Group:</span>{" "}
+                  <span className="font-bold">Accounting Group:</span>{" "}
                   <span className="font-semibold text-[#177B55]">{statementGroup}</span>
                 </div>
               </div>
