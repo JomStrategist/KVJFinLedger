@@ -222,7 +222,7 @@ export default async function TaxInvoiceDetailPage({
         </div>
 
         {/* Payment Details (Bottom Left) & Authorised Signatory (Bottom Right) */}
-        <div className="p-6 sm:p-8 pt-4 sm:pt-6 pb-6 sm:pb-8 print:p-5 print:py-3 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-8 border-t border-gray-200">
+        <div className="p-6 sm:p-8 pt-4 sm:pt-6 pb-6 sm:pb-8 print:p-5 print:py-3 flex flex-row justify-between items-end gap-4 border-t border-gray-200">
           <div className="space-y-0.5 text-xs text-gray-700">
             <h4 className="font-bold text-gray-900 text-sm mb-1.5">Payment Details</h4>
             <p><span className="text-gray-500 font-medium">Bank:</span> <strong className="text-gray-900">{invoice.bankNameSnapshot || "Federal Bank"}</strong></p>
