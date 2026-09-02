@@ -147,7 +147,7 @@ export function MastersClient({
                   filteredCustomers.map((cust) => {
                     const isB2B = cust.customerType === "B2B";
                     const isExport = cust.customerType === "B2B_EXPORT";
-                    const formattedType = isExport ? "Export" : isB2B ? "Domestic B2B" : "B2C";
+                    const formattedType = isExport ? "Export" : isB2B ? "B2B" : "B2C";
                     const stateName = cust.state || cust.placeOfSupply || "Kerala";
 
                     return (

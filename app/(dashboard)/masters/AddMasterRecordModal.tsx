@@ -231,7 +231,7 @@ export function AddMasterRecordModal({
                     onChange={(e) => setCustomerType(e.target.value)}
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                   >
-                    <option value="B2B">Domestic B2B</option>
+                    <option value="B2B">B2B</option>
                     <option value="B2C">Domestic B2C</option>
                     <option value="B2B_EXPORT">B2B Export</option>
                   </select>

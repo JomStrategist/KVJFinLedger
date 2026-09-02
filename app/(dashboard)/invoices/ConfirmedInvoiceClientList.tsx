@@ -145,7 +145,7 @@ export function ConfirmedInvoiceClientList({
             className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[130px]"
           >
             <option value="ALL">All Types</option>
-            <option value="B2B">Domestic B2B</option>
+            <option value="B2B">B2B</option>
             <option value="B2B_EXPORT">Export</option>
             <option value="B2C">B2C</option>
           </select>
@@ -201,7 +201,7 @@ export function ConfirmedInvoiceClientList({
                   }
 
                   const customerType = invoice.customer?.customerType || "B2B";
-                  const formattedType = customerType === "B2B_EXPORT" ? "Export" : customerType === "B2B" ? "Domestic B2B" : "B2C";
+                  const formattedType = customerType === "B2B_EXPORT" ? "Export" : customerType === "B2B" ? "B2B" : "B2C";
 
                   return (
                     <tr key={invoice.id} className="hover:bg-[#F9FAF8] transition-colors">

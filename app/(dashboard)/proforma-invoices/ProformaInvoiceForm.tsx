@@ -473,7 +473,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                 onChange={(e) => setCustomerType(e.target.value)}
                 className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface"
               >
-                <option value="B2B">Domestic B2B</option>
+                <option value="B2B">B2B</option>
                 <option value="B2C">Domestic B2C</option>
                 <option value="B2B_EXPORT">B2B Export</option>
               </select>
