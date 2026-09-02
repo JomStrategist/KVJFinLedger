@@ -83,15 +83,20 @@ export function ConfirmedInvoiceClientList({
   const getStatusBadge = (status: TaxInvoiceStatus) => {
     switch (status) {
       case "PAID":
-        return <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-[#E5F3EC] text-[#0B5F46] tracking-wider">PAID</span>;
+        return <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-extrabold bg-[#E5F3EC] text-[#0B5F46] tracking-wider">PAID</span>;
       case "PARTIALLY_PAID":
-        return <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FFF3D8] text-[#B27A17] tracking-wider">PARTIALLY PAID</span>;
+        return (
+          <span className="inline-flex flex-col items-center justify-center px-2.5 py-1 rounded-lg text-[9px] font-extrabold bg-[#FFF3D8] text-[#B27A17] tracking-wider leading-tight text-center min-w-[70px]">
+            <span>PARTIALLY</span>
+            <span>PAID</span>
+          </span>
+        );
       case "CONFIRMED":
-        return <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FBEAEA] text-[#B94B4B] tracking-wider">UNPAID</span>;
+        return <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-extrabold bg-[#FBEAEA] text-[#B94B4B] tracking-wider">UNPAID</span>;
       case "CANCELLED":
-        return <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-gray-100 text-gray-700 tracking-wider">CANCELLED</span>;
+        return <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-extrabold bg-gray-100 text-gray-700 tracking-wider">CANCELLED</span>;
       default:
-        return <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-theme-surface-hover text-theme-text">{status}</span>;
+        return <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-extrabold bg-theme-surface-hover text-theme-text">{status}</span>;
     }
   };
 
