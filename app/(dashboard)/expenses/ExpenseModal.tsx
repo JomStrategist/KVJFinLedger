@@ -60,7 +60,7 @@ export function ExpenseModal({
 
   const initialItems: ExpenseItemRow[] = (expense?.items && expense.items.length > 0)
     ? expense.items.map((i: any) => ({
-        item: i.product?.name || i.description || "Expense Item",
+        item: i.description || i.product?.name || "Expense Item",
         categoryId: i.categoryId || defaultCategoryId,
         categoryName: i.category?.name || defaultCategoryName,
         hsnSac: i.hsnSacCode || "9983",
@@ -68,19 +68,33 @@ export function ExpenseModal({
         rate: Number(i.unitPrice) || Number(i.taxableAmount) || 0,
         gstRate: Number(i.gstRate) || 18,
         tdsRate: Number(i.tdsRate) || 0,
-        amount: Number(i.totalAmount) || 0,
+        amount: Number(i.totalAmount) || (Number(i.quantity) || 1) * (Number(i.unitPrice) || 0),
       }))
-    : [
+    : expense
+    ? [
         {
-          item: "Laptop",
-          categoryId: defaultCategoryId,
-          categoryName: defaultCategoryName,
-          hsnSac: "8471",
+          item: expense.notes || "Expense Item",
+          categoryId: expense.categoryId || defaultCategoryId,
+          categoryName: expense.category?.name || defaultCategoryName,
+          hsnSac: "9983",
           quantity: 1,
-          rate: 50000,
+          rate: Number(expense.taxableAmount) || Number(expense.netAmount) || 0,
           gstRate: 18,
           tdsRate: 0,
-          amount: 59000,
+          amount: Number(expense.netAmount) || 0,
+        },
+      ]
+    : [
+        {
+          item: "",
+          categoryId: defaultCategoryId,
+          categoryName: defaultCategoryName,
+          hsnSac: "",
+          quantity: 1,
+          rate: 0,
+          gstRate: 18,
+          tdsRate: 0,
+          amount: 0,
         },
       ];
 
@@ -157,8 +171,13 @@ export function ExpenseModal({
       employeeId: paidBy === "Employee" && employeeId ? employeeId : null,
       categoryId: primaryCategory?.id || categories[0]?.id,
       notes: items.map((i) => i.item).join(", "),
+      subtotal: totalTaxable,
       taxableAmount: totalTaxable,
       totalGST: totalGst,
+      totalInputGST: totalGst,
+      inputCGST: totalGst / 2,
+      inputSGST: totalGst / 2,
+      inputIGST: 0,
       cgstAmount: totalGst / 2,
       sgstAmount: totalGst / 2,
       igstAmount: 0,
@@ -377,11 +396,13 @@ export function ExpenseModal({
                             className="w-full border border-[#D9E3DC] rounded-lg px-2 py-1 text-xs bg-white font-medium text-[#17211B]"
                           >
                             <option value="">Select Category...</option>
-                            {categoryList.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.name}
-                              </option>
-                            ))}
+                            {categoryList
+                              .filter((c) => (c.financialType || "EXPENSE").toUpperCase() === "EXPENSE")
+                              .map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name}
+                                </option>
+                              ))}
                             <option value="ADD_NEW" className="font-bold text-[#177B55]">
                               + Add New Category...
                             </option>

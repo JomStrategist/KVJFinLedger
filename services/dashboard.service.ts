@@ -89,20 +89,20 @@ export class DashboardService {
     const isDbConnected = txns.length > 0 || invoices.length > 0 || expenses.length > 0 || activeProformas.length > 0;
 
     // 1. KPIs
-    let totalRevenue = 0;
-    let totalExpenses = 0;
-    let outstandingPayables = 0;
+    const recordedExpenseTotal = expenses.reduce((sum: number, exp: any) => sum + Number(exp.netAmount || 0), 0);
+    const txnExpenseTotal = txns.filter(t => t.type === "EXPENSE").reduce((sum: number, t: any) => sum + Number(t.netAmount || 0), 0);
+    const totalExpenses = recordedExpenseTotal > 0 ? recordedExpenseTotal : txnExpenseTotal;
 
-    for (const txn of txns) {
-      const net = Number(txn.netAmount);
-      if (txn.type === "REVENUE") {
-        totalRevenue += net;
-      } else if (txn.type === "EXPENSE") {
-        totalExpenses += net;
-        if (txn.paymentStatus !== "PAID") {
-          outstandingPayables += net;
-        }
-      }
+    const recordedRevenueTotal = invoices.reduce((sum: number, inv: any) => sum + Number(inv.netAmount || 0), 0);
+    const txnRevenueTotal = txns.filter(t => t.type === "REVENUE").reduce((sum: number, t: any) => sum + Number(t.netAmount || 0), 0);
+    const totalRevenue = txnRevenueTotal > 0 ? txnRevenueTotal : recordedRevenueTotal;
+
+    let outstandingPayables = 0;
+    const unpaidExpenses = expenses.filter(e => e.paymentStatus !== "PAID" && e.status !== "CANCELLED");
+    if (unpaidExpenses.length > 0) {
+      outstandingPayables = unpaidExpenses.reduce((sum, e) => sum + Number(e.netAmount || 0), 0);
+    } else {
+      outstandingPayables = txns.filter(t => t.type === "EXPENSE" && t.paymentStatus !== "PAID").reduce((sum, t) => sum + Number(t.netAmount || 0), 0);
     }
 
     // MA-008: Outstanding Receivables calculated dynamically from confirmed Tax Invoices
@@ -150,6 +150,33 @@ export class DashboardService {
         monthlyData[monthKey].expenses += Number(txn.netAmount);
       }
     }
+
+    // Integrate direct invoices if no revenue txns
+    if (txnRevenueTotal === 0) {
+      for (const inv of invoices) {
+        const date = new Date(inv.invoiceDate || inv.createdAt);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        const monthLabel = date.toLocaleString("en-US", { month: "short", year: "2-digit" });
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { month: monthLabel, revenue: 0, expenses: 0 };
+        }
+        monthlyData[monthKey].revenue += Number(inv.netAmount || 0);
+      }
+    }
+
+    // Integrate direct expenses if no expense txns
+    if (txnExpenseTotal === 0) {
+      for (const exp of expenses) {
+        const date = new Date(exp.expenseDate || exp.createdAt);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        const monthLabel = date.toLocaleString("en-US", { month: "short", year: "2-digit" });
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { month: monthLabel, revenue: 0, expenses: 0 };
+        }
+        monthlyData[monthKey].expenses += Number(exp.netAmount || 0);
+      }
+    }
+
     const trends = Object.values(monthlyData);
 
     // 3. Monthly Financial Summary Table
@@ -236,7 +263,12 @@ export class DashboardService {
 
     // 7. Live Tax Position
     const outputGST = invoices.reduce((sum: number, inv: any) => sum + Number(inv.totalGST || 0), 0);
-    const inputGST = expenses.reduce((sum: number, exp: any) => sum + Number(exp.totalInputGST || 0), 0);
+    const inputGST = expenses.reduce((sum: number, exp: any) => {
+      const parentInputGST = Number(exp.totalInputGST || 0);
+      if (parentInputGST > 0) return sum + parentInputGST;
+      const itemsGST = (exp.items || []).reduce((iSum: number, item: any) => iSum + Number(item.totalGST || 0), 0);
+      return sum + itemsGST;
+    }, 0);
     const netGST = outputGST - inputGST;
     const tdsReceivable = invoices.reduce((sum: number, inv: any) => {
       const paymentTds = (inv.payments || []).reduce((pSum: number, p: any) => pSum + Number(p.tdsAmount || 0), 0);

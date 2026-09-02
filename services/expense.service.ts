@@ -51,6 +51,12 @@ export class ExpenseService {
           vendor: true,
           category: true,
           employee: true,
+          items: {
+            include: {
+              category: true,
+              product: true,
+            }
+          }
         }
       });
     } catch (error) {
@@ -124,10 +130,10 @@ export class ExpenseService {
           discountAmount: Number(data.discountAmount || 0),
           taxableAmount: Number(data.taxableAmount ?? data.subtotal ?? 0),
 
-          inputCGST: Number(data.inputCGST || 0),
-          inputSGST: Number(data.inputSGST || 0),
-          inputIGST: Number(data.inputIGST || 0),
-          totalInputGST: Number(data.totalInputGST || 0),
+          inputCGST: Number(data.inputCGST ?? data.cgstAmount ?? 0),
+          inputSGST: Number(data.inputSGST ?? data.sgstAmount ?? 0),
+          inputIGST: Number(data.inputIGST ?? data.igstAmount ?? 0),
+          totalInputGST: Number(data.totalInputGST ?? data.totalGST ?? 0),
 
           tdsRate: Number(data.tdsRate || 0),
           tdsAmount: Number(data.tdsAmount || 0),
@@ -191,10 +197,10 @@ export class ExpenseService {
           discountAmount: Number(data.discountAmount || 0),
           taxableAmount: Number(data.taxableAmount ?? data.subtotal ?? 0),
 
-          inputCGST: Number(data.inputCGST || 0),
-          inputSGST: Number(data.inputSGST || 0),
-          inputIGST: Number(data.inputIGST || 0),
-          totalInputGST: Number(data.totalInputGST || 0),
+          inputCGST: Number(data.inputCGST ?? data.cgstAmount ?? 0),
+          inputSGST: Number(data.inputSGST ?? data.sgstAmount ?? 0),
+          inputIGST: Number(data.inputIGST ?? data.igstAmount ?? 0),
+          totalInputGST: Number(data.totalInputGST ?? data.totalGST ?? 0),
 
           tdsRate: Number(data.tdsRate || 0),
           tdsAmount: Number(data.tdsAmount || 0),
