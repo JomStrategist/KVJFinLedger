@@ -67,7 +67,7 @@ export default async function TaxInvoiceDetailPage({
       {/* Printable Invoice Container */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden print:shadow-none print:border-none print:m-0 print:p-0 text-gray-900 font-sans printable-card">
         {/* Top Header: Logo + Company Info (Left), Title & Invoice Meta (Right) */}
-        <div className="p-6 sm:p-8 pb-4 sm:pb-6 print:p-5 print:pb-3 flex flex-col md:flex-row justify-between items-start gap-6 md:gap-8">
+        <div className="p-6 sm:p-8 pb-4 sm:pb-6 print:p-5 print:pb-3 flex flex-row justify-between items-start gap-4">
           <div>
             {/* KVJ Analytics Official Logo */}
             <img src="/kvj-logo.png" alt="KVJ Analytics" className="h-12 sm:h-14 w-auto mb-3 sm:mb-4 object-contain" />
@@ -80,7 +80,7 @@ export default async function TaxInvoiceDetailPage({
             </div>
           </div>
           
-          <div className="flex flex-col items-start md:items-end text-left md:text-right">
+          <div className="flex flex-col items-end text-right">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1e3a8a] tracking-tight mb-3 sm:mb-4 uppercase">TAX INVOICE</h2>
             
             <table className="text-xs sm:text-sm">

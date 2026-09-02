@@ -900,7 +900,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
         {/* Live Invoice Preview Card */}
         <div className="bg-white border border-theme-border rounded-xl shadow-lg p-6 sm:p-8 text-black space-y-6">
           {/* Top Header: Logo + Company Info (Left), Title & Invoice Meta (Right) */}
-          <div className="pb-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start gap-8">
+          <div className="pb-4 border-b border-gray-200 flex flex-row justify-between items-start gap-4">
             <div>
               {/* KVJ Analytics Official Logo */}
               <img src="/kvj-logo.png" alt="KVJ Analytics" className="h-12 w-auto mb-3 object-contain" />
@@ -913,7 +913,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
               </div>
             </div>
             
-            <div className="flex flex-col items-start md:items-end text-left md:text-right">
+            <div className="flex flex-col items-end text-right">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1e3a8a] tracking-tight mb-3 uppercase">
                 {isPurchaseOrder ? "PURCHASE ORDER" : "PROFORMA INVOICE"}
               </h2>
