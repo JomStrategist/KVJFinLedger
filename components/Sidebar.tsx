@@ -155,16 +155,20 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
       className={`text-white min-h-screen flex flex-col transition-all duration-300 ease-in-out relative z-20 shrink-0 print:hidden ${sidebarWidth}`}
     >
       {/* Brand & Collapse Header */}
-      <div className={`flex items-center pt-5 pb-4 border-b border-white/10 ${isCollapsed ? "justify-center px-0" : "justify-between px-4"}`}>
-        {!isCollapsed && (
+      <div className={`flex items-center pt-5 pb-4 border-b border-white/10 ${isCollapsed ? "flex-col gap-3 px-2 justify-center" : "justify-between px-4"}`}>
+        {!isCollapsed ? (
           <div className="flex items-center gap-2.5 transition-opacity duration-300">
-            <div className="h-9 w-9 rounded-lg bg-white/20 flex items-center justify-center font-bold text-white shadow-inner text-base">
-              KVJ
+            <div className="h-10 w-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm shrink-0 border border-white/20">
+              <img src="/kvj-logo.png" alt="KVJ Analytics" className="h-full w-full object-contain" />
             </div>
             <div className="leading-tight">
               <div className="text-base font-bold text-white tracking-tight">KVJ Analytics</div>
               <div className="text-[11px] text-white/70 font-medium">Financial Management</div>
             </div>
+          </div>
+        ) : (
+          <div className="h-9 w-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm shrink-0 border border-white/20 mb-1">
+            <img src="/kvj-logo.png" alt="KVJ Analytics" className="h-full w-full object-contain" />
           </div>
         )}
 
