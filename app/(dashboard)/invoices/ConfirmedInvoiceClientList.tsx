@@ -291,20 +291,20 @@ export function ConfirmedInvoiceClientList({
                       </td>
 
                       {/* Action */}
-                      <td className="py-4 px-2 text-right align-middle whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="py-3 px-2 text-right align-middle whitespace-nowrap">
+                        <div className="flex flex-col items-end justify-center gap-1">
                           {invoice.status !== "PAID" && invoice.status !== "CANCELLED" && (
                             <button
                               type="button"
                               onClick={() => setSelectedInvoiceForPayment(invoice)}
-                              className="h-8 px-3 inline-flex items-center justify-center bg-white border border-[#D9E3DC] rounded-xl text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs cursor-pointer"
+                              className="px-2.5 py-0.5 border border-[#D9E3DC] rounded-lg text-[11px] font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs cursor-pointer bg-white"
                             >
                               Payment
                             </button>
                           )}
                           <Link
                             href={`/invoices/${invoice.id}`}
-                            className="h-8 px-3 inline-flex items-center justify-center bg-white border border-[#D9E3DC] rounded-xl text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
+                            className="px-2.5 py-0.5 border border-[#D9E3DC] rounded-lg text-[11px] font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs bg-white text-center min-w-[50px]"
                           >
                             View
                           </Link>
