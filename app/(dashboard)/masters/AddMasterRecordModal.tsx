@@ -3,9 +3,13 @@
 import { useState, useTransition } from "react";
 import {
   createCustomerMasterAction,
+  updateCustomerMasterAction,
   createVendorMasterAction,
+  updateVendorMasterAction,
   createProductMasterAction,
+  updateProductMasterAction,
   createCategoryMasterAction,
+  updateCategoryMasterAction,
 } from "./actions";
 
 export function AddMasterRecordModal({
@@ -74,8 +78,10 @@ export function AddMasterRecordModal({
 
     startTransition(async () => {
       let res: any;
+      const isEdit = Boolean(initialData?.id);
+
       if (activeType === "customer") {
-        res = await createCustomerMasterAction({
+        const payload = {
           legalName: customerName,
           tradeName: customerName,
           customerType,
@@ -90,9 +96,12 @@ export function AddMasterRecordModal({
           placeOfSupply: placeOfSupply || customerState,
           country: customerCountry || "India",
           isActive: true,
-        });
+        };
+        res = isEdit
+          ? await updateCustomerMasterAction(initialData.id, payload)
+          : await createCustomerMasterAction(payload);
       } else if (activeType === "vendor") {
-        res = await createVendorMasterAction({
+        const payload = {
           name: vendorName,
           vendorType,
           gstRegistrationStatus: vendorGstRegStatus,
@@ -105,9 +114,12 @@ export function AddMasterRecordModal({
           state: vendorState,
           defaultCategoryId: vendorCategory || null,
           isActive: true,
-        });
+        };
+        res = isEdit
+          ? await updateVendorMasterAction(initialData.id, payload)
+          : await createVendorMasterAction(payload);
       } else if (activeType === "product") {
-        res = await createProductMasterAction({
+        const payload = {
           name: productName,
           type: productType,
           hsnSacCode: productHsn,
@@ -116,9 +128,12 @@ export function AddMasterRecordModal({
           unit: productUnit || "Hours",
           description: productDescription,
           isActive: true,
-        });
+        };
+        res = isEdit
+          ? await updateProductMasterAction(initialData.id, payload)
+          : await createProductMasterAction(payload);
       } else if (activeType === "category") {
-        res = await createCategoryMasterAction({
+        const payload = {
           name: categoryName,
           parentId: parentCategoryId || null,
           hierarchyLevel: parentCategoryId ? 2 : 1,
@@ -126,7 +141,10 @@ export function AddMasterRecordModal({
           statementGroup,
           description: categoryDescription,
           isActive: true,
-        });
+        };
+        res = isEdit
+          ? await updateCategoryMasterAction(initialData.id, payload)
+          : await createCategoryMasterAction(payload);
       }
 
       if (res?.success) {
