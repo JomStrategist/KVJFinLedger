@@ -145,11 +145,46 @@ function generateAutoCategoryCode(name: string, type: string) {
 }
 
 // Category State
+const [categoryList, setCategoryList] = useState<any[]>(categories);
 const [categoryName, setCategoryName] = useState(initialData?.name || "");
 const [categoryCode, setCategoryCode] = useState(initialData?.code || "");
 const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(Boolean(initialData?.code));
 const [parentCategoryId, setParentCategoryId] = useState(initialData?.parentId || "");
 const [financialType, setFinancialType] = useState(initialData?.financialType || "EXPENSE");
+
+// Quick-Add Parent Category state
+const [isCreatingParent, setIsCreatingParent] = useState(false);
+const [newParentName, setNewParentName] = useState("");
+const [isPendingParent, setIsPendingParent] = useState(false);
+const [parentError, setParentError] = useState<string | null>(null);
+
+const handleCreateParent = async () => {
+  if (!newParentName.trim()) return;
+  setIsPendingParent(true);
+  setParentError(null);
+  try {
+    const res = await createCategoryMasterAction({
+      name: newParentName.trim(),
+      financialType,
+      statementGroup,
+      accountNature,
+      parentId: null,
+      isActive: true,
+    });
+    if (res.success && res.data) {
+      setCategoryList((prev) => [...prev, res.data]);
+      setParentCategoryId(res.data.id);
+      setIsCreatingParent(false);
+      setNewParentName("");
+    } else {
+      setParentError(res.error || "Failed to create parent category.");
+    }
+  } catch (err: any) {
+    setParentError(err.message || "Failed to create parent category.");
+  } finally {
+    setIsPendingParent(false);
+  }
+};
 
   // Dynamically filtered Statement Groups & Account Natures based on selected Financial Type
   const filteredGroups = dbGroups.filter(
@@ -747,17 +782,68 @@ const [financialType, setFinancialType] = useState(initialData?.financialType ||
                 <div>
                   <label className="block text-xs font-semibold text-[#68756C] mb-1">Parent Category</label>
                   <select
-                    value={parentCategoryId}
-                    onChange={(e) => setParentCategoryId(e.target.value)}
+                    value={isCreatingParent ? "ADD_NEW_PARENT" : parentCategoryId}
+                    onChange={(e) => {
+                      if (e.target.value === "ADD_NEW_PARENT") {
+                        setIsCreatingParent(true);
+                      } else {
+                        setIsCreatingParent(false);
+                        setParentCategoryId(e.target.value);
+                      }
+                    }}
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                   >
                     <option value="">None (Top-Level Category)</option>
-                    {categories.filter((c) => !c.parentId && c.id !== initialData?.id && (c.financialType || "EXPENSE").toUpperCase() === financialType.toUpperCase()).map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
+                    <option value="ADD_NEW_PARENT" className="font-bold text-[#177B55]">
+                      + Add New Parent Category...
+                    </option>
+                    {categoryList
+                      .filter((c) => !c.parentId && c.id !== initialData?.id && (c.financialType || "EXPENSE").toUpperCase() === financialType.toUpperCase())
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.code || "No Code"})
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>
+
+              {isCreatingParent && (
+                <div className="p-3 bg-[#F4F7F3] border border-[#177B55]/30 rounded-xl space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-[#177B55]">Create & Select New Parent Category</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreatingParent(false);
+                        setNewParentName("");
+                        setParentError(null);
+                      }}
+                      className="text-[#68756C] hover:text-red-600 font-bold"
+                    >
+                      ✕ Cancel
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. Office Expenses"
+                      value={newParentName}
+                      onChange={(e) => setNewParentName(e.target.value)}
+                      className="flex-1 h-[34px] border border-[#D9E3DC] rounded-lg px-2.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreateParent}
+                      disabled={isPendingParent || !newParentName.trim()}
+                      className="px-3 h-[34px] bg-[#177B55] text-white rounded-lg font-bold text-xs hover:bg-[#136646] disabled:opacity-50"
+                    >
+                      {isPendingParent ? "Adding..." : "Add & Select"}
+                    </button>
+                  </div>
+                  {parentError && <p className="text-red-600 text-[11px] font-semibold">{parentError}</p>}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
