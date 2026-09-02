@@ -4,8 +4,12 @@ function getDatabaseUrl(): string {
   const rawUrl = process.env.DATABASE_URL || '';
   if (!rawUrl) return '';
 
-  // If MongoDB URL, return directly as configured in .env
+  // If MongoDB URL, configure timeout parameters
   if (rawUrl.startsWith('mongodb://') || rawUrl.startsWith('mongodb+srv://')) {
+    if (!rawUrl.includes('serverSelectionTimeoutMS')) {
+      const separator = rawUrl.includes('?') ? '&' : '?';
+      return `${rawUrl}${separator}connectTimeoutMS=10000&serverSelectionTimeoutMS=5000`;
+    }
     return rawUrl;
   }
 

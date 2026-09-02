@@ -53,24 +53,33 @@ export class DashboardService {
       ...this.getSourceDateWhereClause("invoiceDate", filters)
     };
 
-    const [txns, invoices, expenses, activeProformas] = await Promise.all([
-      prisma.financialTransaction.findMany({
-        where: txnWhere,
-        orderBy: { transactionDate: "asc" }
-      }),
-      prisma.taxInvoice.findMany({
-        where: invoiceWhere,
-        include: { customer: true, payments: true }
-      }),
-      prisma.expense.findMany({
-        where: expenseWhere,
-        include: { category: true, vendor: true },
-        orderBy: { netAmount: "desc" }
-      }),
-      prisma.proformaInvoice.findMany({
-        where: proformaWhere,
-      })
-    ]);
+    let txns: any[] = [];
+    let invoices: any[] = [];
+    let expenses: any[] = [];
+    let activeProformas: any[] = [];
+
+    try {
+      [txns, invoices, expenses, activeProformas] = await Promise.all([
+        prisma.financialTransaction.findMany({
+          where: txnWhere,
+          orderBy: { transactionDate: "asc" }
+        }),
+        prisma.taxInvoice.findMany({
+          where: invoiceWhere,
+          include: { customer: true, payments: true }
+        }),
+        prisma.expense.findMany({
+          where: expenseWhere,
+          include: { category: true, vendor: true },
+          orderBy: { netAmount: "desc" }
+        }),
+        prisma.proformaInvoice.findMany({
+          where: proformaWhere,
+        })
+      ]);
+    } catch (error) {
+      console.error("Dashboard database fetch error:", error);
+    }
 
     // 1. KPIs
     let totalRevenue = 0;
