@@ -33,11 +33,11 @@ export const RevenueVsExpenseChart = React.memo(function RevenueVsExpenseChart({
   }, [data]);
 
   return (
-    <div className="h-80 w-full pt-4">
+    <div className="flex-1 w-full min-h-[340px] pt-3">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={finalData}
-          margin={{ top: 15, right: 10, left: -15, bottom: 10 }}
+          margin={{ top: 20, right: 10, left: -15, bottom: 5 }}
           barGap={4}
         >
           <defs>

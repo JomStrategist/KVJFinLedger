@@ -228,7 +228,7 @@ export default async function DashboardPage({
       {/* Row 3: Monthly Revenue vs Expense + Tax Position */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Monthly Chart */}
-        <div className="lg:col-span-7 bg-white p-6 rounded-2xl border border-theme-border shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-7 bg-white p-6 rounded-2xl border border-theme-border shadow-xs flex flex-col">
           <div className="flex items-center justify-between border-b border-theme-border pb-3">
             <div>
               <h2 className="text-base font-bold text-theme-text">Monthly Revenue vs Expense</h2>
