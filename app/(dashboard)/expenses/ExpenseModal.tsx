@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createExpenseAction, updateExpenseAction } from "./actions";
+import { AddMasterRecordModal } from "../masters/AddMasterRecordModal";
 
 interface ExpenseItemRow {
   item: string;
@@ -34,6 +35,10 @@ export function ExpenseModal({
   const [error, setError] = useState<string | null>(null);
 
   const isEdit = Boolean(expense?.id);
+
+  // Vendor list state & Add Vendor modal state
+  const [vendorList, setVendorList] = useState(vendors);
+  const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
 
   // Section 1: Expense Details
   const [date, setDate] = useState(
@@ -243,16 +248,32 @@ export function ExpenseModal({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    Vendor *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-[#68756C]">
+                      Vendor *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddVendorOpen(true)}
+                      className="text-[11px] font-bold text-[#177B55] hover:underline cursor-pointer"
+                    >
+                      + Add Vendor
+                    </button>
+                  </div>
                   <select
                     value={vendorId}
-                    onChange={(e) => setVendorId(e.target.value)}
+                    onChange={(e) => {
+                      if (e.target.value === "ADD_NEW") {
+                        setIsAddVendorOpen(true);
+                      } else {
+                        setVendorId(e.target.value);
+                      }
+                    }}
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                   >
                     <option value="">— Select Vendor —</option>
-                    {vendors.map((v) => (
+                    <option value="ADD_NEW" className="font-bold text-[#177B55]">+ Add New Vendor...</option>
+                    {vendorList.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.name}
                       </option>
@@ -511,6 +532,20 @@ export function ExpenseModal({
           </button>
         </div>
       </div>
+
+      {isAddVendorOpen && (
+        <AddMasterRecordModal
+          defaultTab="vendor"
+          onClose={() => setIsAddVendorOpen(false)}
+          onSuccess={(newVendor) => {
+            if (newVendor) {
+              setVendorList((prev) => [...prev, newVendor]);
+              setVendorId(newVendor.id);
+            }
+            setIsAddVendorOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
