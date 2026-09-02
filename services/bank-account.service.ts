@@ -14,34 +14,49 @@ export type UpdateBankAccountInput = Partial<CreateBankAccountInput>;
 
 export class BankAccountService {
   static async getBankAccounts() {
-    return await prisma.bankAccount.findMany({
-      orderBy: [
-        { isPrimary: "desc" },
-        { createdAt: "asc" },
-      ],
-    });
+    try {
+      return await prisma.bankAccount.findMany({
+        orderBy: [
+          { isPrimary: "desc" },
+          { createdAt: "asc" },
+        ],
+      });
+    } catch (error) {
+      console.warn("BankAccountService.getBankAccounts error:", error);
+      return [];
+    }
   }
 
   static async getActiveBankAccounts() {
-    return await prisma.bankAccount.findMany({
-      where: { isActive: true },
-      orderBy: [
-        { isPrimary: "desc" },
-        { createdAt: "asc" },
-      ],
-    });
+    try {
+      return await prisma.bankAccount.findMany({
+        where: { isActive: true },
+        orderBy: [
+          { isPrimary: "desc" },
+          { createdAt: "asc" },
+        ],
+      });
+    } catch (error) {
+      console.warn("BankAccountService.getActiveBankAccounts error:", error);
+      return [];
+    }
   }
 
   static async getPrimaryBankAccount() {
-    const primary = await prisma.bankAccount.findFirst({
-      where: { isPrimary: true, isActive: true },
-    });
-    if (primary) return primary;
-    // Fallback to first active account if no explicit primary
-    return await prisma.bankAccount.findFirst({
-      where: { isActive: true },
-      orderBy: { createdAt: "asc" },
-    });
+    try {
+      const primary = await prisma.bankAccount.findFirst({
+        where: { isPrimary: true, isActive: true },
+      });
+      if (primary) return primary;
+      // Fallback to first active account if no explicit primary
+      return await prisma.bankAccount.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: "asc" },
+      });
+    } catch (error) {
+      console.warn("BankAccountService.getPrimaryBankAccount error:", error);
+      return null;
+    }
   }
 
   static async createBankAccount(data: CreateBankAccountInput) {

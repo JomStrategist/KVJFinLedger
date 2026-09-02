@@ -46,13 +46,14 @@ export class UserService {
           orderBy: { createdAt: "desc" },
         });
       }
+    try {
+      return await prisma.user.findMany({
+        orderBy: { createdAt: "desc" },
+      });
     } catch (e) {
-      // Fallback
+      console.warn("UserService.getUsers error:", e);
+      return [];
     }
-
-    return await prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-    });
   }
 
   /**

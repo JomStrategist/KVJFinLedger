@@ -68,27 +68,37 @@ export class ProformaInvoiceService {
       ];
     }
 
-    return await prisma.proformaInvoice.findMany({
-      where,
-      include: {
-        customer: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    try {
+      return await prisma.proformaInvoice.findMany({
+        where,
+        include: {
+          customer: true,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+    } catch (error) {
+      console.error("ProformaInvoiceService.getProformaInvoices error:", error);
+      return [];
+    }
   }
 
   static async getProformaInvoiceById(id: string) {
-    return await prisma.proformaInvoice.findUnique({
-      where: { id },
-      include: {
-        customer: true,
-        items: {
-          include: {
-            product: true,
-          }
+    try {
+      return await prisma.proformaInvoice.findUnique({
+        where: { id },
+        include: {
+          customer: true,
+          items: {
+            include: {
+              product: true,
+            }
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      console.error("ProformaInvoiceService.getProformaInvoiceById error:", error);
+      return null;
+    }
   }
 
   private static async processCalculations(data: CreateProformaInvoiceInput) {

@@ -50,16 +50,21 @@ export class TaxInvoiceService {
   }
 
   static async getTaxInvoiceById(id: string) {
-    return await prisma.taxInvoice.findUnique({
-      where: { id },
-      include: {
-        items: true,
-        customer: true,
-        payments: {
-          orderBy: { paymentDate: "asc" }
-        }
-      },
-    });
+    try {
+      return await prisma.taxInvoice.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          customer: true,
+          payments: {
+            orderBy: { paymentDate: "asc" }
+          }
+        },
+      });
+    } catch (error) {
+      console.warn("TaxInvoiceService.getTaxInvoiceById DB fetch error:", error);
+      return null;
+    }
   }
 
   static async recordPayment(
@@ -130,15 +135,26 @@ export class TaxInvoiceService {
   }
 
   static async getDashboardMetrics() {
-    const invoices = await prisma.taxInvoice.findMany();
-    
-    return {
-      totalCount: invoices.length,
-      confirmedCount: invoices.filter(i => i.status === "CONFIRMED").length,
-      paidCount: invoices.filter(i => i.status === "PAID").length,
-      cancelledCount: invoices.filter(i => i.status === "CANCELLED").length,
-      totalValue: invoices.reduce((sum, inv) => sum + Number(inv.netAmount), 0),
-    };
+    try {
+      const invoices = await prisma.taxInvoice.findMany();
+      
+      return {
+        totalCount: invoices.length,
+        confirmedCount: invoices.filter(i => i.status === "CONFIRMED").length,
+        paidCount: invoices.filter(i => i.status === "PAID").length,
+        cancelledCount: invoices.filter(i => i.status === "CANCELLED").length,
+        totalValue: invoices.reduce((sum, inv) => sum + Number(inv.netAmount), 0),
+      };
+    } catch (error) {
+      console.warn("TaxInvoiceService.getDashboardMetrics DB fetch error:", error);
+      return {
+        totalCount: 0,
+        confirmedCount: 0,
+        paidCount: 0,
+        cancelledCount: 0,
+        totalValue: 0,
+      };
+    }
   }
 
   static async convertProformaToTaxInvoice(proformaId: string) {

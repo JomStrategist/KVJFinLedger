@@ -60,32 +60,48 @@ export class ExpenseService {
   }
 
   static async getExpenseById(id: string) {
-    return await prisma.expense.findUnique({
-      where: { id },
-      include: {
-        items: {
-          include: {
-            category: true,
-            vendor: true,
-          }
+    try {
+      return await prisma.expense.findUnique({
+        where: { id },
+        include: {
+          items: {
+            include: {
+              category: true,
+              vendor: true,
+            }
+          },
+          vendor: true,
+          category: true,
+          employee: true,
         },
-        vendor: true,
-        category: true,
-        employee: true,
-      },
-    });
+      });
+    } catch (error) {
+      console.warn("ExpenseService.getExpenseById DB fetch error:", error);
+      return null;
+    }
   }
 
   static async getDashboardMetrics() {
-    const expenses = await prisma.expense.findMany();
-    
-    return {
-      totalCount: expenses.length,
-      approvedCount: expenses.filter(e => e.status === "APPROVED").length,
-      draftCount: expenses.filter(e => e.status === "DRAFT").length,
-      unpaidCount: expenses.filter(e => e.paymentStatus === "UNPAID" && e.status !== "CANCELLED").length,
-      totalValue: expenses.filter(e => e.status !== "CANCELLED").reduce((sum, exp) => sum + Number(exp.netAmount), 0),
-    };
+    try {
+      const expenses = await prisma.expense.findMany();
+      
+      return {
+        totalCount: expenses.length,
+        approvedCount: expenses.filter(e => e.status === "APPROVED").length,
+        draftCount: expenses.filter(e => e.status === "DRAFT").length,
+        unpaidCount: expenses.filter(e => e.paymentStatus === "UNPAID" && e.status !== "CANCELLED").length,
+        totalValue: expenses.filter(e => e.status !== "CANCELLED").reduce((sum, exp) => sum + Number(exp.netAmount), 0),
+      };
+    } catch (error) {
+      console.warn("ExpenseService.getDashboardMetrics DB fetch error:", error);
+      return {
+        totalCount: 0,
+        approvedCount: 0,
+        draftCount: 0,
+        unpaidCount: 0,
+        totalValue: 0,
+      };
+    }
   }
 
   static async createExpense(data: any) {

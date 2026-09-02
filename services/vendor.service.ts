@@ -37,25 +37,35 @@ export class VendorService {
       ];
     }
 
-    return await prisma.vendor.findMany({
-      where,
-      orderBy: { name: "asc" },
-      include: {
-        defaultCategory: true,
-        _count: {
-          select: { expenses: true }
+    try {
+      return await prisma.vendor.findMany({
+        where,
+        orderBy: { name: "asc" },
+        include: {
+          defaultCategory: true,
+          _count: {
+            select: { expenses: true }
+          }
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.warn("VendorService.getVendors error:", error);
+      return [];
+    }
   }
 
   static async getVendorById(id: string) {
-    return await prisma.vendor.findUnique({
-      where: { id },
-      include: {
-        defaultCategory: true
-      }
-    });
+    try {
+      return await prisma.vendor.findUnique({
+        where: { id },
+        include: {
+          defaultCategory: true
+        }
+      });
+    } catch (error) {
+      console.warn("VendorService.getVendorById error:", error);
+      return null;
+    }
   }
 
   static async createVendor(data: CreateVendorInput) {

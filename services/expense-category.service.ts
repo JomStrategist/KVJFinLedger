@@ -23,27 +23,37 @@ export class ExpenseCategoryService {
       where.name = { contains: search, mode: "insensitive" };
     }
 
-    return await prisma.expenseCategory.findMany({
-      where,
-      orderBy: { name: "asc" },
-      include: {
-        parent: true,
-        children: true,
-        _count: {
-          select: { expenses: true }
+    try {
+      return await prisma.expenseCategory.findMany({
+        where,
+        orderBy: { name: "asc" },
+        include: {
+          parent: true,
+          children: true,
+          _count: {
+            select: { expenses: true }
+          }
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.warn("ExpenseCategoryService.getExpenseCategories error:", error);
+      return [];
+    }
   }
 
   static async getExpenseCategoryById(id: string) {
-    return await prisma.expenseCategory.findUnique({
-      where: { id },
-      include: {
-        parent: true,
-        children: true
-      }
-    });
+    try {
+      return await prisma.expenseCategory.findUnique({
+        where: { id },
+        include: {
+          parent: true,
+          children: true
+        }
+      });
+    } catch (error) {
+      console.warn("ExpenseCategoryService.getExpenseCategoryById error:", error);
+      return null;
+    }
   }
 
   static async createExpenseCategory(data: CreateCategoryInput) {

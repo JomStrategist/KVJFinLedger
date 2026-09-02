@@ -44,19 +44,29 @@ export class ProductService {
       ];
     }
 
-    return await prisma.product.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-    });
+    try {
+      return await prisma.product.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+      });
+    } catch (error) {
+      console.error("ProductService.getProducts error:", error);
+      return [];
+    }
   }
 
   /**
    * Fetch a single product by ID
    */
   static async getProductById(id: string) {
-    return await prisma.product.findUnique({
-      where: { id },
-    });
+    try {
+      return await prisma.product.findUnique({
+        where: { id },
+      });
+    } catch (error) {
+      console.error("ProductService.getProductById error:", error);
+      return null;
+    }
   }
 
   /**

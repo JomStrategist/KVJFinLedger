@@ -51,19 +51,29 @@ export class CustomerService {
       ];
     }
 
-    return await prisma.customer.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-    });
+    try {
+      return await prisma.customer.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+      });
+    } catch (error) {
+      console.error("CustomerService.getCustomers error:", error);
+      return [];
+    }
   }
 
   /**
    * Fetch a single customer by ID
    */
   static async getCustomerById(id: string) {
-    return await prisma.customer.findUnique({
-      where: { id },
-    });
+    try {
+      return await prisma.customer.findUnique({
+        where: { id },
+      });
+    } catch (error) {
+      console.error("CustomerService.getCustomerById error:", error);
+      return null;
+    }
   }
 
   /**
