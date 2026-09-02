@@ -30,8 +30,8 @@ export function getInvoiceTypeCode(params?: {
   if (params?.isPurchaseOrder) {
     return 'PO';
   }
-  const type = params?.customerType?.toUpperCase();
-  if (type === 'B2C') {
+  const type = (params?.customerType || '').toUpperCase();
+  if (type.includes('B2C')) {
     return 'B2C';
   }
   // Export, B2B inside Kerala, and B2B outside Kerala all use 'B2B'
