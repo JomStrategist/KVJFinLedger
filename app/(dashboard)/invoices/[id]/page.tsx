@@ -65,9 +65,11 @@ export default async function TaxInvoiceDetailPage({
       )}
 
       {/* Printable Invoice Container */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden print:shadow-none print:border-none print:m-0 print:p-0 text-gray-900 font-sans printable-card">
-        {/* Top Header: Logo + Company Info (Left), Title & Invoice Meta (Right) */}
-        <div className="p-6 sm:p-8 pb-4 sm:pb-6 print:p-5 print:pb-3 flex flex-row justify-between items-start gap-4">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden print:shadow-none print:border-none print:m-0 print:p-0 text-gray-900 font-sans printable-card flex flex-col justify-between min-h-[780px] print:min-h-[275mm]">
+        {/* Main Document Body */}
+        <div>
+          {/* Top Header: Logo + Company Info (Left), Title & Invoice Meta (Right) */}
+          <div className="p-6 sm:p-8 pb-4 sm:pb-6 print:p-5 print:pb-3 flex flex-row justify-between items-start gap-4">
           <div>
             {/* KVJ Analytics Official Logo */}
             <img src="/kvj-logo.png" alt="KVJ Analytics" className="h-12 sm:h-14 w-auto mb-3 sm:mb-4 object-contain" />
@@ -220,9 +222,12 @@ export default async function TaxInvoiceDetailPage({
             </div>
           )}
         </div>
+        </div>
 
-        {/* Payment Details (Bottom Left) & Authorised Signatory (Bottom Right) */}
-        <div className="p-6 sm:p-8 pt-4 sm:pt-6 pb-6 sm:pb-8 print:p-5 print:py-3 flex flex-row justify-between items-end gap-4 border-t border-gray-200">
+        {/* Bottom Anchored Footer Section (Payment Details + Signatory + Footer Bar) */}
+        <div>
+          {/* Payment Details (Bottom Left) & Authorised Signatory (Bottom Right) */}
+          <div className="p-6 sm:p-8 pt-4 sm:pt-6 pb-6 sm:pb-8 print:p-5 print:py-3 flex flex-row justify-between items-end gap-4 border-t border-gray-200">
           <div className="space-y-0.5 text-xs text-gray-700">
             <h4 className="font-bold text-gray-900 text-sm mb-1.5">Payment Details</h4>
             <p><span className="text-gray-500 font-medium">Bank:</span> <strong className="text-gray-900">{invoice.bankNameSnapshot || "Federal Bank"}</strong></p>
@@ -245,6 +250,7 @@ export default async function TaxInvoiceDetailPage({
           <span>This is a computer-generated invoice</span>
           <span>www.kvjanalytics.in</span>
         </div>
+      </div>
       </div>
 
       {/* Internal Payment Settlement & Tracking History (Hidden in Print) */}

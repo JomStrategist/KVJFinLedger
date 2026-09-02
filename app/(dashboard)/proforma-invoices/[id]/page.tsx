@@ -76,8 +76,10 @@ export default async function ProformaInvoiceDetailPage({
           )}
         </div>
       </div>      {/* Printable Invoice Container */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden print:shadow-none print:border-none print:m-0 print:p-0 text-gray-900 font-sans printable-card">
-        {/* Top Header: Logo + Company Info (Left), Title & Invoice Meta (Right) */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden print:shadow-none print:border-none print:m-0 print:p-0 text-gray-900 font-sans printable-card flex flex-col justify-between min-h-[780px] print:min-h-[275mm]">
+        {/* Main Document Body */}
+        <div>
+          {/* Top Header: Logo + Company Info (Left), Title & Invoice Meta (Right) */}
         <div className="p-6 sm:p-8 pb-4 sm:pb-6 print:p-5 print:pb-3 flex flex-row justify-between items-start gap-4">
           <div>
             {/* KVJ Analytics Official Logo */}
@@ -232,30 +234,34 @@ export default async function ProformaInvoiceDetailPage({
             </div>
           )}
         </div>
-
-        {/* Payment Details (Bottom Left) & Authorised Signatory (Bottom Right) */}
-        <div className="p-6 sm:p-8 pt-4 sm:pt-6 pb-6 sm:pb-8 print:p-5 print:py-3 flex flex-row justify-between items-end gap-4 border-t border-gray-200">
-          <div className="space-y-0.5 text-xs text-gray-700">
-            <h4 className="font-bold text-gray-900 text-sm mb-1.5">Payment Details</h4>
-            <p><span className="text-gray-500 font-medium">Bank:</span> <strong className="text-gray-900">{invoice.bankNameSnapshot || "Federal Bank"}</strong></p>
-            <p><span className="text-gray-500 font-medium">Account Name:</span> <strong className="text-gray-900">{invoice.accountNameSnapshot || "KVJ Analytics"}</strong></p>
-            <p><span className="text-gray-500 font-medium">Current Account No:</span> <strong className="text-gray-900 font-mono">{invoice.accountNumberSnapshot || "12830200020507"}</strong></p>
-            <p><span className="text-gray-500 font-medium">IFSC:</span> <strong className="text-gray-900 font-mono">{invoice.ifscSnapshot || "FDRL0001283"}</strong></p>
-            <p><span className="text-gray-500 font-medium">PAN:</span> <strong className="text-gray-900 font-mono">BIDPK3118B</strong></p>
-          </div>
-
-          <div className="text-center w-56 self-end">
-            <p className="text-xs font-bold text-gray-900 mb-8 sm:mb-12 print:mb-6">For KVJ Analytics</p>
-            <div className="border-b border-gray-300 w-full mb-1"></div>
-            <p className="text-xs font-bold text-gray-800">Authorised Signatory</p>
-          </div>
         </div>
 
-        {/* Footer Bar */}
-        <div className="p-3 sm:p-4 px-6 sm:px-8 print:px-5 print:py-2 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center text-[11px] text-gray-500 gap-2">
-          <span>info@kvjanalytics.in</span>
-          <span>This is a computer-generated invoice</span>
-          <span>www.kvjanalytics.in</span>
+        {/* Bottom Anchored Footer Section (Payment Details + Signatory + Footer Bar) */}
+        <div>
+          {/* Payment Details (Bottom Left) & Authorised Signatory (Bottom Right) */}
+          <div className="p-6 sm:p-8 pt-4 sm:pt-6 pb-6 sm:pb-8 print:p-5 print:py-3 flex flex-row justify-between items-end gap-4 border-t border-gray-200">
+            <div className="space-y-0.5 text-xs text-gray-700">
+              <h4 className="font-bold text-gray-900 text-sm mb-1.5">Payment Details</h4>
+              <p><span className="text-gray-500 font-medium">Bank:</span> <strong className="text-gray-900">{invoice.bankNameSnapshot || "Federal Bank"}</strong></p>
+              <p><span className="text-gray-500 font-medium">Account Name:</span> <strong className="text-gray-900">{invoice.accountNameSnapshot || "KVJ Analytics"}</strong></p>
+              <p><span className="text-gray-500 font-medium">Current Account No:</span> <strong className="text-gray-900 font-mono">{invoice.accountNumberSnapshot || "12830200020507"}</strong></p>
+              <p><span className="text-gray-500 font-medium">IFSC:</span> <strong className="text-gray-900 font-mono">{invoice.ifscSnapshot || "FDRL0001283"}</strong></p>
+              <p><span className="text-gray-500 font-medium">PAN:</span> <strong className="text-gray-900 font-mono">BIDPK3118B</strong></p>
+            </div>
+
+            <div className="text-center w-56 self-end">
+              <p className="text-xs font-bold text-gray-900 mb-8 sm:mb-12 print:mb-6">For KVJ Analytics</p>
+              <div className="border-b border-gray-300 w-full mb-1"></div>
+              <p className="text-xs font-bold text-gray-800">Authorised Signatory</p>
+            </div>
+          </div>
+
+          {/* Footer Bar */}
+          <div className="p-3 sm:p-4 px-6 sm:px-8 print:px-5 print:py-2 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center text-[11px] text-gray-500 gap-2">
+            <span>info@kvjanalytics.in</span>
+            <span>This is a computer-generated invoice</span>
+            <span>www.kvjanalytics.in</span>
+          </div>
         </div>
       </div>
     </div>
