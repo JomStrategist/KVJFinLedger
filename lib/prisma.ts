@@ -28,15 +28,19 @@ function getDatabaseUrl(): string {
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
+const existingClient = globalForPrisma.prisma;
+const isStaleClient = existingClient && !(existingClient as any).financialType;
+
 export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    datasources: {
-      db: {
-        url: getDatabaseUrl(),
-      },
-    },
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-  });
+  (existingClient && !isStaleClient)
+    ? existingClient
+    : new PrismaClient({
+        datasources: {
+          db: {
+            url: getDatabaseUrl(),
+          },
+        },
+        log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+      });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
