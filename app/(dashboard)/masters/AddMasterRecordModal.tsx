@@ -12,6 +12,44 @@ import {
   updateCategoryMasterAction,
 } from "./actions";
 
+const STATEMENT_GROUPS_MAP: Record<string, string[]> = {
+  INCOME: ["Revenue from Operations", "Other Income"],
+  EXPENSE: [
+    "Revenue from Operations",
+    "Other Income",
+    "Employee Costs",
+    "Professional & Consultancy",
+    "Administrative Expenses",
+    "Selling & Marketing Expenses",
+    "Finance Costs",
+    "Depreciation & Amortisation",
+    "Other Expenses",
+  ],
+  ASSET: [
+    "Fixed Assets",
+    "Current Assets",
+    "Cash & Cash Equivalents",
+    "Trade Receivables",
+    "Other Current Assets",
+  ],
+  LIABILITY: [
+    "Current Liabilities",
+    "Trade Payables",
+    "Statutory Liabilities",
+    "Other Current Liabilities",
+    "Borrowings",
+  ],
+  EQUITY: ["Capital", "Retained Earnings", "Reserves"],
+};
+
+const ACCOUNT_NATURES_MAP: Record<string, string[]> = {
+  INCOME: ["Operating Income", "Other Income"],
+  EXPENSE: ["Operating Expense", "Finance Cost", "Depreciation", "Other Expense"],
+  ASSET: ["Current Asset", "Non-Current Asset", "Fixed Asset", "Cash & Bank", "Trade Receivable", "Other Asset"],
+  LIABILITY: ["Current Liability", "Non-Current Liability", "Trade Payable", "Statutory Liability", "Borrowing", "Other Liability"],
+  EQUITY: ["Capital", "Retained Earnings", "Reserve"],
+};
+
 export function AddMasterRecordModal({
   defaultTab = "customer",
   initialData = null,
@@ -66,10 +104,16 @@ export function AddMasterRecordModal({
 
   // Category State
   const [categoryName, setCategoryName] = useState(initialData?.name || "");
+  const [categoryCode, setCategoryCode] = useState(initialData?.code || "");
   const [parentCategoryId, setParentCategoryId] = useState(initialData?.parentId || "");
   const [financialType, setFinancialType] = useState(initialData?.financialType || "EXPENSE");
-  const [statementGroup, setStatementGroup] = useState(initialData?.statementGroup || "P&L — Operating Expense");
+  const [statementGroup, setStatementGroup] = useState(initialData?.statementGroup || "Administrative Expenses");
+  const [accountNature, setAccountNature] = useState(initialData?.accountNature || "Operating Expense");
   const [categoryDescription, setCategoryDescription] = useState(initialData?.description || "");
+  const [categoryIsActive, setCategoryIsActive] = useState(initialData?.isActive ?? true);
+
+  const derivedFinancialStatement = financialType === "INCOME" || financialType === "EXPENSE" ? "Profit & Loss" : "Balance Sheet";
+  const derivedNormalBalance = financialType === "ASSET" || financialType === "EXPENSE" ? "Debit" : "Credit";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,12 +177,16 @@ export function AddMasterRecordModal({
       } else if (activeType === "category") {
         const payload = {
           name: categoryName,
+          code: categoryCode || undefined,
           parentId: parentCategoryId || null,
           hierarchyLevel: parentCategoryId ? 2 : 1,
           financialType,
+          financialStatement: derivedFinancialStatement,
           statementGroup,
+          accountNature,
+          normalBalance: derivedNormalBalance,
           description: categoryDescription,
-          isActive: true,
+          isActive: categoryIsActive,
         };
         res = isEdit
           ? await updateCategoryMasterAction(initialData.id, payload)
@@ -554,40 +602,49 @@ export function AddMasterRecordModal({
 
           {activeType === "category" && (
             <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                  Category Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Software Subscriptions"
-                  value={categoryName}
-                  onChange={(e) => setCategoryName(e.target.value)}
-                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
+                    Category Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Printing & Designing"
+                    value={categoryName}
+                    onChange={(e) => setCategoryName(e.target.value)}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
+                    Category Code *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. EXP-PRT-001"
+                    value={categoryCode}
+                    onChange={(e) => setCategoryCode(e.target.value.toUpperCase())}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Parent Category (Group)</label>
-                  <select
-                    value={parentCategoryId}
-                    onChange={(e) => setParentCategoryId(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  >
-                    <option value="">None (Top-Level Group)</option>
-                    {categories.filter((c) => !c.parentId).map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Financial Type</label>
+                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Financial Type *</label>
                   <select
                     value={financialType}
-                    onChange={(e) => setFinancialType(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    onChange={(e) => {
+                      const newType = e.target.value;
+                      setFinancialType(newType);
+                      const availableGroups = STATEMENT_GROUPS_MAP[newType] || ["Administrative Expenses"];
+                      const availableNatures = ACCOUNT_NATURES_MAP[newType] || ["Operating Expense"];
+                      setStatementGroup(availableGroups[0]);
+                      setAccountNature(availableNatures[0]);
+                    }}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] font-semibold text-[#177B55]"
                   >
                     <option value="EXPENSE">Expense</option>
                     <option value="INCOME">Income</option>
@@ -596,19 +653,94 @@ export function AddMasterRecordModal({
                     <option value="EQUITY">Equity</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Parent Category</label>
+                  <select
+                    value={parentCategoryId}
+                    onChange={(e) => setParentCategoryId(e.target.value)}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  >
+                    <option value="">None (Top-Level Category)</option>
+                    {categories.filter((c) => !c.parentId && c.id !== initialData?.id).map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Financial Statement (Auto)</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={derivedFinancialStatement}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-[#F4F7F3] text-[#68756C] font-semibold cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Normal Balance (Auto)</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={derivedNormalBalance}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-[#F4F7F3] text-[#68756C] font-semibold cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
+                    Financial Statement Group *
+                  </label>
+                  <select
+                    value={statementGroup}
+                    onChange={(e) => setStatementGroup(e.target.value)}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  >
+                    {(STATEMENT_GROUPS_MAP[financialType] || ["Administrative Expenses"]).map((sg) => (
+                      <option key={sg} value={sg}>{sg}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
+                    Account Nature *
+                  </label>
+                  <select
+                    value={accountNature}
+                    onChange={(e) => setAccountNature(e.target.value)}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  >
+                    {(ACCOUNT_NATURES_MAP[financialType] || ["Operating Expense"]).map((an) => (
+                      <option key={an} value={an}>{an}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                  Financial Statement Group
-                </label>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1">Description / Notes</label>
                 <input
                   type="text"
-                  placeholder="e.g. P&L — Operating Expense"
-                  value={statementGroup}
-                  onChange={(e) => setStatementGroup(e.target.value)}
+                  placeholder="e.g. Expenses for printing brochures, stickers and marketing materials."
+                  value={categoryDescription}
+                  onChange={(e) => setCategoryDescription(e.target.value)}
                   className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1">Status *</label>
+                <select
+                  value={categoryIsActive ? "ACTIVE" : "INACTIVE"}
+                  onChange={(e) => setCategoryIsActive(e.target.value === "ACTIVE")}
+                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
               </div>
             </div>
           )}

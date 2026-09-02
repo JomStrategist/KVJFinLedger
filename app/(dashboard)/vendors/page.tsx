@@ -100,7 +100,7 @@ export default async function VendorsPage({
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-theme-text-muted">
-                      {vendor._count.expenses}
+                      {(vendor as any)._count?.expenses || 0}
                     </td>
                     <td className="px-6 py-4 text-right text-sm font-medium">
                       <Link href={`/vendors/${vendor.id}`} className="text-theme-primary hover:text-blue-900 mr-4">

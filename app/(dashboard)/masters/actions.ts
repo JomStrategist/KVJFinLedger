@@ -93,3 +93,14 @@ export async function updateCategoryMasterAction(id: string, data: any) {
     return { success: false, error: error.message || "Failed to update category." };
   }
 }
+
+export async function toggleCategoryStatusAction(id: string, isActive: boolean) {
+  try {
+    const cat = await ExpenseCategoryService.toggleExpenseCategoryStatus(id, isActive);
+    revalidatePath("/masters");
+    revalidatePath("/expenses");
+    return { success: true, data: cat };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to toggle category status." };
+  }
+}

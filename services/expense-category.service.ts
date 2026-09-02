@@ -2,25 +2,53 @@ import { prisma } from "@/lib/prisma";
 
 export type CreateCategoryInput = {
   name: string;
+  code?: string | null;
   description?: string | null;
   parentId?: string | null;
   hierarchyLevel?: number;
-  financialType?: string;
+  financialType?: "INCOME" | "EXPENSE" | "ASSET" | "LIABILITY" | "EQUITY" | string;
+  financialStatement?: string | null;
   statementGroup?: string | null;
+  accountNature?: string | null;
+  normalBalance?: string | null;
   isActive?: boolean;
 };
 
+export function deriveFinancialStatement(financialType: string): string {
+  const type = (financialType || "EXPENSE").toUpperCase();
+  if (type === "INCOME" || type === "EXPENSE") {
+    return "Profit & Loss";
+  }
+  return "Balance Sheet";
+}
+
+export function deriveNormalBalance(financialType: string): string {
+  const type = (financialType || "EXPENSE").toUpperCase();
+  if (type === "ASSET" || type === "EXPENSE") {
+    return "Debit";
+  }
+  return "Credit";
+}
+
 export class ExpenseCategoryService {
-  static async getExpenseCategories(params?: { search?: string; isActive?: boolean }) {
-    const { search, isActive } = params || {};
+  static async getExpenseCategories(params?: { search?: string; isActive?: boolean; financialType?: string }) {
+    const { search, isActive, financialType } = params || {};
     const where: any = {};
 
     if (isActive !== undefined) {
       where.isActive = isActive;
     }
 
+    if (financialType) {
+      where.financialType = financialType.toUpperCase();
+    }
+
     if (search) {
-      where.name = { contains: search, mode: "insensitive" };
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { code: { contains: search, mode: "insensitive" } },
+        { statementGroup: { contains: search, mode: "insensitive" } },
+      ];
     }
 
     try {
@@ -36,7 +64,7 @@ export class ExpenseCategoryService {
         }
       });
 
-      if (cats.length === 0 && !search) {
+      if (cats.length === 0 && !search && !financialType) {
         await ExpenseCategoryService.seedDefaultCategories();
         cats = await prisma.expenseCategory.findMany({
           where,
@@ -74,16 +102,28 @@ export class ExpenseCategoryService {
   }
 
   static async createExpenseCategory(data: CreateCategoryInput) {
-    if (!data.name || data.name.trim() === "") {
+    const name = data.name?.trim();
+    if (!name) {
       throw new Error("Category name is required.");
     }
 
-    const existing = await prisma.expenseCategory.findUnique({
-      where: { name: data.name.trim() }
-    });
+    const finType = (data.financialType || "EXPENSE").toUpperCase();
+    const statement = deriveFinancialStatement(finType);
+    const balance = data.normalBalance || deriveNormalBalance(finType);
+    const code = data.code?.trim() || `CAT-${name.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6)}-001`;
 
-    if (existing) {
-      throw new Error("Category name already exists.");
+    const existingName = await prisma.expenseCategory.findUnique({
+      where: { name }
+    });
+    if (existingName) {
+      throw new Error(`Category name "${name}" already exists.`);
+    }
+
+    const existingCode = await prisma.expenseCategory.findUnique({
+      where: { code }
+    });
+    if (existingCode) {
+      throw new Error(`Category code "${code}" already exists.`);
     }
 
     let level = data.hierarchyLevel || 1;
@@ -96,12 +136,16 @@ export class ExpenseCategoryService {
 
     return await prisma.expenseCategory.create({
       data: {
-        name: data.name.trim(),
-        description: data.description,
+        name,
+        code,
+        description: data.description || null,
         parentId: data.parentId || null,
         hierarchyLevel: level,
-        financialType: data.financialType || "EXPENSE",
-        statementGroup: data.statementGroup || "P&L — Operating Expense",
+        financialType: finType,
+        financialStatement: statement,
+        statementGroup: data.statementGroup || (statement === "Profit & Loss" ? "Administrative Expenses" : "Other Current Assets"),
+        accountNature: data.accountNature || (finType === "EXPENSE" ? "Operating Expense" : "Operating Income"),
+        normalBalance: balance,
         isActive: data.isActive ?? true,
       }
     });
@@ -117,8 +161,21 @@ export class ExpenseCategoryService {
         where: { name: data.name.trim() }
       });
       if (existing && existing.id !== id) {
-        throw new Error("Another category with this name already exists.");
+        throw new Error(`Another category with name "${data.name.trim()}" already exists.`);
       }
+    }
+
+    if (data.code) {
+      const existingCode = await prisma.expenseCategory.findUnique({
+        where: { code: data.code.trim() }
+      });
+      if (existingCode && existingCode.id !== id) {
+        throw new Error(`Another category with code "${data.code.trim()}" already exists.`);
+      }
+    }
+
+    if (data.parentId && data.parentId === id) {
+      throw new Error("A category cannot be its own parent.");
     }
 
     let level = data.hierarchyLevel;
@@ -129,12 +186,25 @@ export class ExpenseCategoryService {
       }
     }
 
+    const current = await prisma.expenseCategory.findUnique({ where: { id } });
+    const finType = (data.financialType || current?.financialType || "EXPENSE").toUpperCase();
+    const statement = deriveFinancialStatement(finType);
+    const balance = data.normalBalance || deriveNormalBalance(finType);
+
     return await prisma.expenseCategory.update({
       where: { id },
       data: {
-        ...data,
-        name: data.name?.trim(),
+        name: data.name ? data.name.trim() : undefined,
+        code: data.code ? data.code.trim() : undefined,
+        description: data.description !== undefined ? data.description : undefined,
+        parentId: data.parentId !== undefined ? (data.parentId || null) : undefined,
         hierarchyLevel: level,
+        financialType: finType,
+        financialStatement: statement,
+        statementGroup: data.statementGroup || current?.statementGroup,
+        accountNature: data.accountNature || current?.accountNature,
+        normalBalance: balance,
+        isActive: data.isActive !== undefined ? data.isActive : undefined,
       },
     });
   }
@@ -148,30 +218,72 @@ export class ExpenseCategoryService {
 
   static async seedDefaultCategories() {
     const defaults = [
-      { name: "Office Rent", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
-      { name: "Salaries & Wages", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
-      { name: "Utilities", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
-      { name: "Internet & Telephone", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
-      { name: "Travel & Transportation", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
-      { name: "Office Supplies", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
-      { name: "Software & Subscriptions", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
-      { name: "Marketing & Advertising", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
-      { name: "Professional Fees", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
-      { name: "Training Income", financialType: "INCOME", statementGroup: "P&L — Operating Revenue" },
-      { name: "Consulting Income", financialType: "INCOME", statementGroup: "P&L — Operating Revenue" },
-      { name: "Bank Charges", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
-      { name: "Other Expenses", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" }
+      // INCOME
+      { name: "Revenue from Services", code: "INC-REV-001", financialType: "INCOME", statementGroup: "Revenue from Operations", accountNature: "Operating Income" },
+      { name: "Other Income", code: "INC-OTH-001", financialType: "INCOME", statementGroup: "Other Income", accountNature: "Other Income" },
+      { name: "Interest Income", code: "INC-INT-001", financialType: "INCOME", statementGroup: "Other Income", accountNature: "Other Income" },
+
+      // EXPENSES
+      { name: "Printing", code: "EXP-PRT-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
+      { name: "Designing", code: "EXP-DES-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
+      { name: "Office Supplies", code: "EXP-OFF-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
+      { name: "Stationery", code: "EXP-STN-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
+      { name: "Cleaning & Maintenance", code: "EXP-CLN-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
+      { name: "Rent", code: "EXP-RNT-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
+      { name: "Electricity", code: "EXP-ELE-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
+      { name: "Internet & Telephone", code: "EXP-COMM-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
+      { name: "Software & Subscriptions", code: "EXP-SW-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
+      { name: "Professional & Consultancy", code: "EXP-PRF-001", financialType: "EXPENSE", statementGroup: "Professional & Consultancy", accountNature: "Operating Expense" },
+      { name: "Travel", code: "EXP-TRV-001", financialType: "EXPENSE", statementGroup: "Selling & Marketing Expenses", accountNature: "Operating Expense" },
+      { name: "Staff Welfare", code: "EXP-STF-001", financialType: "EXPENSE", statementGroup: "Employee Costs", accountNature: "Operating Expense" },
+      { name: "Advertising & Marketing", code: "EXP-MKT-001", financialType: "EXPENSE", statementGroup: "Selling & Marketing Expenses", accountNature: "Operating Expense" },
+      { name: "Bank Charges", code: "EXP-BNK-001", financialType: "EXPENSE", statementGroup: "Finance Costs", accountNature: "Finance Cost" },
+      { name: "Insurance", code: "EXP-INS-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
+      { name: "Repairs & Maintenance", code: "EXP-RPM-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
+      { name: "Other Operating Expenses", code: "EXP-OTH-001", financialType: "EXPENSE", statementGroup: "Other Expenses", accountNature: "Other Expense" },
+
+      // ASSETS
+      { name: "Computer Equipment", code: "AST-CMP-001", financialType: "ASSET", statementGroup: "Fixed Assets", accountNature: "Fixed Asset" },
+      { name: "Furniture & Fixtures", code: "AST-FUR-001", financialType: "ASSET", statementGroup: "Fixed Assets", accountNature: "Fixed Asset" },
+      { name: "Office Equipment", code: "AST-OEQ-001", financialType: "ASSET", statementGroup: "Fixed Assets", accountNature: "Fixed Asset" },
+      { name: "Other Fixed Assets", code: "AST-OFX-001", financialType: "ASSET", statementGroup: "Fixed Assets", accountNature: "Fixed Asset" },
+      { name: "Trade Receivables", code: "AST-REC-001", financialType: "ASSET", statementGroup: "Trade Receivables", accountNature: "Trade Receivable" },
+      { name: "Other Current Assets", code: "AST-OCA-001", financialType: "ASSET", statementGroup: "Other Current Assets", accountNature: "Current Asset" },
+
+      // LIABILITIES
+      { name: "Trade Payables", code: "LIAB-PAY-001", financialType: "LIABILITY", statementGroup: "Trade Payables", accountNature: "Trade Payable" },
+      { name: "GST Payable", code: "LIAB-GST-001", financialType: "LIABILITY", statementGroup: "Statutory Liabilities", accountNature: "Statutory Liability" },
+      { name: "TDS Payable", code: "LIAB-TDS-001", financialType: "LIABILITY", statementGroup: "Statutory Liabilities", accountNature: "Statutory Liability" },
+      { name: "Other Statutory Payables", code: "LIAB-OST-001", financialType: "LIABILITY", statementGroup: "Statutory Liabilities", accountNature: "Statutory Liability" },
+      { name: "Other Current Liabilities", code: "LIAB-OCL-001", financialType: "LIABILITY", statementGroup: "Other Current Liabilities", accountNature: "Current Liability" },
+      { name: "Loans & Borrowings", code: "LIAB-LON-001", financialType: "LIABILITY", statementGroup: "Borrowings", accountNature: "Borrowing" },
+
+      // EQUITY
+      { name: "Owner Capital", code: "EQ-CAP-001", financialType: "EQUITY", statementGroup: "Capital", accountNature: "Capital" },
+      { name: "Retained Earnings", code: "EQ-RET-001", financialType: "EQUITY", statementGroup: "Retained Earnings", accountNature: "Retained Earnings" },
+      { name: "Reserves", code: "EQ-RES-001", financialType: "EQUITY", statementGroup: "Reserves", accountNature: "Reserve" },
     ];
 
     let created = 0;
     for (const item of defaults) {
-      const existing = await prisma.expenseCategory.findUnique({ where: { name: item.name } });
+      const existing = await prisma.expenseCategory.findFirst({
+        where: { OR: [{ name: item.name }, { code: item.code }] }
+      });
+
       if (!existing) {
+        const statement = deriveFinancialStatement(item.financialType);
+        const balance = deriveNormalBalance(item.financialType);
+
         await prisma.expenseCategory.create({
           data: {
             name: item.name,
+            code: item.code,
             financialType: item.financialType,
+            financialStatement: statement,
             statementGroup: item.statementGroup,
+            accountNature: item.accountNature,
+            normalBalance: balance,
+            isActive: true,
           }
         });
         created++;

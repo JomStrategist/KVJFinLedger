@@ -327,7 +327,6 @@ export function ExpenseForm({
                 <th className="pb-3 px-2 w-24 text-right">Qty</th>
                 <th className="pb-3 px-2 w-28 text-right">Rate</th>
                 <th className="pb-3 px-2 w-32 text-right">GST</th>
-                <th className="pb-3 px-2 w-28 text-right">TDS</th>
                 <th className="pb-3 px-2 w-32 text-right">Amount</th>
                 <th className="pb-3 px-2 w-10"></th>
               </tr>
@@ -463,56 +462,6 @@ export function ExpenseForm({
                           }}
                           className="text-theme-text-muted hover:text-theme-text p-0.5"
                           title="Reset to standard rates"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-2.5 px-2">
-                    {!item.isCustomTds ? (
-                      <select
-                        value={item.tdsRate}
-                        onChange={e => {
-                          if (e.target.value === "CUSTOM") {
-                            handleItemChange(index, "isCustomTds", true);
-                            handleItemChange(index, "tdsRate", "");
-                          } else {
-                            handleItemChange(index, "tdsRate", e.target.value);
-                          }
-                        }}
-                        className="w-full border border-theme-border rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-theme-primary focus:border-transparent text-xs text-right bg-theme-surface"
-                      >
-                        <option value="">No TDS</option>
-                        <option value="1">1%</option>
-                        <option value="2">2%</option>
-                        <option value="5">5%</option>
-                        <option value="10">10%</option>
-                        <option value="CUSTOM">Custom</option>
-                      </select>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <div className="flex items-center w-full border border-theme-border rounded-lg px-1.5 py-1 focus-within:ring-2 focus-within:ring-theme-primary bg-theme-surface">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            required
-                            value={item.tdsRate}
-                            onChange={e => handleItemChange(index, "tdsRate", e.target.value)}
-                            className="w-full border-none focus:ring-0 bg-transparent text-xs text-right p-0"
-                          />
-                          <span className="text-theme-text-muted text-xs font-medium ml-1">%</span>
-                        </div>
-                        <button 
-                          type="button" 
-                          onClick={() => {
-                            handleItemChange(index, "isCustomTds", false);
-                            handleItemChange(index, "tdsRate", "");
-                          }}
-                          className="text-theme-text-muted hover:text-theme-text p-0.5"
-                          title="Reset to standard TDS"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>

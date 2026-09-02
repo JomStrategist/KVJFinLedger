@@ -70,7 +70,7 @@ export class DashboardService {
         }),
         prisma.expense.findMany({
           where: expenseWhere,
-          include: { category: true, vendor: true },
+          include: { category: true, vendor: true, items: { include: { category: true } } },
           orderBy: { netAmount: "desc" }
         }),
         prisma.proformaInvoice.findMany({
@@ -111,20 +111,13 @@ export class DashboardService {
       if (inv.status === "CANCELLED" || inv.status === "PAID") continue;
 
       const invoiceTotal = Number(inv.netAmount || inv.grossAmount || (inv as any).totalAmount || 0);
-      const paidAmount = (inv.payments || []).reduce((sum, p) => sum + Number(p.paymentAmount || 0), 0);
+      const paidAmount = (inv.payments || []).reduce((sum: number, p: any) => sum + Number(p.paymentAmount || 0), 0);
 
       const balanceRemaining = invoiceTotal - paidAmount;
       if (balanceRemaining > 0) {
         outstandingReceivables += balanceRemaining;
       }
     }
-
-    // MA-007: Active Proforma Count & Total Value (excludes CONVERTED / CANCELLED)
-    const activeProformaCount = activeProformas.length;
-    const activeProformaValue = activeProformas.reduce(
-      (sum, p) => sum + Number(p.totalAmount || p.netAmount || p.grossAmount || 0),
-      0
-    );
 
     const operatingResult = totalRevenue - totalExpenses;
     const profitMargin = totalRevenue > 0 ? (operatingResult / totalRevenue) * 100 : 0;
@@ -136,16 +129,16 @@ export class DashboardService {
       profitMargin,
       outstandingReceivables,
       outstandingPayables,
-      activeProformaCount,
-      activeProformaValue,
+      activeProformaCount: activeProformas.length,
+      activeProformaValue: activeProformas.reduce((sum: number, p: any) => sum + Number(p.totalAmount || p.netAmount || p.grossAmount || 0), 0),
     };
 
-    // 2. Trends (Monthly Revenue vs Expenses)
+    // 2. Revenue vs Expense Trends
     const monthlyData: Record<string, { month: string; revenue: number; expenses: number }> = {};
     for (const txn of txns) {
       const date = new Date(txn.transactionDate);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      const monthLabel = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const monthLabel = date.toLocaleString("en-US", { month: "short", year: "2-digit" });
 
       if (!monthlyData[monthKey]) {
         monthlyData[monthKey] = { month: monthLabel, revenue: 0, expenses: 0 };
@@ -171,12 +164,23 @@ export class DashboardService {
     // 4. Expense by Category
     const categoryMap: Record<string, { category: string; amount: number }> = {};
     let totalExpenseAmount = 0;
+
     for (const exp of expenses) {
-      const name = exp.category?.name || "Uncategorized/Multiple";
-      const net = Number(exp.netAmount);
-      if (!categoryMap[name]) categoryMap[name] = { category: name, amount: 0 };
-      categoryMap[name].amount += net;
-      totalExpenseAmount += net;
+      if (exp.items && exp.items.length > 0) {
+        for (const item of exp.items) {
+          const catName = item.category?.name || exp.category?.name || "Uncategorized";
+          const amount = Number(item.totalAmount || item.taxableAmount || 0);
+          if (!categoryMap[catName]) categoryMap[catName] = { category: catName, amount: 0 };
+          categoryMap[catName].amount += amount;
+          totalExpenseAmount += amount;
+        }
+      } else {
+        const name = exp.category?.name || "Uncategorized";
+        const net = Number(exp.netAmount);
+        if (!categoryMap[name]) categoryMap[name] = { category: name, amount: 0 };
+        categoryMap[name].amount += net;
+        totalExpenseAmount += net;
+      }
     }
     const expenseCategories = Object.values(categoryMap).map(c => ({
       ...c,
@@ -202,14 +206,14 @@ export class DashboardService {
     const topExpenses = expenses.slice(0, 5);
 
     // 7. Live Tax Position
-    const outputGST = invoices.reduce((sum, inv) => sum + Number(inv.totalGST || 0), 0);
-    const inputGST = expenses.reduce((sum, exp) => sum + Number(exp.totalInputGST || 0), 0);
+    const outputGST = invoices.reduce((sum: number, inv: any) => sum + Number(inv.totalGST || 0), 0);
+    const inputGST = expenses.reduce((sum: number, exp: any) => sum + Number(exp.totalInputGST || 0), 0);
     const netGST = outputGST - inputGST;
-    const tdsReceivable = invoices.reduce((sum, inv) => {
-      const paymentTds = (inv.payments || []).reduce((pSum, p) => pSum + Number(p.tdsAmount || 0), 0);
+    const tdsReceivable = invoices.reduce((sum: number, inv: any) => {
+      const paymentTds = (inv.payments || []).reduce((pSum: number, p: any) => pSum + Number(p.tdsAmount || 0), 0);
       return sum + (paymentTds > 0 ? paymentTds : Number(inv.tdsAmount || 0));
     }, 0);
-    const tdsPayable = expenses.reduce((sum, exp) => sum + Number(exp.tdsAmount || 0), 0);
+    const tdsPayable = expenses.reduce((sum: number, exp: any) => sum + Number(exp.tdsAmount || 0), 0);
 
     // 8. Recent Transactions
     const recentTxnList: Array<{

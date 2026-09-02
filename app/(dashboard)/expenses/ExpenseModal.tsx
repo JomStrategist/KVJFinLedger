@@ -348,7 +348,6 @@ export function ExpenseModal({
                       <th className="py-2.5 px-2 text-center">QTY</th>
                       <th className="py-2.5 px-2 text-right">RATE</th>
                       <th className="py-2.5 px-2 text-center">GST</th>
-                      <th className="py-2.5 px-2 text-center">TDS</th>
                       <th className="py-2.5 px-3 text-right">AMOUNT</th>
                       <th className="py-2.5 px-2 text-center"></th>
                     </tr>
@@ -425,9 +424,6 @@ export function ExpenseModal({
                             <option value="5">5%</option>
                             <option value="0">0%</option>
                           </select>
-                        </td>
-                        <td className="py-2 px-2 text-center text-[#68756C]">
-                          {isTdsApplicable ? `${globalTdsRate}%` : "No TDS"}
                         </td>
                         <td className="py-2 px-3 text-right font-bold text-[#17211B]">
                           ₹{row.amount.toLocaleString("en-IN")}

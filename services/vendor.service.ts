@@ -15,7 +15,6 @@ export type CreateVendorInput = {
   state?: string | null;
   stateCode?: string | null;
   country?: string | null;
-  defaultCategoryId?: string | null;
   isActive?: boolean;
 };
 
@@ -42,7 +41,6 @@ export class VendorService {
         where,
         orderBy: { name: "asc" },
         include: {
-          defaultCategory: true,
           _count: {
             select: { expenses: true }
           }
@@ -58,9 +56,6 @@ export class VendorService {
     try {
       return await prisma.vendor.findUnique({
         where: { id },
-        include: {
-          defaultCategory: true
-        }
       });
     } catch (error) {
       console.warn("VendorService.getVendorById error:", error);
