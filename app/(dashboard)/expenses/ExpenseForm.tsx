@@ -7,6 +7,7 @@ import { BUSINESS_LOCATION } from "@/lib/config/business";
 import { createExpenseAction, updateExpenseAction } from "./actions";
 import { createVendorAction } from "../vendors/actions";
 import { createExpenseCategoryAction } from "./category-actions";
+import { AddMasterRecordModal } from "../masters/AddMasterRecordModal";
 
 export function ExpenseForm({ 
   initialData, 
@@ -89,38 +90,33 @@ export function ExpenseForm({
     setItems(newItems);
   };
 
-  const handleItemVendorChange = async (index: number, value: string) => {
+  const [modalConfig, setModalConfig] = useState<{ type: string; itemIndex: number } | null>(null);
+
+  const handleItemVendorChange = (index: number, value: string) => {
     if (value === "ADD_NEW") {
-      const name = window.prompt("Enter new vendor name:");
-      if (name?.trim()) {
-        const res = await createVendorAction({ name: name.trim() });
-        if (res.success && res.data) {
-          setVendors([...vendors, res.data]);
-          handleItemChange(index, "vendorId", res.data.id);
-        } else {
-          alert(res.error);
-        }
-      }
+      setModalConfig({ type: "vendor", itemIndex: index });
     } else {
       handleItemChange(index, "vendorId", value);
     }
   };
 
-  const handleItemCategoryChange = async (index: number, value: string) => {
+  const handleItemCategoryChange = (index: number, value: string) => {
     if (value === "ADD_NEW") {
-      const name = window.prompt("Enter new category name:");
-      if (name?.trim()) {
-        const res = await createExpenseCategoryAction({ name: name.trim() });
-        if (res.success && res.data) {
-          setCategories([...categories, res.data]);
-          handleItemChange(index, "categoryId", res.data.id);
-        } else {
-          alert(res.error);
-        }
-      }
+      setModalConfig({ type: "category", itemIndex: index });
     } else {
       handleItemChange(index, "categoryId", value);
     }
+  };
+
+  const handleModalSuccess = (newRecord?: any) => {
+    if (modalConfig?.type === "vendor" && newRecord) {
+      setVendors((prev) => [...prev, newRecord]);
+      handleItemChange(modalConfig.itemIndex, "vendorId", newRecord.id);
+    } else if (modalConfig?.type === "category" && newRecord) {
+      setCategories((prev) => [...prev, newRecord]);
+      handleItemChange(modalConfig.itemIndex, "categoryId", newRecord.id);
+    }
+    setModalConfig(null);
   };
 
   const handleProductChange = (index: number, productId: string) => {
@@ -810,6 +806,15 @@ export function ExpenseForm({
           </button>
         </div>
       </div>
+
+      {modalConfig && (
+        <AddMasterRecordModal
+          defaultTab={modalConfig.type}
+          categories={categories}
+          onClose={() => setModalConfig(null)}
+          onSuccess={handleModalSuccess}
+        />
+      )}
     </form>
   );
 }

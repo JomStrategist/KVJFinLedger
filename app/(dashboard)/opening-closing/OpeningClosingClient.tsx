@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { formatCurrency } from "@/lib/utils/currency";
+import { saveOpeningBalanceAction, deleteOpeningBalanceAction } from "./actions";
 
 interface OpeningItem {
   id: string;
@@ -11,43 +12,62 @@ interface OpeningItem {
 }
 
 export function OpeningClosingClient({
-  initialClosing = {},
+  initialBalances = [],
 }: {
-  initialClosing?: any;
+  initialBalances?: any[];
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
-  // Dynamic state without hardcoded dummy items
-  const [openingItems, setOpeningItems] = useState<OpeningItem[]>([]);
-
-  // Modal Form State
+  // Form State
+  const [financialYear, setFinancialYear] = useState("FY 2026–27");
   const [newPosition, setNewPosition] = useState("");
   const [newAmount, setNewAmount] = useState("");
   const [newType, setNewType] = useState<"Asset" | "Liability">("Asset");
+
+  const formattedInitialBalances: OpeningItem[] = initialBalances.map((b) => ({
+    id: b.id,
+    position: b.position,
+    amount: Number(b.amount || 0),
+    type: (b.type as "Asset" | "Liability") || "Asset",
+  }));
 
   const handleAddOpeningBalance = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPosition || !newAmount) return;
 
-    const newItem: OpeningItem = {
-      id: String(Date.now()),
-      position: newPosition,
-      amount: parseFloat(newAmount) || 0,
-      type: newType,
-    };
+    setError(null);
+    startTransition(async () => {
+      const res = await saveOpeningBalanceAction({
+        financialYear,
+        position: newPosition,
+        amount: parseFloat(newAmount) || 0,
+        type: newType,
+      });
 
-    setOpeningItems((prev) => [...prev, newItem]);
-    setNewPosition("");
-    setNewAmount("");
-    setIsModalOpen(false);
+      if (res.success) {
+        setNewPosition("");
+        setNewAmount("");
+        setIsModalOpen(false);
+      } else {
+        setError(res.error || "Failed to save opening balance.");
+      }
+    });
+  };
+
+  const handleDeleteItem = (id: string) => {
+    startTransition(async () => {
+      await deleteOpeningBalanceAction(id);
+    });
   };
 
   // Dynamic KPI Calculations from recorded items
-  const totalAssets = openingItems
+  const totalAssets = formattedInitialBalances
     .filter((item) => item.type === "Asset")
     .reduce((sum, item) => sum + item.amount, 0);
 
-  const totalLiabilities = openingItems
+  const totalLiabilities = formattedInitialBalances
     .filter((item) => item.type === "Liability")
     .reduce((sum, item) => sum + item.amount, 0);
 
@@ -62,7 +82,7 @@ export function OpeningClosingClient({
         <div>
           <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Opening / Closing</h1>
           <p className="text-[#68756C] text-sm mt-0.5 font-normal">
-            Maintain continuity across financial years.
+            Maintain continuity across financial years with database persistence.
           </p>
         </div>
         <button
@@ -78,7 +98,7 @@ export function OpeningClosingClient({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Card 1: FY Opening */}
         <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 flex flex-col justify-between">
-          <span className="text-xs font-semibold text-[#68756C]">FY 2026–27 Opening</span>
+          <span className="text-xs font-semibold text-[#68756C]">{financialYear} Opening</span>
           <strong className="text-2xl font-bold text-[#17211B] mt-2 block">
             {formatCurrency(fyOpening)}
           </strong>
@@ -117,17 +137,18 @@ export function OpeningClosingClient({
                 <th className="py-3 px-3">POSITION</th>
                 <th className="py-3 px-4 text-right">OPENING AMOUNT</th>
                 <th className="py-3 px-4">TYPE</th>
+                <th className="py-3 px-2 text-right">ACTION</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E9EEE9] text-xs">
-              {openingItems.length === 0 ? (
+              {formattedInitialBalances.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="py-12 text-center text-[#68756C]">
+                  <td colSpan={4} className="py-12 text-center text-[#68756C]">
                     No opening balance components recorded. Click &quot;+ Add Opening Balance&quot; to create one.
                   </td>
                 </tr>
               ) : (
-                openingItems.map((item) => (
+                formattedInitialBalances.map((item) => (
                   <tr key={item.id} className="hover:bg-[#F9FAF8] transition-colors">
                     <td className="py-4 px-3 font-semibold text-[#17211B]">
                       {item.position}
@@ -137,6 +158,16 @@ export function OpeningClosingClient({
                     </td>
                     <td className="py-4 px-4 text-[#17211B] font-medium">
                       {item.type}
+                    </td>
+                    <td className="py-4 px-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteItem(item.id)}
+                        disabled={isPending}
+                        className="text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -162,6 +193,27 @@ export function OpeningClosingClient({
             </div>
 
             <form onSubmit={handleAddOpeningBalance} className="p-6 space-y-4">
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-medium">
+                  {error}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1">
+                  Financial Year
+                </label>
+                <select
+                  value={financialYear}
+                  onChange={(e) => setFinancialYear(e.target.value)}
+                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="FY 2026–27">FY 2026–27</option>
+                  <option value="FY 2025–26">FY 2025–26</option>
+                  <option value="FY 2024–25">FY 2024–25</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-[#68756C] mb-1">
                   Position / Component Name *
@@ -215,9 +267,10 @@ export function OpeningClosingClient({
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-[#1b5e4b] hover:bg-[#136f58] text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+                  disabled={isPending}
+                  className="px-6 py-2 bg-[#1b5e4b] hover:bg-[#136f58] text-white rounded-xl text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
                 >
-                  Save
+                  {isPending ? "Saving..." : "Save"}
                 </button>
               </div>
             </form>

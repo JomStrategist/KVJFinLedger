@@ -71,28 +71,29 @@ enum CustomerType {
 }
 
 model Customer {
-  id           String       @id @default(uuid())
-  customerType CustomerType
-  legalName    String
-  tradeName    String?
-  gstin        String?      @unique
-  pan          String?
-  email        String?
-  phone        String?
-  address      String?
-  city         String?
-  state        String?
-  stateCode    String?
-  pinCode      String?
-  country      String?      @default("India")
-  isActive     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  proformaInvoices ProformaInvoice[]
-  taxInvoices  TaxInvoice[]
+  id                    String       @id @default(uuid())
+  customerType          CustomerType
+  gstRegistrationStatus String?      @default("REGISTERED")
+  legalName             String
+  tradeName             String?
+  gstin                 String?      @unique
+  pan                   String?
+  email                 String?
+  phone                 String?
+  contactPerson         String?
+  address               String?
+  city                  String?
+  state                 String?
+  stateCode             String?
+  pinCode               String?
+  placeOfSupply         String?
+  country               String?      @default("India")
+  isActive              Boolean      @default(true)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  proformaInvoices      ProformaInvoice[]
+  taxInvoices           TaxInvoice[]
 }
-
-
 
 enum ProductType {
   PRODUCT
@@ -100,24 +101,23 @@ enum ProductType {
 }
 
 model Product {
-  id              String   @id @default(uuid())
-  name            String
-  description     String?
-  type            ProductType
-  hsnSacCode      String
-  unit            String
-  sellingPrice    Decimal
-  customPrice     Decimal?
-  purchasePrice   Decimal?
-  gstRate         Decimal
-  cessRate        Decimal?
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                   String   @id @default(uuid())
+  name                 String
+  description          String?
+  type                 ProductType
+  hsnSacCode           String
+  unit                 String
+  sellingPrice         Decimal
+  customPrice          Decimal?
+  purchasePrice        Decimal?
+  gstRate              Decimal
+  cessRate             Decimal?
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
   proformaInvoiceItems ProformaInvoiceItem[]
-  expenseItems    ExpenseItem[]
+  expenseItems         ExpenseItem[]
 }
-
 
 enum ProformaInvoiceStatus {
   DRAFT
@@ -291,42 +291,50 @@ model TaxInvoiceItem {
 // ----------------------------------------------------------------------------
 
 model ExpenseCategory {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  isActive    Boolean  @default(true)
+  id              String   @id @default(cuid())
+  name            String   @unique
+  description     String?
+  parentId        String?
+  parent          ExpenseCategory? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children        ExpenseCategory[] @relation("CategoryHierarchy")
+  hierarchyLevel  Int      @default(1)
+  financialType   String   @default("EXPENSE")
+  statementGroup  String?
+  isActive        Boolean  @default(true)
 
-  expenses    Expense[] @relation("ExpenseCategory")
-  expenseItems ExpenseItem[] @relation("ExpenseItemCategory")
+  expenses        Expense[] @relation("ExpenseCategory")
+  expenseItems    ExpenseItem[] @relation("ExpenseItemCategory")
+  vendorDefaults  Vendor[] @relation("VendorDefaultCategory")
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Vendor {
-  id          String   @id @default(cuid())
+  id                    String   @id @default(cuid())
+  name                  String
+  businessName          String?
+  vendorType            String?  @default("B2B")
+  gstRegistrationStatus String?  @default("REGISTERED")
+  gstin                 String?
+  pan                   String?
+  email                 String?
+  phone                 String?
+  contactPerson         String?
+  address               String?
+  city                  String?
+  state                 String?
+  stateCode             String?
+  country               String?  @default("India")
+  defaultCategoryId     String?
+  defaultCategory       ExpenseCategory? @relation("VendorDefaultCategory", fields: [defaultCategoryId], references: [id])
+  isActive              Boolean  @default(true)
 
-  name        String
-  businessName String?
+  expenses              Expense[]
+  expenseItems          ExpenseItem[]
 
-  gstin       String?
-  pan         String?
-
-  email       String?
-  phone       String?
-
-  address     String?
-  city        String?
-  state       String?
-  stateCode   String?
-
-  isActive    Boolean  @default(true)
-
-  expenses    Expense[]
-  expenseItems ExpenseItem[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
 
 enum ExpenseStatus {
@@ -483,4 +491,16 @@ model BankTransfer {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model OpeningBalance {
+  id            String   @id @default(cuid())
+  financialYear String
+  position      String
+  amount        Decimal
+  type          String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([financialYear, position])
 }

@@ -6,6 +6,7 @@ import { createProformaInvoiceAction, updateProformaInvoiceAction } from "../inv
 import { CustomerForm } from "../customers/CustomerForm";
 import { TaxEngine } from "@/lib/tax";
 import { BUSINESS_LOCATION } from "@/lib/config/business";
+import { AddMasterRecordModal } from "../masters/AddMasterRecordModal";
 
 const GST_RATES = [0, 5, 12, 18, 28];
 
@@ -44,13 +45,15 @@ const getFinancialYearsList = () => {
   });
 };
 
-export function ProformaInvoiceForm({ initialData, customers: initialCustomers, products }: FormProps) {
+export function ProformaInvoiceForm({ initialData, customers: initialCustomers, products: initialProducts }: FormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const [customers, setCustomers] = useState(initialCustomers);
+  const [products, setProducts] = useState(initialProducts);
+  const [modalConfig, setModalConfig] = useState<{ type: string; itemId?: string } | null>(null);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
@@ -259,6 +262,10 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
   };
 
   const handleItemChange = (id: string, field: string, value: any) => {
+    if (field === 'productId' && value === 'ADD_NEW') {
+      setModalConfig({ type: 'product', itemId: id });
+      return;
+    }
     setItems(items.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
@@ -281,7 +288,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
   const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     if (val === "ADD_NEW") {
-      setShowAddCustomer(true);
+      setModalConfig({ type: "customer" });
     } else {
       setCustomerId(val);
       const cust = customers.find(c => c.id === val);
@@ -289,6 +296,19 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
         setCustomerType(cust.customerType);
       }
     }
+  };
+
+  const handleModalSuccess = (newRecord?: any) => {
+    if (modalConfig?.type === "customer" && newRecord) {
+      setCustomers((prev) => [...prev, newRecord]);
+      setCustomerId(newRecord.id);
+    } else if (modalConfig?.type === "product" && newRecord) {
+      setProducts((prev) => [...prev, newRecord]);
+      if (modalConfig.itemId) {
+        handleItemChange(modalConfig.itemId, "productId", newRecord.id);
+      }
+    }
+    setModalConfig(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -544,6 +564,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                               {p.name}
                             </option>
                           ))}
+                          <option value="ADD_NEW" className="font-bold text-theme-primary bg-theme-surface-hover">+ Add New Product / Service</option>
                         </select>
                         <input 
                           type="text"
@@ -900,7 +921,6 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                   {customerAddress && <p>{customerAddress}</p>}
                   <p>Place / Country: <strong>{placeCountry}</strong></p>
                   {customerGstin && <p>GSTIN: <strong>{customerGstin}</strong></p>}
-                  <p>Type: <strong>{customerType}</strong></p>
                 </div>
               ) : (
                 <p className="text-gray-400 italic">Select a customer</p>
@@ -1175,6 +1195,15 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
             />
           </div>
         </div>
+      )}
+
+      {modalConfig && (
+        <AddMasterRecordModal
+          defaultTab={modalConfig.type}
+          categories={[]}
+          onClose={() => setModalConfig(null)}
+          onSuccess={handleModalSuccess}
+        />
       )}
     </>
   );

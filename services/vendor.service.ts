@@ -1,5 +1,23 @@
 import { prisma } from "@/lib/prisma";
 
+export type CreateVendorInput = {
+  name: string;
+  businessName?: string | null;
+  vendorType?: string | null;
+  gstRegistrationStatus?: string | null;
+  gstin?: string | null;
+  pan?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  contactPerson?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  stateCode?: string | null;
+  country?: string | null;
+  defaultCategoryId?: string | null;
+  isActive?: boolean;
+};
 
 export class VendorService {
   static async getVendors(params?: { search?: string; isActive?: boolean }) {
@@ -12,10 +30,10 @@ export class VendorService {
 
     if (search) {
       where.OR = [
-        { name: { contains: search } },
-        { businessName: { contains: search } },
-        { gstin: { contains: search } },
-        { phone: { contains: search } },
+        { name: { contains: search, mode: "insensitive" } },
+        { businessName: { contains: search, mode: "insensitive" } },
+        { gstin: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -23,6 +41,7 @@ export class VendorService {
       where,
       orderBy: { name: "asc" },
       include: {
+        defaultCategory: true,
         _count: {
           select: { expenses: true }
         }
@@ -33,28 +52,20 @@ export class VendorService {
   static async getVendorById(id: string) {
     return await prisma.vendor.findUnique({
       where: { id },
+      include: {
+        defaultCategory: true
+      }
     });
   }
 
-  static async createVendor(data: {
-    name: string;
-    businessName?: string | null;
-    gstin?: string | null;
-    pan?: string | null;
-    email?: string | null;
-    phone?: string | null;
-    address?: string | null;
-    city?: string | null;
-    state?: string | null;
-    stateCode?: string | null;
-  }) {
+  static async createVendor(data: CreateVendorInput) {
     if (!data.name || data.name.trim() === "") {
       throw new Error("Vendor name is required.");
     }
 
     if (data.gstin && data.gstin.trim() !== "") {
       const existing = await prisma.vendor.findFirst({
-        where: { gstin: data.gstin }
+        where: { gstin: data.gstin.trim() }
       });
       if (existing) {
         throw new Error("A vendor with this GSTIN already exists.");
@@ -64,19 +75,23 @@ export class VendorService {
     return await prisma.vendor.create({
       data: {
         ...data,
-        isActive: true,
+        name: data.name.trim(),
+        country: data.country || "India",
+        vendorType: data.vendorType || "B2B",
+        gstRegistrationStatus: data.gstRegistrationStatus || (data.gstin ? "REGISTERED" : "UNREGISTERED"),
+        isActive: data.isActive ?? true,
       }
     });
   }
 
-  static async updateVendor(id: string, data: Partial<Parameters<typeof VendorService.createVendor>[0]>) {
+  static async updateVendor(id: string, data: Partial<CreateVendorInput>) {
     if (data.name !== undefined && data.name.trim() === "") {
       throw new Error("Vendor name cannot be empty.");
     }
 
     if (data.gstin && data.gstin.trim() !== "") {
       const existing = await prisma.vendor.findFirst({
-        where: { gstin: data.gstin, id: { not: id } }
+        where: { gstin: data.gstin.trim(), id: { not: id } }
       });
       if (existing) {
         throw new Error("Another vendor with this GSTIN already exists.");

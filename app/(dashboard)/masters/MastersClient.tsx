@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AddMasterRecordModal } from "./AddMasterRecordModal";
 import { useRouter } from "next/navigation";
+import { formatCurrency } from "@/lib/utils/currency";
 
 export function MastersClient({
   customers = [],
@@ -22,6 +23,7 @@ export function MastersClient({
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ACTIVE");
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<{ type: string; data: any } | null>(null);
 
   // Filter helper
   const filterRecord = (name: string, extra: string, isActive: boolean = true) => {
@@ -57,12 +59,15 @@ export function MastersClient({
         <div>
           <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Masters</h1>
           <p className="text-[#68756C] text-sm mt-0.5 font-normal">
-            Maintain customers, vendors, products/services and categories.
+            Maintain customers, vendors, products/services and categories in a clean table workflow.
           </p>
         </div>
         <button
           type="button"
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => {
+            setEditingRecord(null);
+            setIsAddModalOpen(true);
+          }}
           className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent rounded-xl text-xs font-bold text-white bg-[#1b5e4b] hover:bg-[#136f58] shadow-xs transition-colors gap-1.5 shrink-0"
         >
           <span>+</span> Add Record
@@ -74,10 +79,10 @@ export function MastersClient({
         {/* Navigation Tabs */}
         <div className="flex gap-6 border-b border-[#D9E3DC]">
           {[
-            { id: "customers", label: "Customers" },
-            { id: "vendors", label: "Vendors" },
-            { id: "products", label: "Products & Services" },
-            { id: "categories", label: "Categories" },
+            { id: "customers", label: `Customers (${filteredCustomers.length})` },
+            { id: "vendors", label: `Vendors (${filteredVendors.length})` },
+            { id: "products", label: `Products & Services (${filteredProducts.length})` },
+            { id: "categories", label: `Categories (${filteredCategories.length})` },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -99,7 +104,7 @@ export function MastersClient({
           <div className="relative flex-1 min-w-[240px]">
             <input
               type="text"
-              placeholder="Search record"
+              placeholder="Search by name, GSTIN, HSN/SAC..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full h-[41px] px-3.5 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white placeholder-[#68756C]"
@@ -123,10 +128,10 @@ export function MastersClient({
             <table className="w-full text-left border-collapse min-w-[750px]">
               <thead>
                 <tr className="border-b border-[#D9E3DC] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
-                  <th className="py-3 px-3">CUSTOMER</th>
-                  <th className="py-3 px-3">GSTIN</th>
+                  <th className="py-3 px-3">CUSTOMER NAME & GSTIN</th>
                   <th className="py-3 px-3">TYPE</th>
-                  <th className="py-3 px-3">STATE</th>
+                  <th className="py-3 px-3">STATE & POS</th>
+                  <th className="py-3 px-3">CONTACT</th>
                   <th className="py-3 px-3">STATUS</th>
                   <th className="py-3 px-2 text-right">ACTION</th>
                 </tr>
@@ -140,41 +145,48 @@ export function MastersClient({
                   </tr>
                 ) : (
                   filteredCustomers.map((cust) => {
-                    const stateName =
-                      cust.billingAddress?.state || cust.placeOfSupply || "Kerala";
                     const isB2B = cust.customerType === "B2B";
                     const isExport = cust.customerType === "B2B_EXPORT";
+                    const formattedType = isExport ? "Export" : isB2B ? "Domestic B2B" : "B2C";
+                    const stateName = cust.state || cust.placeOfSupply || "Kerala";
 
                     return (
                       <tr key={cust.id} className="hover:bg-[#F9FAF8] transition-colors">
-                        <td className="py-4 px-3 font-bold text-[#17211B]">
-                          {cust.tradeName || cust.legalName}
+                        <td className="py-4 px-3">
+                          <p className="font-bold text-[#17211B]">{cust.tradeName || cust.legalName}</p>
+                          {cust.gstin ? (
+                            <p className="text-[11px] text-[#68756C] mt-0.5">GSTIN: <strong className="text-[#17211B]">{cust.gstin}</strong></p>
+                          ) : (
+                            <p className="text-[11px] text-[#7B877F] mt-0.5">{isExport ? "Export Customer" : "Unregistered"}</p>
+                          )}
                         </td>
                         <td className="py-4 px-3 text-[#17211B] font-medium">
-                          {cust.gstin || (isExport ? "Export Customer" : "—")}
+                          <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${isExport ? 'bg-blue-50 text-blue-800' : 'bg-emerald-50 text-emerald-800'}`}>
+                            {formattedType}
+                          </span>
                         </td>
                         <td className="py-4 px-3 text-[#17211B]">
-                          {isExport ? "Export" : isB2B ? "B2B" : "B2C"}
+                          {stateName} {cust.country && cust.country !== "India" ? `• ${cust.country}` : ""}
                         </td>
                         <td className="py-4 px-3 text-[#17211B]">
-                          {isExport ? "USA" : stateName}
+                          {cust.contactPerson || cust.phone || cust.email || "—"}
                         </td>
-                        <td className="py-4 px-3 text-[#17211B] font-medium">
-                          {cust.isActive ? "Active" : "Inactive"}
+                        <td className="py-4 px-3 font-medium">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold ${cust.isActive !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}`}>
+                            {cust.isActive !== false ? "Active" : "Inactive"}
+                          </span>
                         </td>
                         <td className="py-4 px-2 text-right space-x-2 whitespace-nowrap">
-                          <Link
-                            href={`/customers/${cust.id}/edit`}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingRecord({ type: "customer", data: cust });
+                              setIsAddModalOpen(true);
+                            }}
                             className="inline-block bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
                           >
                             Edit
-                          </Link>
-                          <Link
-                            href={`/customers/${cust.id}`}
-                            className="inline-block bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
-                          >
-                            View
-                          </Link>
+                          </button>
                         </td>
                       </tr>
                     );
@@ -191,9 +203,10 @@ export function MastersClient({
             <table className="w-full text-left border-collapse min-w-[750px]">
               <thead>
                 <tr className="border-b border-[#D9E3DC] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
-                  <th className="py-3 px-3">VENDOR</th>
-                  <th className="py-3 px-3">GSTIN</th>
+                  <th className="py-3 px-3">VENDOR NAME & GSTIN</th>
+                  <th className="py-3 px-3">DEFAULT CATEGORY</th>
                   <th className="py-3 px-3">STATE</th>
+                  <th className="py-3 px-3">CONTACT</th>
                   <th className="py-3 px-3">STATUS</th>
                   <th className="py-3 px-2 text-right">ACTION</th>
                 </tr>
@@ -201,38 +214,46 @@ export function MastersClient({
               <tbody className="divide-y divide-[#E9EEE9] text-xs">
                 {filteredVendors.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-[#68756C]">
+                    <td colSpan={6} className="py-12 text-center text-[#68756C]">
                       No vendors found. Click &quot;+ Add Record&quot; to create one.
                     </td>
                   </tr>
                 ) : (
                   filteredVendors.map((ven) => (
                     <tr key={ven.id} className="hover:bg-[#F9FAF8] transition-colors">
-                      <td className="py-4 px-3 font-bold text-[#17211B]">
-                        {ven.name}
+                      <td className="py-4 px-3">
+                        <p className="font-bold text-[#17211B]">{ven.name}</p>
+                        {ven.gstin ? (
+                          <p className="text-[11px] text-[#68756C] mt-0.5">GSTIN: <strong className="text-[#17211B]">{ven.gstin}</strong></p>
+                        ) : (
+                          <p className="text-[11px] text-[#7B877F] mt-0.5">Unregistered Vendor</p>
+                        )}
                       </td>
                       <td className="py-4 px-3 text-[#17211B] font-medium">
-                        {ven.gstin || "—"}
+                        {ven.defaultCategory?.name || "Operating Expense"}
                       </td>
                       <td className="py-4 px-3 text-[#17211B]">
                         {ven.state || "Kerala"}
                       </td>
-                      <td className="py-4 px-3 text-[#17211B] font-medium">
-                        {ven.isActive ? "Active" : "Inactive"}
+                      <td className="py-4 px-3 text-[#17211B]">
+                        {ven.contactPerson || ven.phone || ven.email || "—"}
+                      </td>
+                      <td className="py-4 px-3 font-medium">
+                        <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold ${ven.isActive !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}`}>
+                          {ven.isActive !== false ? "Active" : "Inactive"}
+                        </span>
                       </td>
                       <td className="py-4 px-2 text-right space-x-2 whitespace-nowrap">
-                        <Link
-                          href={`/vendors/${ven.id}/edit`}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingRecord({ type: "vendor", data: ven });
+                            setIsAddModalOpen(true);
+                          }}
                           className="inline-block bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
                         >
                           Edit
-                        </Link>
-                        <Link
-                          href={`/vendors/${ven.id}`}
-                          className="inline-block bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
-                        >
-                          View
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -249,9 +270,10 @@ export function MastersClient({
               <thead>
                 <tr className="border-b border-[#D9E3DC] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
                   <th className="py-3 px-3">PRODUCT / SERVICE</th>
+                  <th className="py-3 px-3">TYPE</th>
                   <th className="py-3 px-3">HSN/SAC</th>
-                  <th className="py-3 px-3">GST</th>
-                  <th className="py-3 px-3">TREATMENT</th>
+                  <th className="py-3 px-3">GST RATE</th>
+                  <th className="py-3 px-3">DEFAULT RATE</th>
                   <th className="py-3 px-3">STATUS</th>
                   <th className="py-3 px-2 text-right">ACTION</th>
                 </tr>
@@ -259,7 +281,7 @@ export function MastersClient({
               <tbody className="divide-y divide-[#E9EEE9] text-xs">
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-[#68756C]">
+                    <td colSpan={7} className="py-12 text-center text-[#68756C]">
                       No products or services found. Click &quot;+ Add Record&quot; to create one.
                     </td>
                   </tr>
@@ -268,6 +290,12 @@ export function MastersClient({
                     <tr key={prod.id} className="hover:bg-[#F9FAF8] transition-colors">
                       <td className="py-4 px-3 font-bold text-[#17211B]">
                         {prod.name}
+                        {prod.description && <p className="text-[11px] text-[#68756C] font-normal">{prod.description}</p>}
+                      </td>
+                      <td className="py-4 px-3 text-[#17211B] font-medium">
+                        <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${prod.type === 'SERVICE' ? 'bg-purple-50 text-purple-800' : 'bg-blue-50 text-blue-800'}`}>
+                          {prod.type || "SERVICE"}
+                        </span>
                       </td>
                       <td className="py-4 px-3 text-[#17211B] font-medium">
                         {prod.hsnSacCode || "9983"}
@@ -275,25 +303,25 @@ export function MastersClient({
                       <td className="py-4 px-3 text-[#17211B]">
                         {Number(prod.gstRate || 18)}%
                       </td>
-                      <td className="py-4 px-3 text-[#17211B]">
-                        {prod.description || "Training Income"}
+                      <td className="py-4 px-3 font-bold text-[#17211B]">
+                        {formatCurrency(Number(prod.sellingPrice || 0))}
                       </td>
-                      <td className="py-4 px-3 text-[#17211B] font-medium">
-                        {prod.isActive ? "Active" : "Inactive"}
+                      <td className="py-4 px-3 font-medium">
+                        <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold ${prod.isActive !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}`}>
+                          {prod.isActive !== false ? "Active" : "Inactive"}
+                        </span>
                       </td>
                       <td className="py-4 px-2 text-right space-x-2 whitespace-nowrap">
-                        <Link
-                          href={`/products/${prod.id}/edit`}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingRecord({ type: "product", data: prod });
+                            setIsAddModalOpen(true);
+                          }}
                           className="inline-block bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
                         >
                           Edit
-                        </Link>
-                        <Link
-                          href={`/products/${prod.id}`}
-                          className="inline-block bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
-                        >
-                          View
-                        </Link>
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -309,8 +337,9 @@ export function MastersClient({
             <table className="w-full text-left border-collapse min-w-[750px]">
               <thead>
                 <tr className="border-b border-[#D9E3DC] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
-                  <th className="py-3 px-3">TYPE</th>
-                  <th className="py-3 px-3">CATEGORY</th>
+                  <th className="py-3 px-3">FINANCIAL TYPE</th>
+                  <th className="py-3 px-3">CATEGORY NAME</th>
+                  <th className="py-3 px-3">HIERARCHY LEVEL</th>
                   <th className="py-3 px-3">STATEMENT GROUP</th>
                   <th className="py-3 px-3">STATUS</th>
                   <th className="py-3 px-2 text-right">ACTION</th>
@@ -319,43 +348,50 @@ export function MastersClient({
               <tbody className="divide-y divide-[#E9EEE9] text-xs">
                 {filteredCategories.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-[#68756C]">
+                    <td colSpan={6} className="py-12 text-center text-[#68756C]">
                       No categories found. Click &quot;+ Add Record&quot; to create one.
                     </td>
                   </tr>
                 ) : (
-                  filteredCategories.map((cat) => (
-                    <tr key={cat.id} className="hover:bg-[#F9FAF8] transition-colors">
-                      <td className="py-4 px-3 text-[#17211B] font-medium">
-                        Expense
-                      </td>
-                      <td className="py-4 px-3 font-bold text-[#17211B]">
-                        {cat.name}
-                      </td>
-                      <td className="py-4 px-3 text-[#17211B]">
-                        {cat.description || "P&L — Operating Expense"}
-                      </td>
-                      <td className="py-4 px-3 text-[#17211B] font-medium">
-                        {cat.isActive ? "Active" : "Inactive"}
-                      </td>
-                      <td className="py-4 px-2 text-right space-x-2 whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => setIsAddModalOpen(true)}
-                          className="bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIsAddModalOpen(true)}
-                          className="bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  filteredCategories.map((cat) => {
+                    const levelLabel = cat.hierarchyLevel === 3 ? "Subcategory (L3)" : cat.hierarchyLevel === 2 ? "Main Category (L2)" : "Group (L1)";
+                    return (
+                      <tr key={cat.id} className="hover:bg-[#F9FAF8] transition-colors">
+                        <td className="py-4 px-3 text-[#17211B] font-bold">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[11px] ${cat.financialType === 'INCOME' ? 'bg-emerald-100 text-emerald-800' : cat.financialType === 'ASSET' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                            {cat.financialType || "EXPENSE"}
+                          </span>
+                        </td>
+                        <td className="py-4 px-3 font-bold text-[#17211B]">
+                          {cat.parent ? <span className="text-[#68756C] font-normal">{cat.parent.name} → </span> : null}
+                          {cat.name}
+                        </td>
+                        <td className="py-4 px-3 text-[#17211B] font-medium">
+                          {levelLabel}
+                        </td>
+                        <td className="py-4 px-3 text-[#17211B]">
+                          {cat.statementGroup || cat.description || "P&L — Operating Expense"}
+                        </td>
+                        <td className="py-4 px-3 font-medium">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold ${cat.isActive !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}`}>
+                            {cat.isActive !== false ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="py-4 px-2 text-right space-x-2 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingRecord({ type: "category", data: cat });
+                              setIsAddModalOpen(true);
+                            }}
+                            className="bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
+                          >
+                            Edit
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -363,19 +399,25 @@ export function MastersClient({
         )}
       </div>
 
-      {/* Add Master Record Modal */}
+      {/* Add / Edit Master Record Modal */}
       {isAddModalOpen && (
         <AddMasterRecordModal
           defaultTab={
-            activeTab === "customers"
+            editingRecord?.type ||
+            (activeTab === "customers"
               ? "customer"
               : activeTab === "vendors"
               ? "vendor"
               : activeTab === "products"
               ? "product"
-              : "category"
+              : "category")
           }
-          onClose={() => setIsAddModalOpen(false)}
+          initialData={editingRecord?.data}
+          categories={categories}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setEditingRecord(null);
+          }}
           onSuccess={() => router.refresh()}
         />
       )}

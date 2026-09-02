@@ -1,5 +1,14 @@
 import { prisma } from "@/lib/prisma";
 
+export type CreateCategoryInput = {
+  name: string;
+  description?: string | null;
+  parentId?: string | null;
+  hierarchyLevel?: number;
+  financialType?: string;
+  statementGroup?: string | null;
+  isActive?: boolean;
+};
 
 export class ExpenseCategoryService {
   static async getExpenseCategories(params?: { search?: string; isActive?: boolean }) {
@@ -11,13 +20,15 @@ export class ExpenseCategoryService {
     }
 
     if (search) {
-      where.name = { contains: search };
+      where.name = { contains: search, mode: "insensitive" };
     }
 
     return await prisma.expenseCategory.findMany({
       where,
       orderBy: { name: "asc" },
       include: {
+        parent: true,
+        children: true,
         _count: {
           select: { expenses: true }
         }
@@ -28,32 +39,48 @@ export class ExpenseCategoryService {
   static async getExpenseCategoryById(id: string) {
     return await prisma.expenseCategory.findUnique({
       where: { id },
+      include: {
+        parent: true,
+        children: true
+      }
     });
   }
 
-  static async createExpenseCategory(data: { name: string; description?: string | null }) {
+  static async createExpenseCategory(data: CreateCategoryInput) {
     if (!data.name || data.name.trim() === "") {
       throw new Error("Category name is required.");
     }
 
     const existing = await prisma.expenseCategory.findUnique({
-      where: { name: data.name }
+      where: { name: data.name.trim() }
     });
 
     if (existing) {
       throw new Error("Category name already exists.");
     }
 
+    let level = data.hierarchyLevel || 1;
+    if (data.parentId) {
+      const parent = await prisma.expenseCategory.findUnique({ where: { id: data.parentId } });
+      if (parent) {
+        level = (parent.hierarchyLevel || 1) + 1;
+      }
+    }
+
     return await prisma.expenseCategory.create({
       data: {
         name: data.name.trim(),
         description: data.description,
-        isActive: true,
+        parentId: data.parentId || null,
+        hierarchyLevel: level,
+        financialType: data.financialType || "EXPENSE",
+        statementGroup: data.statementGroup || "P&L — Operating Expense",
+        isActive: data.isActive ?? true,
       }
     });
   }
 
-  static async updateExpenseCategory(id: string, data: { name?: string; description?: string | null }) {
+  static async updateExpenseCategory(id: string, data: Partial<CreateCategoryInput>) {
     if (data.name !== undefined && data.name.trim() === "") {
       throw new Error("Category name cannot be empty.");
     }
@@ -67,11 +94,20 @@ export class ExpenseCategoryService {
       }
     }
 
+    let level = data.hierarchyLevel;
+    if (data.parentId) {
+      const parent = await prisma.expenseCategory.findUnique({ where: { id: data.parentId } });
+      if (parent) {
+        level = (parent.hierarchyLevel || 1) + 1;
+      }
+    }
+
     return await prisma.expenseCategory.update({
       where: { id },
       data: {
         ...data,
         name: data.name?.trim(),
+        hierarchyLevel: level,
       },
     });
   }
@@ -85,17 +121,32 @@ export class ExpenseCategoryService {
 
   static async seedDefaultCategories() {
     const defaults = [
-      "Office Rent", "Salaries & Wages", "Utilities", "Internet & Telephone",
-      "Travel & Transportation", "Office Supplies", "Software & Subscriptions",
-      "Marketing & Advertising", "Professional Fees", "Repairs & Maintenance",
-      "Equipment", "Bank Charges", "Insurance", "Taxes & Government Fees", "Other"
+      { name: "Office Rent", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
+      { name: "Salaries & Wages", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
+      { name: "Utilities", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
+      { name: "Internet & Telephone", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
+      { name: "Travel & Transportation", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
+      { name: "Office Supplies", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
+      { name: "Software & Subscriptions", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
+      { name: "Marketing & Advertising", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
+      { name: "Professional Fees", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
+      { name: "Training Income", financialType: "INCOME", statementGroup: "P&L — Operating Revenue" },
+      { name: "Consulting Income", financialType: "INCOME", statementGroup: "P&L — Operating Revenue" },
+      { name: "Bank Charges", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" },
+      { name: "Other Expenses", financialType: "EXPENSE", statementGroup: "P&L — Operating Expense" }
     ];
 
     let created = 0;
-    for (const name of defaults) {
-      const existing = await prisma.expenseCategory.findUnique({ where: { name } });
+    for (const item of defaults) {
+      const existing = await prisma.expenseCategory.findUnique({ where: { name: item.name } });
       if (!existing) {
-        await prisma.expenseCategory.create({ data: { name } });
+        await prisma.expenseCategory.create({
+          data: {
+            name: item.name,
+            financialType: item.financialType,
+            statementGroup: item.statementGroup,
+          }
+        });
         created++;
       }
     }
