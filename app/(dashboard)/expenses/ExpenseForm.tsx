@@ -351,9 +351,14 @@ export function ExpenseForm({
                       className="w-full border border-theme-border rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-theme-primary focus:border-transparent text-xs bg-theme-surface"
                     >
                       <option value="">No Vendor</option>
-                      {vendors.map(v => (
-                        <option key={v.id} value={v.id}>{v.name}</option>
-                      ))}
+                      {vendors.map(v => {
+                        const hasDiffName = v.businessName && v.businessName.trim().toLowerCase() !== v.name.trim().toLowerCase();
+                        return (
+                          <option key={v.id} value={v.id}>
+                            {v.name}{hasDiffName ? ` (${v.businessName})` : ''}
+                          </option>
+                        );
+                      })}
                       <option value="ADD_NEW" className="font-bold text-theme-primary">+ Add Custom Vendor</option>
                     </select>
                   </td>

@@ -439,11 +439,14 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                 className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface"
               >
                 <option value="">Select Customer...</option>
-                {customers.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.legalName} {c.tradeName ? `(${c.tradeName})` : ''}
-                  </option>
-                ))}
+                {customers.map(c => {
+                  const hasDifferentTradeName = c.tradeName && c.tradeName.trim().toLowerCase() !== c.legalName.trim().toLowerCase();
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {c.legalName}{hasDifferentTradeName ? ` (${c.tradeName})` : ''}
+                    </option>
+                  );
+                })}
                 <option value="ADD_NEW" className="font-bold text-theme-primary bg-theme-surface-hover">+ Add New Customer</option>
               </select>
               <p className="text-[11px] text-theme-text-muted">
