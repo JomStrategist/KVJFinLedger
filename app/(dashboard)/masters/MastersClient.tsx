@@ -12,11 +12,17 @@ export function MastersClient({
   vendors = [],
   products = [],
   categories = [],
+  financialTypes = [],
+  statementGroups = [],
+  accountNatures = [],
 }: {
   customers: any[];
   vendors: any[];
   products: any[];
   categories: any[];
+  financialTypes?: any[];
+  statementGroups?: any[];
+  accountNatures?: any[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -492,6 +498,9 @@ export function MastersClient({
           }
           initialData={editingRecord?.data}
           categories={categories}
+          financialTypes={financialTypes}
+          statementGroups={statementGroups}
+          accountNatures={accountNatures}
           onClose={() => {
             setIsAddModalOpen(false);
             setEditingRecord(null);

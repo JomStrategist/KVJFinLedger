@@ -7,12 +7,13 @@ import { RevenueVsExpenseChart } from './DashboardCharts';
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { from?: string; to?: string };
+  searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requireAdmin();
 
-  const fromFilter = await Promise.resolve(searchParams.from);
-  const toFilter = await Promise.resolve(searchParams.to);
+  const resolvedParams = await searchParams;
+  const fromFilter = resolvedParams?.from;
+  const toFilter = resolvedParams?.to;
 
   const filters = {
     fromDate: fromFilter ? new Date(fromFilter) : undefined,

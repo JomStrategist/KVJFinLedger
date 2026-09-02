@@ -319,30 +319,90 @@ model TaxInvoiceItem {
 }
 
 // ----------------------------------------------------------------------------
-// Phase 7: Expense Management
+// Phase 7: Chart of Accounts & Accounting Classification Masters
 // ----------------------------------------------------------------------------
 
-model ExpenseCategory {
+model FinancialType {
   id                 String   @id @default(auto()) @map("_id") @db.ObjectId
-  name               String   @unique
-  code               String?  @unique
+  code               String   @unique // INCOME, EXPENSE, ASSET, LIABILITY, EQUITY
+  name               String   // Income, Expense, Asset, Liability, Equity
+  financialStatement String   // Profit & Loss vs Balance Sheet
+  normalBalance      String   // Debit vs Credit
   description        String?
-  parentId           String?  @db.ObjectId
-  parent             ExpenseCategory? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  children           ExpenseCategory[] @relation("CategoryHierarchy")
-  hierarchyLevel     Int      @default(1)
-  financialType      String   @default("EXPENSE")
-  financialStatement String?
-  statementGroup     String?
-  accountNature      String?
-  normalBalance      String?
+  sortOrder          Int      @default(0)
   isActive           Boolean  @default(true)
 
-  expenses           Expense[] @relation("ExpenseCategory")
-  expenseItems       ExpenseItem[] @relation("ExpenseItemCategory")
+  statementGroups    FinancialStatementGroup[]
+  accountNatures     AccountNature[]
+  categories         ExpenseCategory[]
 
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model FinancialStatementGroup {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  financialTypeId String        @db.ObjectId
+  financialType   FinancialType @relation(fields: [financialTypeId], references: [id])
+  name            String
+  code            String?       @unique
+  description     String?
+  sortOrder       Int           @default(0)
+  isActive        Boolean       @default(true)
+
+  categories      ExpenseCategory[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model AccountNature {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  financialTypeId String        @db.ObjectId
+  financialType   FinancialType @relation(fields: [financialTypeId], references: [id])
+  name            String
+  code            String?       @unique
+  description     String?
+  sortOrder       Int           @default(0)
+  isActive        Boolean       @default(true)
+
+  categories      ExpenseCategory[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model ExpenseCategory {
+  id                      String                   @id @default(auto()) @map("_id") @db.ObjectId
+  name                    String                   @unique
+  code                    String?                  @unique
+  description             String?
+  parentId                String?                  @db.ObjectId
+  parent                  ExpenseCategory?         @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children                ExpenseCategory[]        @relation("CategoryHierarchy")
+  hierarchyLevel          Int                      @default(1)
+
+  financialTypeId         String?                  @db.ObjectId
+  financialTypeRef        FinancialType?           @relation(fields: [financialTypeId], references: [id])
+  financialType           String                   @default("EXPENSE")
+
+  statementGroupId        String?                  @db.ObjectId
+  statementGroupRef       FinancialStatementGroup? @relation(fields: [statementGroupId], references: [id])
+  statementGroup          String?
+
+  accountNatureId         String?                  @db.ObjectId
+  accountNatureRef        AccountNature?           @relation(fields: [accountNatureId], references: [id])
+  accountNature           String?
+
+  financialStatement      String?
+  normalBalance           String?
+  isActive                Boolean                  @default(true)
+
+  expenses                Expense[]                @relation("ExpenseCategory")
+  expenseItems            ExpenseItem[]            @relation("ExpenseItemCategory")
+
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
 }
 
 model Vendor {
@@ -444,6 +504,11 @@ model ExpenseItem {
 
   categoryId      String?  @db.ObjectId
   category        ExpenseCategory? @relation("ExpenseItemCategory", fields: [categoryId], references: [id])
+
+  categoryNameSnapshot   String?
+  categoryCodeSnapshot   String?
+  statementGroupSnapshot String?
+  financialTypeSnapshot  String?
 
   date            DateTime?
 

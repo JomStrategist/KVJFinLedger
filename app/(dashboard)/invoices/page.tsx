@@ -7,11 +7,11 @@ import { OptimisticTabs } from '@/components/OptimisticTabs';
 export default async function InvoicesHubPage({
   searchParams
 }: {
-  searchParams: { tab?: string; [key: string]: any }
+  searchParams: Promise<{ tab?: string; [key: string]: any }>
 }) {
   await requireAuth();
 
-  const params = await Promise.resolve(searchParams);
+  const params = await searchParams;
   const activeTab = params.tab || 'confirmed';
 
   return (

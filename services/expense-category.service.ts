@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ChartOfAccountsService } from "./chart-of-accounts.service";
 
 export type CreateCategoryInput = {
   name: string;
@@ -107,9 +108,62 @@ export class ExpenseCategoryService {
       throw new Error("Category name is required.");
     }
 
-    const finType = (data.financialType || "EXPENSE").toUpperCase();
-    const statement = deriveFinancialStatement(finType);
-    const balance = data.normalBalance || deriveNormalBalance(finType);
+    const finTypeCode = (data.financialType || "EXPENSE").toUpperCase();
+    
+    // 1. Verify Financial Type exists in MongoDB
+    const dbType = await prisma.financialType.findUnique({
+      where: { code: finTypeCode }
+    });
+    if (!dbType) {
+      throw new Error(`Financial Type "${finTypeCode}" is invalid or does not exist in database.`);
+    }
+
+    // 2. Verify Statement Group belongs to selected Financial Type
+    let dbGroup = null;
+    if (data.statementGroup) {
+      dbGroup = await prisma.financialStatementGroup.findFirst({
+        where: {
+          financialTypeId: dbType.id,
+          name: { equals: data.statementGroup.trim(), mode: "insensitive" }
+        }
+      });
+      if (!dbGroup) {
+        throw new Error(
+          `Invalid Statement Group "${data.statementGroup}" for Financial Type "${dbType.name}". Statement group must belong to ${dbType.name}.`
+        );
+      }
+    }
+
+    // 3. Verify Account Nature belongs to selected Financial Type
+    let dbNature = null;
+    if (data.accountNature) {
+      dbNature = await prisma.accountNature.findFirst({
+        where: {
+          financialTypeId: dbType.id,
+          name: { equals: data.accountNature.trim(), mode: "insensitive" }
+        }
+      });
+      if (!dbNature) {
+        throw new Error(
+          `Invalid Account Nature "${data.accountNature}" for Financial Type "${dbType.name}". Account nature must belong to ${dbType.name}.`
+        );
+      }
+    }
+
+    // 4. Verify Parent Category compatibility
+    let level = data.hierarchyLevel || 1;
+    if (data.parentId) {
+      const parent = await prisma.expenseCategory.findUnique({ where: { id: data.parentId } });
+      if (parent) {
+        if (parent.financialType.toUpperCase() !== finTypeCode) {
+          throw new Error(
+            `Parent category "${parent.name}" (${parent.financialType}) is incompatible with financial type "${finTypeCode}".`
+          );
+        }
+        level = (parent.hierarchyLevel || 1) + 1;
+      }
+    }
+
     const code = data.code?.trim() || `CAT-${name.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6)}-001`;
 
     const existingName = await prisma.expenseCategory.findUnique({
@@ -126,14 +180,6 @@ export class ExpenseCategoryService {
       throw new Error(`Category code "${code}" already exists.`);
     }
 
-    let level = data.hierarchyLevel || 1;
-    if (data.parentId) {
-      const parent = await prisma.expenseCategory.findUnique({ where: { id: data.parentId } });
-      if (parent) {
-        level = (parent.hierarchyLevel || 1) + 1;
-      }
-    }
-
     return await prisma.expenseCategory.create({
       data: {
         name,
@@ -141,11 +187,14 @@ export class ExpenseCategoryService {
         description: data.description || null,
         parentId: data.parentId || null,
         hierarchyLevel: level,
-        financialType: finType,
-        financialStatement: statement,
-        statementGroup: data.statementGroup || (statement === "Profit & Loss" ? "Administrative Expenses" : "Other Current Assets"),
-        accountNature: data.accountNature || (finType === "EXPENSE" ? "Operating Expense" : "Operating Income"),
-        normalBalance: balance,
+        financialTypeId: dbType.id,
+        financialType: dbType.code,
+        statementGroupId: dbGroup?.id || null,
+        statementGroup: dbGroup?.name || data.statementGroup || null,
+        accountNatureId: dbNature?.id || null,
+        accountNature: dbNature?.name || data.accountNature || null,
+        financialStatement: dbType.financialStatement,
+        normalBalance: dbType.normalBalance,
         isActive: data.isActive ?? true,
       }
     });
@@ -217,6 +266,14 @@ export class ExpenseCategoryService {
   }
 
   static async seedDefaultCategories() {
+    await ChartOfAccountsService.seedAccountingMasters();
+
+    const types = await prisma.financialType.findMany();
+    const statementGroups = await prisma.financialStatementGroup.findMany();
+    const accountNatures = await prisma.accountNature.findMany();
+
+    const typeMap = new Map(types.map((t) => [t.code, t]));
+
     const defaults = [
       // INCOME
       { name: "Revenue from Services", code: "INC-REV-001", financialType: "INCOME", statementGroup: "Revenue from Operations", accountNature: "Operating Income" },
@@ -271,18 +328,26 @@ export class ExpenseCategoryService {
       });
 
       if (!existing) {
-        const statement = deriveFinancialStatement(item.financialType);
-        const balance = deriveNormalBalance(item.financialType);
+        const ft = typeMap.get(item.financialType);
+        const groupObj = statementGroups.find(
+          (g) => g.financialTypeId === ft?.id && g.name.toLowerCase() === item.statementGroup.toLowerCase()
+        );
+        const natureObj = accountNatures.find(
+          (n) => n.financialTypeId === ft?.id && n.name.toLowerCase() === item.accountNature.toLowerCase()
+        );
 
         await prisma.expenseCategory.create({
           data: {
             name: item.name,
             code: item.code,
+            financialTypeId: ft?.id || null,
             financialType: item.financialType,
-            financialStatement: statement,
-            statementGroup: item.statementGroup,
-            accountNature: item.accountNature,
-            normalBalance: balance,
+            statementGroupId: groupObj?.id || null,
+            statementGroup: groupObj?.name || item.statementGroup,
+            accountNatureId: natureObj?.id || null,
+            accountNature: natureObj?.name || item.accountNature,
+            financialStatement: ft?.financialStatement || "Profit & Loss",
+            normalBalance: ft?.normalBalance || "Debit",
             isActive: true,
           }
         });

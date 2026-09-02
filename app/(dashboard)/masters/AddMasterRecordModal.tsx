@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import {
   createCustomerMasterAction,
   updateCustomerMasterAction,
@@ -10,56 +10,27 @@ import {
   updateProductMasterAction,
   createCategoryMasterAction,
   updateCategoryMasterAction,
+  getFinancialTypesAction,
+  getStatementGroupsAction,
+  getAccountNaturesAction,
 } from "./actions";
-
-const STATEMENT_GROUPS_MAP: Record<string, string[]> = {
-  INCOME: ["Revenue from Operations", "Other Income"],
-  EXPENSE: [
-    "Revenue from Operations",
-    "Other Income",
-    "Employee Costs",
-    "Professional & Consultancy",
-    "Administrative Expenses",
-    "Selling & Marketing Expenses",
-    "Finance Costs",
-    "Depreciation & Amortisation",
-    "Other Expenses",
-  ],
-  ASSET: [
-    "Fixed Assets",
-    "Current Assets",
-    "Cash & Cash Equivalents",
-    "Trade Receivables",
-    "Other Current Assets",
-  ],
-  LIABILITY: [
-    "Current Liabilities",
-    "Trade Payables",
-    "Statutory Liabilities",
-    "Other Current Liabilities",
-    "Borrowings",
-  ],
-  EQUITY: ["Capital", "Retained Earnings", "Reserves"],
-};
-
-const ACCOUNT_NATURES_MAP: Record<string, string[]> = {
-  INCOME: ["Operating Income", "Other Income"],
-  EXPENSE: ["Operating Expense", "Finance Cost", "Depreciation", "Other Expense"],
-  ASSET: ["Current Asset", "Non-Current Asset", "Fixed Asset", "Cash & Bank", "Trade Receivable", "Other Asset"],
-  LIABILITY: ["Current Liability", "Non-Current Liability", "Trade Payable", "Statutory Liability", "Borrowing", "Other Liability"],
-  EQUITY: ["Capital", "Retained Earnings", "Reserve"],
-};
 
 export function AddMasterRecordModal({
   defaultTab = "customer",
   initialData = null,
   categories = [],
+  financialTypes: initialDbTypes = [],
+  statementGroups: initialDbGroups = [],
+  accountNatures: initialDbNatures = [],
   onClose,
   onSuccess,
 }: {
   defaultTab?: "customer" | "vendor" | "product" | "category" | string;
   initialData?: any;
   categories?: any[];
+  financialTypes?: any[];
+  statementGroups?: any[];
+  accountNatures?: any[];
   onClose: () => void;
   onSuccess: (createdRecord?: any) => void;
 }) {
@@ -102,18 +73,59 @@ export function AddMasterRecordModal({
   const [productUnit, setProductUnit] = useState(initialData?.unit || "Hours");
   const [productDescription, setProductDescription] = useState(initialData?.description || "");
 
+  // Database-driven accounting masters state
+  const [dbTypes, setDbTypes] = useState<any[]>(initialDbTypes);
+  const [dbGroups, setDbGroups] = useState<any[]>(initialDbGroups);
+  const [dbNatures, setDbNatures] = useState<any[]>(initialDbNatures);
+
+  useEffect(() => {
+    if (initialDbTypes.length === 0) {
+      getFinancialTypesAction().then((res) => {
+        if (res.success && res.data) setDbTypes(res.data);
+      });
+    }
+    if (initialDbGroups.length === 0) {
+      getStatementGroupsAction().then((res) => {
+        if (res.success && res.data) setDbGroups(res.data);
+      });
+    }
+    if (initialDbNatures.length === 0) {
+      getAccountNaturesAction().then((res) => {
+        if (res.success && res.data) setDbNatures(res.data);
+      });
+    }
+  }, [initialDbTypes, initialDbGroups, initialDbNatures]);
+
   // Category State
   const [categoryName, setCategoryName] = useState(initialData?.name || "");
   const [categoryCode, setCategoryCode] = useState(initialData?.code || "");
   const [parentCategoryId, setParentCategoryId] = useState(initialData?.parentId || "");
   const [financialType, setFinancialType] = useState(initialData?.financialType || "EXPENSE");
-  const [statementGroup, setStatementGroup] = useState(initialData?.statementGroup || "Administrative Expenses");
-  const [accountNature, setAccountNature] = useState(initialData?.accountNature || "Operating Expense");
+
+  // Dynamically filtered Statement Groups & Account Natures based on selected Financial Type
+  const filteredGroups = dbGroups.filter(
+    (g) => (g.financialType?.code || g.financialTypeCode || "").toUpperCase() === financialType.toUpperCase()
+  );
+  const filteredNatures = dbNatures.filter(
+    (n) => (n.financialType?.code || n.financialTypeCode || "").toUpperCase() === financialType.toUpperCase()
+  );
+
+  const [statementGroup, setStatementGroup] = useState(
+    initialData?.statementGroup || filteredGroups[0]?.name || "Administrative Expenses"
+  );
+  const [accountNature, setAccountNature] = useState(
+    initialData?.accountNature || filteredNatures[0]?.name || "Operating Expense"
+  );
   const [categoryDescription, setCategoryDescription] = useState(initialData?.description || "");
   const [categoryIsActive, setCategoryIsActive] = useState(initialData?.isActive ?? true);
 
-  const derivedFinancialStatement = financialType === "INCOME" || financialType === "EXPENSE" ? "Profit & Loss" : "Balance Sheet";
-  const derivedNormalBalance = financialType === "ASSET" || financialType === "EXPENSE" ? "Debit" : "Credit";
+  const currentTypeObj = dbTypes.find((t) => t.code.toUpperCase() === financialType.toUpperCase());
+  const derivedFinancialStatement =
+    currentTypeObj?.financialStatement ||
+    (financialType === "INCOME" || financialType === "EXPENSE" ? "Profit & Loss" : "Balance Sheet");
+  const derivedNormalBalance =
+    currentTypeObj?.normalBalance ||
+    (financialType === "ASSET" || financialType === "EXPENSE" ? "Debit" : "Credit");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -639,18 +651,20 @@ export function AddMasterRecordModal({
                     onChange={(e) => {
                       const newType = e.target.value;
                       setFinancialType(newType);
-                      const availableGroups = STATEMENT_GROUPS_MAP[newType] || ["Administrative Expenses"];
-                      const availableNatures = ACCOUNT_NATURES_MAP[newType] || ["Operating Expense"];
-                      setStatementGroup(availableGroups[0]);
-                      setAccountNature(availableNatures[0]);
+                      const newGroups = dbGroups.filter(
+                        (g) => (g.financialType?.code || g.financialTypeCode || "").toUpperCase() === newType.toUpperCase()
+                      );
+                      const newNatures = dbNatures.filter(
+                        (n) => (n.financialType?.code || n.financialTypeCode || "").toUpperCase() === newType.toUpperCase()
+                      );
+                      if (newGroups.length > 0) setStatementGroup(newGroups[0].name);
+                      if (newNatures.length > 0) setAccountNature(newNatures[0].name);
                     }}
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] font-semibold text-[#177B55]"
                   >
-                    <option value="EXPENSE">Expense</option>
-                    <option value="INCOME">Income</option>
-                    <option value="ASSET">Asset</option>
-                    <option value="LIABILITY">Liability</option>
-                    <option value="EQUITY">Equity</option>
+                    {dbTypes.map((ft) => (
+                      <option key={ft.id || ft.code} value={ft.code}>{ft.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -661,7 +675,7 @@ export function AddMasterRecordModal({
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                   >
                     <option value="">None (Top-Level Category)</option>
-                    {categories.filter((c) => !c.parentId && c.id !== initialData?.id).map((c) => (
+                    {categories.filter((c) => !c.parentId && c.id !== initialData?.id && (c.financialType || "EXPENSE").toUpperCase() === financialType.toUpperCase()).map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
@@ -699,8 +713,8 @@ export function AddMasterRecordModal({
                     onChange={(e) => setStatementGroup(e.target.value)}
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                   >
-                    {(STATEMENT_GROUPS_MAP[financialType] || ["Administrative Expenses"]).map((sg) => (
-                      <option key={sg} value={sg}>{sg}</option>
+                    {filteredGroups.map((sg) => (
+                      <option key={sg.id || sg.code || sg.name} value={sg.name}>{sg.name}</option>
                     ))}
                   </select>
                 </div>
@@ -713,8 +727,8 @@ export function AddMasterRecordModal({
                     onChange={(e) => setAccountNature(e.target.value)}
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                   >
-                    {(ACCOUNT_NATURES_MAP[financialType] || ["Operating Expense"]).map((an) => (
-                      <option key={an} value={an}>{an}</option>
+                    {filteredNatures.map((an) => (
+                      <option key={an.id || an.code || an.name} value={an.name}>{an.name}</option>
                     ))}
                   </select>
                 </div>

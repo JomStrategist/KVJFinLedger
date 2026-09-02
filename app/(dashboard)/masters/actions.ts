@@ -5,6 +5,7 @@ import { CustomerService } from "@/services/customer.service";
 import { VendorService } from "@/services/vendor.service";
 import { ProductService } from "@/services/product.service";
 import { ExpenseCategoryService } from "@/services/expense-category.service";
+import { ChartOfAccountsService } from "@/services/chart-of-accounts.service";
 
 export async function createCustomerMasterAction(data: any) {
   try {
@@ -102,5 +103,52 @@ export async function toggleCategoryStatusAction(id: string, isActive: boolean) 
     return { success: true, data: cat };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to toggle category status." };
+  }
+}
+
+export async function getFinancialTypesAction() {
+  try {
+    const types = await ChartOfAccountsService.getFinancialTypes();
+    return { success: true, data: types };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to fetch financial types." };
+  }
+}
+
+export async function getStatementGroupsAction(financialTypeCode?: string) {
+  try {
+    const groups = await ChartOfAccountsService.getStatementGroups(financialTypeCode);
+    return { success: true, data: groups };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to fetch statement groups." };
+  }
+}
+
+export async function getAccountNaturesAction(financialTypeCode?: string) {
+  try {
+    const natures = await ChartOfAccountsService.getAccountNatures(financialTypeCode);
+    return { success: true, data: natures };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to fetch account natures." };
+  }
+}
+
+export async function createStatementGroupAction(data: { name: string; financialTypeCode: string; code?: string }) {
+  try {
+    const grp = await ChartOfAccountsService.createStatementGroup(data);
+    revalidatePath("/masters");
+    return { success: true, data: grp };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to create statement group." };
+  }
+}
+
+export async function createAccountNatureAction(data: { name: string; financialTypeCode: string; code?: string }) {
+  try {
+    const nat = await ChartOfAccountsService.createAccountNature(data);
+    revalidatePath("/masters");
+    return { success: true, data: nat };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to create account nature." };
   }
 }
