@@ -204,7 +204,6 @@ export function MastersClient({
               <thead>
                 <tr className="border-b border-[#D9E3DC] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
                   <th className="py-3 px-3">VENDOR NAME & GSTIN</th>
-                  <th className="py-3 px-3">DEFAULT CATEGORY</th>
                   <th className="py-3 px-3">STATE</th>
                   <th className="py-3 px-3">CONTACT</th>
                   <th className="py-3 px-3">STATUS</th>
@@ -214,7 +213,7 @@ export function MastersClient({
               <tbody className="divide-y divide-[#E9EEE9] text-xs">
                 {filteredVendors.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-[#68756C]">
+                    <td colSpan={5} className="py-12 text-center text-[#68756C]">
                       No vendors found. Click &quot;+ Add Record&quot; to create one.
                     </td>
                   </tr>
@@ -228,9 +227,6 @@ export function MastersClient({
                         ) : (
                           <p className="text-[11px] text-[#7B877F] mt-0.5">Unregistered Vendor</p>
                         )}
-                      </td>
-                      <td className="py-4 px-3 text-[#17211B] font-medium">
-                        {ven.defaultCategory?.name || "Operating Expense"}
                       </td>
                       <td className="py-4 px-3 text-[#17211B]">
                         {ven.state || "Kerala"}

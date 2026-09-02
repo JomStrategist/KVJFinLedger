@@ -43,10 +43,6 @@ export function AddMasterRecordModal({
   const [placeOfSupply, setPlaceOfSupply] = useState(initialData?.placeOfSupply || "Kerala");
   const [customerCountry, setCustomerCountry] = useState(initialData?.country || "India");
 
-  // Category list state & Add Category modal state
-  const [categoryList, setCategoryList] = useState(categories);
-  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
-
   // Vendor State
   const [vendorName, setVendorName] = useState(initialData?.name || "");
   const [vendorType, setVendorType] = useState(initialData?.vendorType || "B2B");
@@ -58,7 +54,6 @@ export function AddMasterRecordModal({
   const [vendorContact, setVendorContact] = useState(initialData?.contactPerson || "");
   const [vendorAddress, setVendorAddress] = useState(initialData?.address || "");
   const [vendorState, setVendorState] = useState(initialData?.state || "Kerala");
-  const [vendorCategory, setVendorCategory] = useState(initialData?.defaultCategoryId || "");
 
   // Product State
   const [productName, setProductName] = useState(initialData?.name || "");
@@ -116,7 +111,6 @@ export function AddMasterRecordModal({
           contactPerson: vendorContact || null,
           address: vendorAddress || null,
           state: vendorState,
-          defaultCategoryId: vendorCategory || null,
           isActive: true,
         };
         res = isEdit
@@ -426,47 +420,14 @@ export function AddMasterRecordModal({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">State</label>
-                  <input
-                    type="text"
-                    value={vendorState}
-                    onChange={(e) => setVendorState(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-[#68756C]">
-                      Default Expense Category
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddCategoryOpen(true)}
-                      className="text-[11px] font-bold text-[#177B55] hover:underline cursor-pointer"
-                    >
-                      + Add Category
-                    </button>
-                  </div>
-                  <select
-                    value={vendorCategory}
-                    onChange={(e) => {
-                      if (e.target.value === "ADD_NEW") {
-                        setIsAddCategoryOpen(true);
-                      } else {
-                        setVendorCategory(e.target.value);
-                      }
-                    }}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  >
-                    <option value="">Select Category...</option>
-                    <option value="ADD_NEW" className="font-bold text-[#177B55]">+ Add New Category...</option>
-                    {categoryList.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1">State</label>
+                <input
+                  type="text"
+                  value={vendorState}
+                  onChange={(e) => setVendorState(e.target.value)}
+                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -671,21 +632,6 @@ export function AddMasterRecordModal({
           </div>
         </form>
       </div>
-
-      {isAddCategoryOpen && (
-        <AddMasterRecordModal
-          defaultTab="category"
-          categories={categoryList}
-          onClose={() => setIsAddCategoryOpen(false)}
-          onSuccess={(newCat) => {
-            if (newCat) {
-              setCategoryList((prev) => [...prev, newCat]);
-              setVendorCategory(newCat.id);
-            }
-            setIsAddCategoryOpen(false);
-          }}
-        />
-      )}
     </div>
   );
 }
