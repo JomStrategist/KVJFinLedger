@@ -36,9 +36,12 @@ export function ExpenseModal({
 
   const isEdit = Boolean(expense?.id);
 
-  // Vendor list state & Add Vendor modal state
+  // Vendor & Category list state & Add modal state
   const [vendorList, setVendorList] = useState(vendors);
   const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
+  const [categoryList, setCategoryList] = useState(categories);
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [activeItemCategoryIndex, setActiveItemCategoryIndex] = useState<number | null>(null);
 
   // Section 1: Expense Details
   const [date, setDate] = useState(
@@ -95,7 +98,7 @@ export function ExpenseModal({
       const target = { ...next[index], [field]: val };
 
       if (field === "categoryId") {
-        const cat = categories.find((c) => c.id === val);
+        const cat = categoryList.find((c) => c.id === val);
         if (cat) target.categoryName = cat.name;
       }
 
@@ -325,7 +328,21 @@ export function ExpenseModal({
                   <thead className="bg-[#F6FAF7] border-b border-[#D9E3DC] text-[#738078] font-bold uppercase tracking-wider">
                     <tr>
                       <th className="py-2.5 px-3">ITEM</th>
-                      <th className="py-2.5 px-3">CATEGORY</th>
+                      <th className="py-2.5 px-3">
+                        <div className="flex items-center justify-between gap-1">
+                          <span>CATEGORY</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveItemCategoryIndex(0);
+                              setIsAddCategoryOpen(true);
+                            }}
+                            className="text-[10px] font-bold text-[#177B55] hover:underline normal-case cursor-pointer"
+                          >
+                            + Add
+                          </button>
+                        </div>
+                      </th>
                       <th className="py-2.5 px-2">HSN/SAC</th>
                       <th className="py-2.5 px-2 text-center">QTY</th>
                       <th className="py-2.5 px-2 text-right">RATE</th>
@@ -349,10 +366,18 @@ export function ExpenseModal({
                         <td className="py-2 px-3">
                           <select
                             value={row.categoryId}
-                            onChange={(e) => updateItem(idx, "categoryId", e.target.value)}
-                            className="w-full border border-[#D9E3DC] rounded-lg px-2 py-1 text-xs bg-white"
+                            onChange={(e) => {
+                              if (e.target.value === "ADD_NEW") {
+                                setActiveItemCategoryIndex(idx);
+                                setIsAddCategoryOpen(true);
+                              } else {
+                                updateItem(idx, "categoryId", e.target.value);
+                              }
+                            }}
+                            className="w-full border border-[#D9E3DC] rounded-lg px-2 py-1 text-xs bg-white font-medium text-[#17211B]"
                           >
-                            {categories.map((c) => (
+                            <option value="ADD_NEW" className="font-bold text-[#177B55]">+ Add New Category...</option>
+                            {categoryList.map((c) => (
                               <option key={c.id} value={c.id}>
                                 {c.name}
                               </option>
@@ -543,6 +568,27 @@ export function ExpenseModal({
               setVendorId(newVendor.id);
             }
             setIsAddVendorOpen(false);
+          }}
+        />
+      )}
+
+      {isAddCategoryOpen && (
+        <AddMasterRecordModal
+          defaultTab="category"
+          categories={categoryList}
+          onClose={() => {
+            setIsAddCategoryOpen(false);
+            setActiveItemCategoryIndex(null);
+          }}
+          onSuccess={(newCat) => {
+            if (newCat) {
+              setCategoryList((prev) => [...prev, newCat]);
+              if (activeItemCategoryIndex !== null) {
+                updateItem(activeItemCategoryIndex, "categoryId", newCat.id);
+              }
+            }
+            setIsAddCategoryOpen(false);
+            setActiveItemCategoryIndex(null);
           }}
         />
       )}
