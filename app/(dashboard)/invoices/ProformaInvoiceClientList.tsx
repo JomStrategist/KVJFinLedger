@@ -67,7 +67,11 @@ export function ProformaInvoiceClientList({
       customerTypeFilter === "ALL" ||
       actualCustomerType === customerTypeFilter;
 
-    const matchesStatus = statusFilter === "ALL" || invoice.status === statusFilter;
+    // MA-010: Exclude CONVERTED proformas from active list when statusFilter is ALL
+    const matchesStatus =
+      statusFilter === "ALL"
+        ? invoice.status !== "CONVERTED"
+        : invoice.status === statusFilter;
 
     return matchesSearch && matchesCustomer && matchesCustomerType && matchesStatus;
   });

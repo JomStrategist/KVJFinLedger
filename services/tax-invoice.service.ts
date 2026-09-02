@@ -188,6 +188,11 @@ export class TaxInvoiceService {
     }
 
     // 2. Transaction
+    const primaryBank = await prisma.bankAccount.findFirst({ where: { isPrimary: true, isActive: true } });
+    const bankAcc = proforma.bankAccountId
+      ? (await prisma.bankAccount.findUnique({ where: { id: proforma.bankAccountId } })) || primaryBank
+      : primaryBank;
+
     return await prisma.$transaction(async (tx) => {
       const invoiceNumber = await this.generateInvoiceNumber(tx);
 
@@ -197,6 +202,14 @@ export class TaxInvoiceService {
           sourceProformaId: proforma.id,
           customerId: proforma.customerId,
           
+          // Bank Snapshots
+          bankAccountId: bankAcc?.id || null,
+          accountNameSnapshot: proforma.accountNameSnapshot || bankAcc?.accountName || "KVJ Analytics",
+          bankNameSnapshot: proforma.bankNameSnapshot || bankAcc?.bankName || "Federal Bank",
+          branchSnapshot: proforma.branchSnapshot || bankAcc?.branch || "Kakkanad Branch",
+          accountNumberSnapshot: proforma.accountNumberSnapshot || bankAcc?.accountNumber || "15240200004512",
+          ifscSnapshot: proforma.ifscSnapshot || bankAcc?.ifsc || "FDRL0001524",
+
           // Historical Snapshots for Customer
           customerNameSnapshot: proforma.customer.legalName,
           businessNameSnapshot: proforma.customer.tradeName,

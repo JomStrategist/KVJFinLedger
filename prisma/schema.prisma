@@ -120,6 +120,19 @@ model Product {
   taxInvoiceItems      TaxInvoiceItem[]
 }
 
+model BankAccount {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  accountName   String
+  bankName      String
+  branch        String?
+  accountNumber String
+  ifsc          String
+  isPrimary     Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 enum ProformaInvoiceStatus {
   DRAFT
   SENT
@@ -152,6 +165,15 @@ model ProformaInvoice {
   totalAmount     Float
   notes           String?
   isPurchaseOrder Boolean @default(false)
+  
+  // Bank Account & Snapshot
+  bankAccountId        String?  @db.ObjectId
+  accountNameSnapshot  String?
+  bankNameSnapshot     String?
+  branchSnapshot       String?
+  accountNumberSnapshot String?
+  ifscSnapshot         String?
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   items           ProformaInvoiceItem[]
@@ -206,6 +228,14 @@ model TaxInvoice {
   stateSnapshot        String?
   stateCodeSnapshot    String?
   addressSnapshot      String?
+
+  // Bank Account & Snapshot
+  bankAccountId        String?  @db.ObjectId
+  accountNameSnapshot  String?
+  bankNameSnapshot     String?
+  branchSnapshot       String?
+  accountNumberSnapshot String?
+  ifscSnapshot         String?
 
   invoiceDate     DateTime @default(now())
   status          TaxInvoiceStatus @default(CONFIRMED)

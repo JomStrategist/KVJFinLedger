@@ -2,7 +2,6 @@
 
 import { useActionState, useEffect } from 'react';
 import { changePassword } from './actions';
-
 import { useSession } from 'next-auth/react';
 
 export default function ChangePasswordForm() {
@@ -25,63 +24,83 @@ export default function ChangePasswordForm() {
   }, [state, update]);
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-theme-surface-hover">
-      <div className="w-full max-w-md space-y-8 rounded-2xl bg-theme-surface p-8 shadow-lg border border-theme-border">
+    <div className="flex min-h-screen w-full items-center justify-center bg-[#F4F7F5] p-4">
+      <div className="w-full max-w-md space-y-6 rounded-2xl bg-white p-8 shadow-sm border border-[#D9E3DC]">
         <div>
-          <h2 className="mt-6 text-center text-2xl font-bold text-theme-text">
-            Action Required
+          <h2 className="text-center text-2xl font-bold text-[#17211B]">
+            Change Password
           </h2>
-          <p className="mt-2 text-center text-sm text-theme-text-muted">
-            Please change your password before continuing.
+          <p className="mt-2 text-center text-xs text-[#68756C]">
+            Please enter your current password and a new secure password.
           </p>
         </div>
-        <form className="mt-8 space-y-6" action={formAction}>
-          <div className="space-y-4 rounded-md shadow-sm">
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-theme-text mb-1">
-                New Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                minLength={6}
-                className="relative block w-full appearance-none rounded-lg border border-theme-border px-3 py-2 text-theme-text placeholder-gray-500 focus:z-10 focus:border-theme-primary focus:outline-none focus:ring-theme-primary sm:text-sm"
-                placeholder="New Password"
-              />
-            </div>
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-theme-text mb-1">
-                Confirm Password
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                minLength={6}
-                className="relative block w-full appearance-none rounded-lg border border-theme-border px-3 py-2 text-theme-text placeholder-gray-500 focus:z-10 focus:border-theme-primary focus:outline-none focus:ring-theme-primary sm:text-sm"
-                placeholder="Confirm Password"
-              />
-            </div>
+
+        <form className="space-y-4" action={formAction}>
+          <div>
+            <label htmlFor="currentPassword" className="block text-xs font-semibold text-[#68756C] mb-1.5">
+              Current Password *
+            </label>
+            <input
+              id="currentPassword"
+              name="currentPassword"
+              type="password"
+              required
+              className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
+              placeholder="Enter current password"
+            />
           </div>
 
           <div>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="group relative flex w-full justify-center rounded-lg border border-transparent bg-theme-primary px-4 py-2 text-sm font-medium text-white hover:bg-theme-primary-dark focus:outline-none focus:ring-2 focus:ring-theme-primary focus:ring-offset-2 disabled:bg-blue-400"
-            >
-              {isPending ? 'Saving...' : 'Change Password'}
-            </button>
+            <label htmlFor="newPassword" className="block text-xs font-semibold text-[#68756C] mb-1.5">
+              New Password *
+            </label>
+            <input
+              id="newPassword"
+              name="newPassword"
+              type="password"
+              required
+              minLength={6}
+              className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
+              placeholder="At least 6 characters"
+            />
           </div>
-          
+
+          <div>
+            <label htmlFor="confirmPassword" className="block text-xs font-semibold text-[#68756C] mb-1.5">
+              Confirm New Password *
+            </label>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              required
+              minLength={6}
+              className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
+              placeholder="Re-enter new password"
+            />
+          </div>
+
           {state?.error && (
-            <div className="text-red-500 text-sm text-center font-medium bg-red-900/20 py-2 rounded-lg border border-red-100">
+            <div className="p-3 text-xs bg-[#FCE8E6] text-[#C5221F] border border-[#FAD2CF] rounded-xl font-medium text-center">
               {state.error}
             </div>
           )}
+
+          {state?.success && (
+            <div className="p-3 text-xs bg-[#E6F4EA] text-[#137333] border border-[#CEEAD6] rounded-xl font-medium text-center">
+              Password updated successfully! Redirecting...
+            </div>
+          )}
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={isPending}
+              className="w-full h-[42px] bg-[#0F766E] hover:bg-[#0D655D] text-white text-xs font-semibold rounded-xl transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+            >
+              {isPending ? 'Updating Password...' : 'Update Password'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

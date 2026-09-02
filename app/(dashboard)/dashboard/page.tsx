@@ -57,51 +57,69 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* Row 1: 5 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      {/* Row 1: KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
         {/* 1. Invoice Revenue */}
-        <div className="bg-white p-5 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
           <span className="text-xs font-semibold text-[#68756C]">Invoice Revenue</span>
-          <strong className="text-2xl font-bold text-[#177B55] my-2">
+          <strong className="text-xl font-bold text-[#177B55] my-1.5">
             {formatCurrency(kpis.totalRevenue)}
           </strong>
-          <span className="text-[11px] text-[#68756C]">Confirmed Tax Invoices</span>
+          <span className="text-[10px] text-[#68756C]">Confirmed Tax Invoices</span>
         </div>
 
         {/* 2. Expenses */}
-        <div className="bg-white p-5 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
           <span className="text-xs font-semibold text-[#68756C]">Expenses</span>
-          <strong className="text-2xl font-bold text-[#B27A17] my-2">
+          <strong className="text-xl font-bold text-[#B27A17] my-1.5">
             {formatCurrency(kpis.totalExpenses)}
           </strong>
-          <span className="text-[11px] text-[#68756C]">Categorised business expenses</span>
+          <span className="text-[10px] text-[#68756C]">Categorised expenses</span>
         </div>
 
         {/* 3. Net Profit */}
-        <div className="bg-white p-5 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
           <span className="text-xs font-semibold text-[#68756C]">Net Profit</span>
-          <strong className={`text-2xl font-bold my-2 ${kpis.operatingResult >= 0 ? 'text-[#177B55]' : 'text-[#B94B4B]'}`}>
+          <strong className={`text-xl font-bold my-1.5 ${kpis.operatingResult >= 0 ? 'text-[#177B55]' : 'text-[#B94B4B]'}`}>
             {formatCurrency(kpis.operatingResult)}
           </strong>
-          <span className="text-[11px] text-[#68756C]">Income − recognised expenses</span>
+          <span className="text-[10px] text-[#68756C]">Income − expenses</span>
         </div>
 
         {/* 4. Profit Margin */}
-        <div className="bg-white p-5 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
           <span className="text-xs font-semibold text-[#68756C]">Profit Margin</span>
-          <strong className="text-2xl font-bold text-[#177B55] my-2">
-            {kpis.profitMargin.toFixed(2)}%
+          <strong className="text-xl font-bold text-[#177B55] my-1.5">
+            {kpis.profitMargin.toFixed(1)}%
           </strong>
-          <span className="text-[11px] text-[#68756C]">Net profit ÷ revenue</span>
+          <span className="text-[10px] text-[#68756C]">Net profit ÷ revenue</span>
         </div>
 
         {/* 5. Receivables */}
-        <div className="bg-white p-5 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
           <span className="text-xs font-semibold text-[#68756C]">Receivables</span>
-          <strong className="text-2xl font-bold text-[#17211B] my-2">
+          <strong className="text-xl font-bold text-[#17211B] my-1.5">
             {formatCurrency(kpis.outstandingReceivables)}
           </strong>
-          <span className="text-[11px] text-[#68756C]">Unpaid + outstanding invoices</span>
+          <span className="text-[10px] text-[#68756C]">Unpaid balances</span>
+        </div>
+
+        {/* 6. Active Proformas Count (MA-007) */}
+        <div className="bg-white p-4 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+          <span className="text-xs font-semibold text-[#68756C]">Active Proformas</span>
+          <strong className="text-xl font-bold text-[#0F766E] my-1.5">
+            {kpis.activeProformaCount}
+          </strong>
+          <span className="text-[10px] text-[#68756C]">Pending conversion</span>
+        </div>
+
+        {/* 7. Active Proformas Value (MA-007) */}
+        <div className="bg-white p-4 rounded-2xl border border-[#D9E3DC] shadow-xs flex flex-col justify-between">
+          <span className="text-xs font-semibold text-[#68756C]">Proforma Value</span>
+          <strong className="text-xl font-bold text-[#0F766E] my-1.5">
+            {formatCurrency(kpis.activeProformaValue)}
+          </strong>
+          <span className="text-[10px] text-[#68756C]">Active pipeline total</span>
         </div>
       </div>
 

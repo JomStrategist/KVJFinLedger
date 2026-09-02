@@ -36,7 +36,7 @@ export class DashboardService {
 
   /**
    * Unified, high-performance dashboard fetch.
-   * Performs only 3 efficient queries and computes all analytics in memory.
+   * Executes queries in parallel via Promise.all and computes metrics dynamically.
    */
   static async getUnifiedDashboardData(filters?: DateFilter) {
     const txnWhere = this.getDateWhereClause(filters);
@@ -48,36 +48,39 @@ export class DashboardService {
       status: { not: "CANCELLED" as const },
       ...this.getSourceDateWhereClause("expenseDate", filters)
     };
+    const proformaWhere = {
+      status: { notIn: ["CONVERTED" as const, "CANCELLED" as const, "EXPIRED" as const] },
+      ...this.getSourceDateWhereClause("invoiceDate", filters)
+    };
 
-    const [txns, invoices, expenses] = await Promise.all([
+    const [txns, invoices, expenses, activeProformas] = await Promise.all([
       prisma.financialTransaction.findMany({
         where: txnWhere,
         orderBy: { transactionDate: "asc" }
       }),
       prisma.taxInvoice.findMany({
         where: invoiceWhere,
-        include: { customer: true }
+        include: { customer: true, payments: true }
       }),
       prisma.expense.findMany({
         where: expenseWhere,
         include: { category: true, vendor: true },
         orderBy: { netAmount: "desc" }
+      }),
+      prisma.proformaInvoice.findMany({
+        where: proformaWhere,
       })
     ]);
 
     // 1. KPIs
     let totalRevenue = 0;
     let totalExpenses = 0;
-    let outstandingReceivables = 0;
     let outstandingPayables = 0;
 
     for (const txn of txns) {
       const net = Number(txn.netAmount);
       if (txn.type === "REVENUE") {
         totalRevenue += net;
-        if (txn.paymentStatus !== "PAID") {
-          outstandingReceivables += net;
-        }
       } else if (txn.type === "EXPENSE") {
         totalExpenses += net;
         if (txn.paymentStatus !== "PAID") {
@@ -85,6 +88,31 @@ export class DashboardService {
         }
       }
     }
+
+    // MA-008: Outstanding Receivables calculated dynamically from confirmed Tax Invoices
+    let outstandingReceivables = 0;
+    for (const inv of invoices) {
+      if (inv.status === "CANCELLED" || inv.status === "PAID") continue;
+
+      const invoiceTotal = Number(inv.netAmount || inv.grossAmount || (inv as any).totalAmount || 0);
+      const paidAmount = (inv.payments || []).reduce((sum, p) => sum + Number(p.paymentAmount || 0), 0);
+      const tdsDeducted = (inv.payments || []).reduce(
+        (sum, p) => sum + (p.isTdsDeducted ? Number(p.tdsAmount || 0) : 0),
+        0
+      );
+
+      const balanceRemaining = invoiceTotal - paidAmount - tdsDeducted;
+      if (balanceRemaining > 0) {
+        outstandingReceivables += balanceRemaining;
+      }
+    }
+
+    // MA-007: Active Proforma Count & Total Value (excludes CONVERTED / CANCELLED)
+    const activeProformaCount = activeProformas.length;
+    const activeProformaValue = activeProformas.reduce(
+      (sum, p) => sum + Number(p.totalAmount || p.netAmount || p.grossAmount || 0),
+      0
+    );
 
     const operatingResult = totalRevenue - totalExpenses;
     const profitMargin = totalRevenue > 0 ? (operatingResult / totalRevenue) * 100 : 0;
@@ -95,7 +123,9 @@ export class DashboardService {
       operatingResult,
       profitMargin,
       outstandingReceivables,
-      outstandingPayables
+      outstandingPayables,
+      activeProformaCount,
+      activeProformaValue,
     };
 
     // 2. Trends (Monthly Revenue vs Expenses)
@@ -166,7 +196,7 @@ export class DashboardService {
     const tdsReceivable = invoices.reduce((sum, inv) => sum + Number(inv.tdsAmount || 0), 0);
     const tdsPayable = expenses.reduce((sum, exp) => sum + Number(exp.tdsAmount || 0), 0);
 
-    // 9. Recent Transactions
+    // 8. Recent Transactions
     const recentTxnList: Array<{
       id: string;
       date: Date;
@@ -181,7 +211,7 @@ export class DashboardService {
         id: inv.id,
         date: new Date(inv.invoiceDate || inv.createdAt),
         transaction: `${inv.customerNameSnapshot || inv.customer?.legalName || "Customer"} — Tax Invoice`,
-        category: "Training Income",
+        category: "Income",
         amount: Number(inv.netAmount || inv.grossAmount),
         type: "REVENUE",
       });
@@ -202,7 +232,7 @@ export class DashboardService {
     recentTxnList.sort((a, b) => b.date.getTime() - a.date.getTime());
     const recentTransactions = recentTxnList.slice(0, 6);
 
-    // 8. Financial Insights
+    // 9. Financial Insights
     const insights: string[] = [];
     if (kpis.totalRevenue === 0 && kpis.totalExpenses === 0) {
       insights.push("No financial transactions recorded for the selected period.");

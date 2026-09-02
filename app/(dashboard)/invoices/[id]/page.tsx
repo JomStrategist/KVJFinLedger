@@ -116,14 +116,13 @@ export default async function TaxInvoiceDetailPage({
         <div className="p-8">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b-2 border-theme-border text-sm font-bold text-theme-text">
-                <th className="py-3 pl-2 w-12">#</th>
-                <th className="py-3">Item Description</th>
-                <th className="py-3 text-right">Qty</th>
-                <th className="py-3 text-right">Rate</th>
-                <th className="py-3 text-right">Disc</th>
-                <th className="py-3 text-right">Tax</th>
-                <th className="py-3 text-right pr-2">Amount</th>
+              <tr className="border-b-2 border-theme-border text-xs font-bold text-theme-text uppercase tracking-wider">
+                <th className="py-3 pl-2 w-12">No</th>
+                <th className="py-3">Description</th>
+                <th className="py-3 w-32">HSN/SAC</th>
+                <th className="py-3 text-right w-24">Qty</th>
+                <th className="py-3 text-right w-32">Rate</th>
+                <th className="py-3 text-right pr-2 w-36">Amount</th>
               </tr>
             </thead>
             <tbody className="text-sm text-theme-text">
@@ -133,13 +132,11 @@ export default async function TaxInvoiceDetailPage({
                   <td className="py-4">
                     <p className="font-medium text-theme-text">{item.name}</p>
                     {item.description && <p className="text-theme-text-muted text-xs mt-1">{item.description}</p>}
-                    <p className="text-theme-text-muted text-xs mt-1">HSN/SAC: {item.hsnSacCode}</p>
                   </td>
+                  <td className="py-4 text-theme-text font-mono text-xs">{item.hsnSacCode}</td>
                   <td className="py-4 text-right">{item.quantity.toString()} {item.unit}</td>
-                  <td className="py-4 text-right">₹{item.unitPrice.toString()}</td>
-                  <td className="py-4 text-right">{Number(item.discountPercent) > 0 ? `${item.discountPercent.toString()}%` : '-'}</td>
-                  <td className="py-4 text-right">{item.gstRate.toString()}%</td>
-                  <td className="py-4 text-right pr-2 font-medium text-theme-text">₹{item.totalAmount.toString()}</td>
+                  <td className="py-4 text-right">₹{Number(item.unitPrice).toFixed(2)}</td>
+                  <td className="py-4 text-right pr-2 font-medium text-theme-text">₹{Number(item.totalAmount).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -156,7 +153,7 @@ export default async function TaxInvoiceDetailPage({
                   <th className="pb-2">GST Rate</th>
                   <th className="pb-2 text-right">Taxable Amt</th>
                   {isIntraState ? (
-                    <th className="pb-2 text-right">GST</th>
+                    <th className="pb-2 text-right">CGST + SGST</th>
                   ) : (
                     <th className="pb-2 text-right">IGST</th>
                   )}
@@ -181,15 +178,27 @@ export default async function TaxInvoiceDetailPage({
           </div>
         )}
 
-        {/* Amount In Words & Totals */}
+        {/* Amount In Words & Bank Details */}
         <div className="p-8 border-t border-theme-border flex flex-col lg:flex-row justify-between items-start gap-8 bg-theme-surface-hover/50 print:bg-theme-surface">
-          <div className="flex-1 w-full text-sm">
-            <div className="mb-6">
+          <div className="flex-1 w-full text-sm space-y-6">
+            <div>
               <h4 className="font-bold text-theme-text mb-2">Total Amount (in words)</h4>
               <p className="font-medium text-theme-text italic">
-                {numberToWords(Number(invoice.netAmount))}
+                {numberToWords(Number(invoice.grossAmount || invoice.netAmount))}
               </p>
             </div>
+
+            {/* Bank Settlement Details */}
+            <div className="border border-theme-border rounded-xl p-4 bg-white">
+              <h4 className="font-bold text-theme-text mb-2 text-xs uppercase tracking-wider">Payment Details (Bank Settlement)</h4>
+              <div className="text-xs text-theme-text space-y-1 font-mono">
+                <p><span className="font-semibold">Account Name:</span> {invoice.accountNameSnapshot || "KVJ Analytics"}</p>
+                <p><span className="font-semibold">Bank & Branch:</span> {invoice.bankNameSnapshot || "Federal Bank"} ({invoice.branchSnapshot || "Kakkanad Branch"})</p>
+                <p><span className="font-semibold">Account Number:</span> {invoice.accountNumberSnapshot || "15240200004512"}</p>
+                <p><span className="font-semibold">IFSC Code:</span> {invoice.ifscSnapshot || "FDRL0001524"}</p>
+              </div>
+            </div>
+
             {invoice.notes && (
               <div className="text-theme-text-muted">
                 <h4 className="font-bold text-theme-text mb-2">Terms & Conditions</h4>
@@ -201,12 +210,12 @@ export default async function TaxInvoiceDetailPage({
           <div className="w-full lg:w-80 space-y-3 text-sm">
             <div className="flex justify-between text-theme-text-muted px-2">
               <span>Subtotal</span>
-              <span>₹{invoice.subtotal.toString()}</span>
+              <span>₹{Number(invoice.subtotal).toFixed(2)}</span>
             </div>
             {Number(invoice.totalDiscount) > 0 && (
               <div className="flex justify-between text-red-600 px-2">
                 <span>Discount</span>
-                <span>-₹{invoice.totalDiscount.toString()}</span>
+                <span>-₹{Number(invoice.totalDiscount).toFixed(2)}</span>
               </div>
             )}
             
@@ -214,18 +223,18 @@ export default async function TaxInvoiceDetailPage({
             <div className="py-3 border-y border-theme-border space-y-2">
               <div className="flex justify-between text-theme-text-muted px-2 font-medium">
                 <span>Taxable Amount</span>
-                <span>₹{invoice.taxableAmount.toString()}</span>
+                <span>₹{Number(invoice.taxableAmount).toFixed(2)}</span>
               </div>
               
               {isIntraState ? (
                 <div className="flex justify-between text-theme-text-muted px-2 text-xs">
-                  <span>GST</span>
+                  <span>CGST + SGST</span>
                   <span>₹{(Number(invoice.totalCGST) + Number(invoice.totalSGST)).toFixed(2)}</span>
                 </div>
               ) : (
                 <div className="flex justify-between text-theme-text-muted px-2 text-xs">
                   <span>IGST</span>
-                  <span>₹{invoice.totalIGST.toString()}</span>
+                  <span>₹{Number(invoice.totalIGST).toFixed(2)}</span>
                 </div>
               )}
             </div>
@@ -240,11 +249,12 @@ export default async function TaxInvoiceDetailPage({
         {/* Footer */}
         <div className="p-8 border-t border-theme-border flex justify-between items-end">
           <div className="text-xs text-theme-text-muted">
-            This is a computer generated invoice.
+            This is a computer-generated document. No signature required.
           </div>
-          <div className="text-center w-48">
-            <div className="border-b border-gray-400 h-12 mb-2"></div>
-            <p className="text-xs font-bold text-theme-text">Authorized Signatory</p>
+          <div className="text-center w-56">
+            <div className="border-b border-gray-400 h-10 mb-2"></div>
+            <p className="text-xs font-bold text-theme-text">For KVJ Analytics</p>
+            <p className="text-[11px] text-theme-text-muted">Authorised Signatory</p>
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSettings, AppSettings } from "@/hooks/useSettings";
+import { BankAccountsMasterTab } from "./BankAccountsMasterTab";
 
 export function SettingsClient() {
   const { settings, saveSettings, resetSettings, isLoaded } = useSettings();
@@ -272,47 +273,9 @@ export function SettingsClient() {
           </div>
         )}
 
-        {/* 3. BANK ACCOUNTS */}
+        {/* 3. BANK ACCOUNTS MASTER */}
         {activeTab === "bank" && (
-          <div className="space-y-5">
-            <div>
-              <h3 className="text-base font-bold text-[#17211B]">Bank Details & UPI</h3>
-              <p className="text-xs text-[#68756C] mt-0.5">
-                Primary and secondary bank settlement details shown on customer Tax Invoices.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
-                  Bank Settlement Details (Shown on Invoice PDF)
-                </label>
-                <textarea
-                  rows={3}
-                  name="bankDetails"
-                  value={
-                    currentValues.bankDetails ||
-                    "Bank: HDFC Bank\nA/C Name: KVJ Analytics\nA/C No: 50200012345678\nIFSC: HDFC0001234"
-                  }
-                  onChange={handleChange}
-                  className="w-full border border-[#D9E3DC] rounded-xl p-3 text-xs bg-white font-mono focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1.5">
-                  UPI ID for QR Code
-                </label>
-                <input
-                  type="text"
-                  name="upiId"
-                  value={currentValues.upiId || "kvjanalytics@hdfcbank"}
-                  onChange={handleChange}
-                  className="w-full h-[40px] border border-[#D9E3DC] rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                />
-              </div>
-            </div>
-          </div>
+          <BankAccountsMasterTab />
         )}
 
         {/* 4. INVOICE PREFERENCES */}
