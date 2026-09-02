@@ -6,6 +6,7 @@ import { TaxEngine } from "@/lib/tax";
 import { BUSINESS_LOCATION } from "@/lib/config/business";
 import { ConvertToTaxInvoiceButton } from "./ConvertToTaxInvoiceButton";
 import { PrintButton } from "@/app/(dashboard)/invoices/[id]/PrintButton";
+import { formatDate } from "@/lib/utils/format-date";
 
 export default async function ProformaInvoiceDetailPage({
   params,
@@ -103,7 +104,7 @@ export default async function ProformaInvoiceDetailPage({
                 <tr>
                   <td className="text-gray-500 pr-4 py-0.5 text-right">Date:</td>
                   <td className="font-semibold text-gray-900 text-right">
-                    {new Date(invoice.invoiceDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {formatDate(invoice.invoiceDate)}
                   </td>
                 </tr>
                 <tr>

@@ -6,6 +6,7 @@ import { BUSINESS_LOCATION } from "@/lib/config/business";
 import { numberToWords } from "@/lib/utils/number-to-words";
 import { InvoiceDetailActions } from "./InvoiceDetailActions";
 import Link from "next/link";
+import { formatDate } from "@/lib/utils/format-date";
 
 export default async function TaxInvoiceDetailPage({
   params,
@@ -91,7 +92,7 @@ export default async function TaxInvoiceDetailPage({
                 <tr>
                   <td className="text-gray-500 pr-4 py-0.5 text-right">Date:</td>
                   <td className="font-semibold text-gray-900 text-right">
-                    {new Date(invoice.invoiceDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {formatDate(invoice.invoiceDate)}
                   </td>
                 </tr>
                 <tr>

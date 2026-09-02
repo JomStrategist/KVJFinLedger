@@ -7,6 +7,7 @@ import { CustomerForm } from "../customers/CustomerForm";
 import { TaxEngine } from "@/lib/tax";
 import { BUSINESS_LOCATION } from "@/lib/config/business";
 import { AddMasterRecordModal } from "../masters/AddMasterRecordModal";
+import { formatDate } from "@/lib/utils/format-date";
 
 const GST_RATES = [0, 5, 12, 18, 28];
 
@@ -924,7 +925,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                   </tr>
                   <tr>
                     <td className="text-gray-500 pr-3 py-0.5 text-right">Date:</td>
-                    <td className="font-semibold text-gray-900 text-right">{invoiceDate}</td>
+                    <td className="font-semibold text-gray-900 text-right">{formatDate(invoiceDate)}</td>
                   </tr>
                   <tr>
                     <td className="text-gray-500 pr-3 py-0.5 text-right">GSTIN:</td>
@@ -1101,7 +1102,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                     </tr>
                     <tr>
                       <td className="text-gray-500 pr-3 py-0.5 text-right">Date:</td>
-                      <td className="font-semibold text-gray-900 text-right">{invoiceDate}</td>
+                      <td className="font-semibold text-gray-900 text-right">{formatDate(invoiceDate)}</td>
                     </tr>
                     <tr>
                       <td className="text-gray-500 pr-3 py-0.5 text-right">GSTIN:</td>
