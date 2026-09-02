@@ -1,6 +1,7 @@
 "use client";
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import React, { useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { formatCurrency } from '@/lib/utils/currency';
 
 interface RevenueVsExpenseTrend {
@@ -17,23 +18,25 @@ interface ExpenseCategory {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
-export function RevenueVsExpenseChart({ data }: { data: RevenueVsExpenseTrend[] }) {
-  // If data is empty or partial, ensure standard FY months are represented
-  const defaultMonths = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
-  const chartData = defaultMonths.map(month => {
-    const existing = data?.find(d => d.month?.toLowerCase().includes(month.toLowerCase()));
-    return {
-      month,
-      revenue: existing ? existing.revenue : 0,
-      expenses: existing ? existing.expenses : 0,
-    };
-  });
+export const RevenueVsExpenseChart = React.memo(function RevenueVsExpenseChart({ data }: { data: RevenueVsExpenseTrend[] }) {
+  const finalData = useMemo(() => {
+    const defaultMonths = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
+    const chartData = defaultMonths.map(month => {
+      const existing = data?.find(d => d.month?.toLowerCase().includes(month.toLowerCase()));
+      return {
+        month,
+        revenue: existing ? existing.revenue : 0,
+        expenses: existing ? existing.expenses : 0,
+      };
+    });
 
-  // If we have actual months that are not in defaultMonths, use the actual data
-  const finalData = (data && data.length > 0) ? data.map(d => ({
-    ...d,
-    month: d.month.split(' ')[0] // e.g. "Aug" from "Aug 2026"
-  })) : chartData;
+    return (data && data.length > 0)
+      ? data.map(d => ({
+          ...d,
+          month: d.month.split(' ')[0]
+        }))
+      : chartData;
+  }, [data]);
 
   return (
     <div className="h-80 w-full pt-4">
@@ -43,7 +46,7 @@ export function RevenueVsExpenseChart({ data }: { data: RevenueVsExpenseTrend[] 
           margin={{ top: 10, right: 10, left: -20, bottom: 25 }}
           barGap={6}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#E5ECE7" vertical={false} />
+          {/* NO GRIDLINES per design specification */}
           <XAxis 
             dataKey="month" 
             tickLine={false}
@@ -64,24 +67,26 @@ export function RevenueVsExpenseChart({ data }: { data: RevenueVsExpenseTrend[] 
             verticalAlign="bottom" 
             align="left" 
             wrapperStyle={{ paddingTop: '16px', paddingLeft: '10px' }}
-            formatter={(value) => <span className="text-xs font-semibold text-theme-text-muted">{value}</span>}
+            formatter={(value) => <span className="text-xs font-semibold text-[#68756C]">{value}</span>}
           />
-          <Bar dataKey="revenue" name="Revenue" fill="#177B55" barSize={16} radius={[4, 4, 0, 0]} />
-          <Bar dataKey="expenses" name="Expense" fill="#B27A17" barSize={16} radius={[4, 4, 0, 0]} />
+          <Bar dataKey="revenue" name="Revenue" fill="#177B55" barSize={16} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="expenses" name="Expense" fill="#B27A17" barSize={16} radius={[4, 4, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>
   );
-}
+});
 
-export function OperatingResultChart({ data }: { data: RevenueVsExpenseTrend[] }) {
-  const resultData = data.map(d => ({
-    month: d.month,
-    result: d.revenue - d.expenses
-  }));
+export const OperatingResultChart = React.memo(function OperatingResultChart({ data }: { data: RevenueVsExpenseTrend[] }) {
+  const resultData = useMemo(() => {
+    return (data || []).map(d => ({
+      month: d.month,
+      result: d.revenue - d.expenses
+    }));
+  }, [data]);
 
   if (!resultData || resultData.length === 0) {
-    return <div className="flex items-center justify-center h-64 text-theme-text-muted">No data available for the selected period.</div>;
+    return <div className="flex items-center justify-center h-64 text-[#68756C]">No data available for the selected period.</div>;
   }
 
   return (
@@ -91,12 +96,11 @@ export function OperatingResultChart({ data }: { data: RevenueVsExpenseTrend[] }
           data={resultData}
           margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="month" />
           <YAxis tickFormatter={(val) => `₹${val / 1000}k`} />
           <RechartsTooltip formatter={(value: any) => formatCurrency(Number(value))} />
           <Legend />
-          <Bar dataKey="result" name="Operating Result">
+          <Bar dataKey="result" name="Operating Result" isAnimationActive={false}>
             {resultData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.result >= 0 ? '#3B82F6' : '#EF4444'} />
             ))}
@@ -105,11 +109,11 @@ export function OperatingResultChart({ data }: { data: RevenueVsExpenseTrend[] }
       </ResponsiveContainer>
     </div>
   );
-}
+});
 
-export function ExpenseCategoryChart({ data }: { data: ExpenseCategory[] }) {
+export const ExpenseCategoryChart = React.memo(function ExpenseCategoryChart({ data }: { data: ExpenseCategory[] }) {
   if (!data || data.length === 0) {
-    return <div className="flex items-center justify-center h-64 text-theme-text-muted">No expense data available.</div>;
+    return <div className="flex items-center justify-center h-64 text-[#68756C]">No expense data available.</div>;
   }
 
   return (
@@ -126,6 +130,7 @@ export function ExpenseCategoryChart({ data }: { data: ExpenseCategory[] }) {
               fill="#8884d8"
               dataKey="amount"
               nameKey="category"
+              isAnimationActive={false}
             >
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -141,13 +146,13 @@ export function ExpenseCategoryChart({ data }: { data: ExpenseCategory[] }) {
             <li key={index} className="flex items-center justify-between text-sm">
               <div className="flex items-center">
                 <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: COLORS[index % COLORS.length] }}></span>
-                <span className="text-theme-text truncate max-w-[150px]">{entry.category}</span>
+                <span className="text-[#17211B] truncate max-w-[150px]">{entry.category}</span>
               </div>
-              <span className="font-medium text-theme-text">{entry.percentage.toFixed(1)}%</span>
+              <span className="font-medium text-[#17211B]">{entry.percentage.toFixed(1)}%</span>
             </li>
           ))}
         </ul>
       </div>
     </div>
   );
-}
+});
