@@ -207,19 +207,19 @@ export function ExpenseForm({
       paymentStatus,
       notes: notes.trim() || null,
       
-      subtotal: calc.subtotal,
-      discountAmount: calc.totalDiscount,
-      taxableAmount: calc.taxableAmount,
+      subtotal: Number(calc.subtotal ?? calc.taxableAmount ?? 0),
+      discountAmount: Number(calc.totalDiscount ?? 0),
+      taxableAmount: Number(calc.taxableAmount ?? 0),
 
-      inputCGST: calc.totalCGST,
-      inputSGST: calc.totalSGST,
-      inputIGST: calc.totalIGST,
-      totalInputGST: calc.totalGST,
+      inputCGST: Number(calc.totalCGST ?? 0),
+      inputSGST: Number(calc.totalSGST ?? 0),
+      inputIGST: Number(calc.totalIGST ?? 0),
+      totalInputGST: Number(calc.totalGST ?? 0),
 
       tdsRate: 0,
-      tdsAmount: calc.tdsAmount,
-      grossAmount: calc.grossAmount,
-      netAmount: calc.netAmount,
+      tdsAmount: Number(calc.tdsAmount ?? 0),
+      grossAmount: Number(calc.grossAmount ?? 0),
+      netAmount: Number(calc.netAmount ?? 0),
 
       items: items.map((item, i) => ({
         productId: item.productId || null,

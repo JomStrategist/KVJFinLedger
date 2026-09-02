@@ -120,20 +120,20 @@ export class ExpenseService {
           status: "DRAFT",
           paymentStatus: data.paymentStatus || (data.paidBy === "EMPLOYEE" ? "UNPAID" : "PAID"),
 
-          subtotal: data.subtotal,
-          discountAmount: data.discountAmount || 0,
-          taxableAmount: data.taxableAmount,
+          subtotal: Number(data.subtotal ?? data.taxableAmount ?? 0),
+          discountAmount: Number(data.discountAmount || 0),
+          taxableAmount: Number(data.taxableAmount ?? data.subtotal ?? 0),
 
-          inputCGST: data.inputCGST || 0,
-          inputSGST: data.inputSGST || 0,
-          inputIGST: data.inputIGST || 0,
-          totalInputGST: data.totalInputGST || 0,
+          inputCGST: Number(data.inputCGST || 0),
+          inputSGST: Number(data.inputSGST || 0),
+          inputIGST: Number(data.inputIGST || 0),
+          totalInputGST: Number(data.totalInputGST || 0),
 
-          tdsRate: data.tdsRate,
-          tdsAmount: data.tdsAmount || 0,
+          tdsRate: Number(data.tdsRate || 0),
+          tdsAmount: Number(data.tdsAmount || 0),
 
-          grossAmount: data.grossAmount,
-          netAmount: data.netAmount,
+          grossAmount: Number(data.grossAmount ?? data.taxableAmount ?? 0),
+          netAmount: Number(data.netAmount ?? data.grossAmount ?? 0),
           notes: data.notes,
 
           items: {
@@ -187,20 +187,20 @@ export class ExpenseService {
           employeeId: data.paidBy === "EMPLOYEE" ? data.employeeId || null : null,
           paymentStatus: data.paymentStatus || current.paymentStatus,
 
-          subtotal: data.subtotal,
-          discountAmount: data.discountAmount || 0,
-          taxableAmount: data.taxableAmount,
+          subtotal: Number(data.subtotal ?? data.taxableAmount ?? 0),
+          discountAmount: Number(data.discountAmount || 0),
+          taxableAmount: Number(data.taxableAmount ?? data.subtotal ?? 0),
 
-          inputCGST: data.inputCGST || 0,
-          inputSGST: data.inputSGST || 0,
-          inputIGST: data.inputIGST || 0,
-          totalInputGST: data.totalInputGST || 0,
+          inputCGST: Number(data.inputCGST || 0),
+          inputSGST: Number(data.inputSGST || 0),
+          inputIGST: Number(data.inputIGST || 0),
+          totalInputGST: Number(data.totalInputGST || 0),
 
-          tdsRate: data.tdsRate,
-          tdsAmount: data.tdsAmount || 0,
+          tdsRate: Number(data.tdsRate || 0),
+          tdsAmount: Number(data.tdsAmount || 0),
 
-          grossAmount: data.grossAmount,
-          netAmount: data.netAmount,
+          grossAmount: Number(data.grossAmount ?? data.taxableAmount ?? 0),
+          netAmount: Number(data.netAmount ?? data.grossAmount ?? 0),
           notes: data.notes,
 
           items: {
