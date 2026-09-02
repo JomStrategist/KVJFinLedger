@@ -1,14 +1,17 @@
 import { PrismaClient } from '@prisma/client';
 
 function getDatabaseUrl(): string {
-  let rawUrl = process.env.DATABASE_URL || '';
+  const rawUrl = process.env.DATABASE_URL || '';
   if (!rawUrl) return '';
 
-  // Ensure direct endpoint is used to prevent Neon pooler dropouts
-  rawUrl = rawUrl.replace('-pooler', '');
+  // If MongoDB URL, return directly as configured in .env
+  if (rawUrl.startsWith('mongodb://') || rawUrl.startsWith('mongodb+srv://')) {
+    return rawUrl;
+  }
 
+  // Postgres-specific parameter formatting
   try {
-    const parsed = new URL(rawUrl);
+    const parsed = new URL(rawUrl.replace('-pooler', ''));
     parsed.searchParams.set('sslmode', 'require');
     parsed.searchParams.set('connection_limit', '20');
     parsed.searchParams.set('pool_timeout', '30');
