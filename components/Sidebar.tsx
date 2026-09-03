@@ -159,12 +159,12 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
         {!isCollapsed ? (
           <div className="flex items-center transition-opacity duration-300">
             <div className="h-11 bg-white rounded-xl px-3 py-1.5 flex items-center justify-center shadow-sm border border-white/20">
-              <img src="/kvj-logo.png" alt="KVJ Analytics" className="h-full w-auto object-contain max-w-[160px]" />
+              <img src="/finledger-logo.svg" alt="FinLedger Financial Management" className="h-full w-auto object-contain max-w-[170px]" />
             </div>
           </div>
         ) : (
           <div className="h-10 w-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm shrink-0 border border-white/20 mb-1">
-            <img src="/kvj-logo.png" alt="KVJ Analytics" className="h-full w-full object-contain" />
+            <img src="/finledger-icon.svg" alt="FinLedger" className="h-full w-full object-contain" />
           </div>
         )}
 
