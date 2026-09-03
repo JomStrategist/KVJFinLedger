@@ -130,7 +130,7 @@ const QUARTERS = [
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <span className="font-extrabold text-[10px] text-[#4B5750] tracking-widest uppercase block mb-1">
+    <span className="font-extrabold text-xs text-slate-600 tracking-wider uppercase block mb-1">
       {title}
     </span>
   );
@@ -164,26 +164,26 @@ function LedgerRow({
   const [isOpen, setIsOpen] = useState(defaultExpanded);
   const hasChildren = Boolean(children);
 
-  const indentClass = indent === 1 ? "pl-2.5 sm:pl-4" : indent === 2 ? "pl-5 sm:pl-8" : "";
-  const textColor = green ? "text-[#166534]" : red ? "text-[#B94B4B]" : bold ? "text-[#111827]" : "text-[#1F2937]";
+  const indentClass = indent === 1 ? "pl-3 sm:pl-5" : indent === 2 ? "pl-6 sm:pl-10" : "";
+  const textColor = green ? "text-emerald-700" : red ? "text-rose-600" : bold ? "text-slate-900 font-bold" : "text-slate-800 font-medium";
 
   if (isHeader) {
     return (
-      <div className={`py-2 px-3 bg-[#F8FAF8] border-y border-[#E2E8E4] text-xs font-black uppercase tracking-wider text-[#374151] ${indentClass}`}>
+      <div className={`py-2.5 px-3 bg-slate-50 border-y border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-700 ${indentClass}`}>
         {label}
       </div>
     );
   }
 
   return (
-    <div className="border-b border-[#EEF2EF]">
+    <div className="border-b border-slate-100 font-sans">
       <div
         onClick={() => hasChildren && setIsOpen(!isOpen)}
-        className={`flex items-center justify-between py-2.5 px-3 text-xs hover:bg-[#F9FAF9] transition-colors ${indentClass} ${
+        className={`flex items-center justify-between py-3 px-3.5 text-xs sm:text-[13px] hover:bg-slate-50/80 transition-colors leading-relaxed ${indentClass} ${
           hasChildren ? "cursor-pointer select-none" : ""
         }`}
       >
-        <div className="flex items-center gap-2 flex-1 pr-3 min-w-0">
+        <div className="flex items-center gap-2.5 flex-1 pr-3 min-w-0">
           {/* Left-side Expandable Chevron Dropdown Toggle */}
           {hasChildren ? (
             <button
@@ -192,11 +192,11 @@ function LedgerRow({
                 e.stopPropagation();
                 setIsOpen(!isOpen);
               }}
-              className="p-1 -ml-1 rounded-md text-[#6B7280] hover:text-[#177B55] hover:bg-emerald-50 transition-all shrink-0 cursor-pointer"
+              className="p-1 -ml-1 rounded-md text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-all shrink-0 cursor-pointer"
               title={isOpen ? "Collapse breakdown details" : "Expand breakdown details"}
             >
               <svg
-                className={`w-3.5 h-3.5 transform transition-transform duration-150 ${isOpen ? "rotate-90 text-[#177B55]" : ""}`}
+                className={`w-3.5 h-3.5 transform transition-transform duration-150 ${isOpen ? "rotate-90 text-emerald-700" : ""}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -209,32 +209,32 @@ function LedgerRow({
             <div className="w-3.5 shrink-0" />
           )}
 
-          {code && <span className="font-mono text-[10px] text-[#78887D] font-bold shrink-0">{code}</span>}
-          <span className={`truncate ${bold ? "font-bold text-[#111827]" : "text-[#374151] font-medium"}`}>
+          {code && <span className="font-mono text-xs text-slate-500 font-semibold shrink-0">{code}</span>}
+          <span className={`truncate text-slate-800 ${bold ? "font-bold text-slate-900 text-sm" : "font-semibold text-xs sm:text-[13px]"}`}>
             {label}
           </span>
           {note && (
-            <span className="text-[10px] text-[#6B7280] font-normal truncate shrink-0">
+            <span className="text-[11px] text-slate-500 font-normal truncate shrink-0">
               • {note}
             </span>
           )}
           {hasChildren && (
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-[#E5F3EC] text-[#0B5F46] border border-[#BCE3D0] shrink-0">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
               {isOpen ? "Hide" : "Details"}
             </span>
           )}
         </div>
 
-        <div className="border-b border-dotted border-[#CBD5E1] flex-1 mx-2 hidden sm:block opacity-50" />
+        <div className="border-b border-dotted border-slate-300 flex-1 mx-3 hidden sm:block opacity-60" />
 
-        <div className={`tabular-nums font-mono text-right shrink-0 min-w-[120px] ${bold ? "font-black text-sm" : "font-semibold"} ${textColor}`}>
+        <div className={`tabular-nums font-mono text-right shrink-0 min-w-[130px] ${bold ? "font-bold text-sm text-slate-900" : "font-semibold text-xs sm:text-[13px]"} ${textColor}`}>
           {amount !== undefined && amount !== null ? (amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)) : "—"}
         </div>
       </div>
 
       {/* Expandable Dropdown Breakdown Container */}
       {hasChildren && isOpen && (
-        <div className="ml-4 sm:ml-8 my-2 mr-3 p-3.5 bg-[#FAFBF9] border-l-2 border-[#177B55] rounded-r-xl shadow-2xs space-y-2 animate-in fade-in zoom-in-95 duration-150">
+        <div className="ml-4 sm:ml-9 my-2.5 mr-3.5 p-4 bg-slate-50/90 border-l-2 border-emerald-600 rounded-r-xl shadow-xs space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
           {children}
         </div>
       )}
@@ -247,7 +247,7 @@ function SubtotalRow({
   amount,
   green = false,
   red = false,
-  bg = "bg-[#F7F9F7]",
+  bg = "bg-slate-50/90",
 }: {
   label: string;
   amount: number;
@@ -255,11 +255,11 @@ function SubtotalRow({
   red?: boolean;
   bg?: string;
 }) {
-  const textColor = green ? "text-[#166534]" : red ? "text-[#B94B4B]" : "text-[#111827]";
+  const textColor = green ? "text-emerald-700" : red ? "text-rose-600" : "text-slate-900";
   return (
-    <div className={`py-2.5 px-3 flex justify-between items-center text-xs font-bold border-t border-b border-[#D2DCD4] ${bg} my-1 rounded-md`}>
-      <span className="uppercase tracking-wider text-[11px] font-extrabold text-[#1F2937]">{label}</span>
-      <span className={`tabular-nums font-mono text-sm font-black ${textColor}`}>
+    <div className={`py-3 px-3.5 flex justify-between items-center text-xs sm:text-[13px] font-bold border-t border-b border-slate-200 ${bg} my-1.5 rounded-lg shadow-2xs`}>
+      <span className="uppercase tracking-wider text-xs font-extrabold text-slate-800">{label}</span>
+      <span className={`tabular-nums font-mono text-xs sm:text-sm font-bold ${textColor}`}>
         {amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)}
       </span>
     </div>
@@ -277,15 +277,15 @@ function GrandTotalRow({
 }) {
   const bg =
     highlight === "emerald"
-      ? "bg-[#F0FDF4] border-t-2 border-b-4 border-double border-[#166534] text-[#166534]"
+      ? "bg-emerald-50/90 border-t-2 border-b-4 border-double border-emerald-700 text-emerald-900"
       : highlight === "amber"
-      ? "bg-[#FFFBEB] border-t-2 border-b-4 border-double border-[#B45309] text-[#B45309]"
-      : "bg-[#F8FAFC] border-t-2 border-b-4 border-double border-[#1E293B] text-[#0F172A]";
+      ? "bg-amber-50/90 border-t-2 border-b-4 border-double border-amber-700 text-amber-900"
+      : "bg-slate-50 border-t-2 border-b-4 border-double border-slate-800 text-slate-900";
 
   return (
-    <div className={`py-3.5 px-4 flex justify-between items-center text-sm font-black rounded-xl ${bg} shadow-xs my-2`}>
-      <span className="tracking-wide uppercase text-xs sm:text-sm font-extrabold">{label}</span>
-      <span className="tabular-nums font-mono text-base sm:text-lg font-black">
+    <div className={`py-3.5 px-4.5 flex justify-between items-center text-sm font-extrabold rounded-xl ${bg} shadow-xs my-2.5`}>
+      <span className="tracking-wider uppercase text-xs sm:text-sm font-extrabold">{label}</span>
+      <span className="tabular-nums font-mono text-base sm:text-lg font-bold">
         {amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)}
       </span>
     </div>
@@ -328,23 +328,23 @@ function KpiCard({
   icon?: string;
 }) {
   return (
-    <div className="bg-white border border-[#E2E8E4] rounded-2xl p-4.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] transition-all relative overflow-hidden group">
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-md transition-all relative overflow-hidden group">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-bold text-[#5F6D64] uppercase tracking-wider block">
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
           {label}
         </span>
-        {icon && <span className="text-base opacity-70 group-hover:scale-110 transition-transform">{icon}</span>}
+        {icon && <span className="text-lg opacity-75 group-hover:scale-110 transition-transform">{icon}</span>}
       </div>
-      <div className={`text-2xl font-black tracking-tight mt-1.5 tabular-nums ${color || "text-[#17211B]"}`}>
+      <div className={`text-2xl font-extrabold tracking-tight mt-2 tabular-nums font-sans ${color || "text-slate-900"}`}>
         {value}
       </div>
       {sub && (
-        <div className="text-[11px] text-[#7A887F] font-medium mt-1 flex items-center gap-1.5">
+        <div className="text-xs text-slate-500 font-semibold mt-1 flex items-center gap-1.5">
           {sub}
         </div>
       )}
       {badge && (
-        <span className="mt-2 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0]">
+        <span className="mt-2.5 inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
           {badge}
         </span>
       )}
@@ -355,9 +355,9 @@ function KpiCard({
 function TableHead({ cols }: { cols: string[] }) {
   return (
     <thead>
-      <tr className="bg-[#F8FAF8] border-b-2 border-[#DCE4DE] text-[10px] uppercase text-[#4B5750] font-black tracking-wider">
+      <tr className="bg-slate-50/90 border-b border-slate-200 text-xs font-bold uppercase text-slate-600 tracking-wider">
         {cols.map((c, i) => (
-          <th key={i} className={`py-3 px-3.5 ${i > 1 ? "text-right" : "text-left"}`}>{c}</th>
+          <th key={i} className={`py-3.5 px-4 ${i > 1 ? "text-right" : "text-left"}`}>{c}</th>
         ))}
       </tr>
     </thead>
@@ -367,7 +367,7 @@ function TableHead({ cols }: { cols: string[] }) {
 function EmptyRow({ cols, msg = "No data recorded." }: { cols: number; msg?: string }) {
   return (
     <tr>
-      <td colSpan={cols} className="py-8 text-center text-xs text-[#68756C] italic">{msg}</td>
+      <td colSpan={cols} className="py-10 text-center text-xs sm:text-sm text-slate-500 font-medium italic">{msg}</td>
     </tr>
   );
 }
