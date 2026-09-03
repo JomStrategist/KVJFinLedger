@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-utils";
-import { PrismaClient, ProformaInvoiceStatus, TaxInvoiceStatus } from "@prisma/client";
+import { ProformaInvoiceStatus, TaxInvoiceStatus } from "@prisma/client";
 import Link from "next/link";
 
 
