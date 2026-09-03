@@ -19,6 +19,15 @@ export class OpeningClosingService {
   }
 
   /**
+   * Fetch all opening balance components across all financial years
+   */
+  static async getAllOpeningBalances() {
+    return await prisma.openingBalance.findMany({
+      orderBy: { createdAt: "asc" },
+    });
+  }
+
+  /**
    * Upsert (add or update) an opening balance component
    */
   static async saveOpeningBalance(data: SaveOpeningBalanceInput) {

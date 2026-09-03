@@ -16,7 +16,7 @@ export default async function ReportsPage() {
       console.warn("Could not fetch expenses for reports:", err);
       return [];
     }),
-    OpeningClosingService.getOpeningBalances("FY 2026–27").catch((err) => {
+    OpeningClosingService.getAllOpeningBalances().catch((err) => {
       console.warn("Could not fetch opening balances for reports:", err);
       return [];
     }),

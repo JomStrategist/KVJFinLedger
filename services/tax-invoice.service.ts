@@ -37,6 +37,7 @@ export class TaxInvoiceService {
         where,
         include: {
           customer: true,
+          items: true,
           payments: {
             orderBy: { paymentDate: "asc" }
           }
