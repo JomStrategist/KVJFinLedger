@@ -967,23 +967,26 @@ export function FinancialReportsClient({
             </p>
           </div>
 
-          {/* Controls: FY Switcher, Depreciation Method, Print */}
+          {/* Controls: FY Dropdown, Depreciation Method, Print */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="flex items-center bg-[#F3F4F6] rounded-xl p-1 border border-[#E5E7EB]">
-              {FY_OPTIONS.map((year) => (
-                <button
-                  key={year}
-                  type="button"
-                  onClick={() => setFy(year)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    fy === year
-                      ? "bg-white text-[#111827] shadow-xs"
-                      : "text-[#6B7280] hover:text-[#111827]"
-                  }`}
-                >
-                  {year}
-                </button>
-              ))}
+            {/* FY Dropdown */}
+            <div className="relative">
+              <select
+                value={fy}
+                onChange={(e) => setFy(e.target.value)}
+                className="h-[38px] pl-3.5 pr-8 py-1.5 bg-white border border-[#D9E3DC] rounded-xl text-xs font-extrabold text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#177B55] shadow-2xs cursor-pointer appearance-none"
+              >
+                {FY_OPTIONS.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-[#6B7280]">
+                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                </svg>
+              </div>
             </div>
 
             <div className="flex items-center bg-[#F3F4F6] rounded-xl p-1 border border-[#E5E7EB]">
