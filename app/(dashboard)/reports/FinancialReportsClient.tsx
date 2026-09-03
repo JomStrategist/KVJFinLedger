@@ -1019,6 +1019,155 @@ export function FinancialReportsClient({
     });
   };
 
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+
+  const handleExportExcel = () => {
+    let rows: (string | number)[][] = [];
+    const activeTabLabel = TABS.find((t) => t.id === activeTab)?.label ?? activeTab;
+    const cleanFileName = `KVJ_Analytics_${activeTabLabel.replace(/[^a-zA-Z0-9]/g, "_")}_${fy.replace(/[^a-zA-Z0-9]/g, "_")}`;
+
+    rows.push(["KVJ ANALYTICS"]);
+    rows.push([`FINANCIAL STATEMENT - ${activeTabLabel.toUpperCase()}`]);
+    rows.push([`Financial Year: ${fy}`]);
+    rows.push([]);
+
+    if (activeTab === "pnl") {
+      rows.push(["Particulars", "Schedule", "Amount (INR)"]);
+      rows.push(["I. REVENUE FROM OPERATIONS (NET OF STATUTORY TAXES)", "Schedule 1", totalRevenue]);
+      revenueByCategory.forEach(([cat, amt]) => {
+        rows.push([`  ${cat}`, "", amt]);
+      });
+      rows.push(["Total Revenue from Operations (I)", "", totalRevenue]);
+      rows.push([]);
+      rows.push(["II. EXPENSES", "Schedule 2", totalOperatingExpenses]);
+      rows.push(["  (a) Employee Benefit Expense", "", totalEmployeeExp]);
+      employeeExpenses.forEach((exp) => {
+        rows.push([`    ${exp.category?.name ?? "Employee Costs"}`, "", Number(exp.netAmount ?? 0)]);
+      });
+      rows.push(["  (b) Finance Costs & Bank Charges", "", totalFinanceExp]);
+      financeExpenses.forEach((exp) => {
+        rows.push([`    ${exp.category?.name ?? "Finance Charge"}`, "", Number(exp.netAmount ?? 0)]);
+      });
+      rows.push(["  (c) Depreciation & Amortisation Expense", "", totalCurrentYearDep]);
+      rows.push(["  (d) Other Operating Expenses", "", totalOtherOpex]);
+      otherOpexByCategory.forEach(([cat, amt]) => {
+        rows.push([`    ${cat}`, "", amt]);
+      });
+      rows.push(["Total Operating Expenses (II)", "", totalOperatingExpenses]);
+      rows.push([]);
+      rows.push(["III. PROFIT BEFORE EXCEPTIONAL ITEMS & TAX (I - II)", "", pbt]);
+      rows.push(["IV. Tax Expense / Provisions", "", 0]);
+      rows.push(["V. NET PROFIT TRANSFERRED TO RESERVES & SURPLUS (PAT)", "", pbt]);
+    } else if (activeTab === "bs") {
+      rows.push(["Particulars (Schedule III Part I)", "Amount (INR)"]);
+      rows.push(["PART I - EQUITY AND LIABILITIES", ""]);
+      rows.push(["I. SHAREHOLDERS' FUNDS", ""]);
+      rows.push(["  Capital / Proprietor's Fund", openingCapital]);
+      rows.push(["  Reserves & Surplus (P&L Net Surplus)", reservesAndSurplus]);
+      rows.push(["TOTAL SHAREHOLDERS' FUNDS", totalShareholdersEquity]);
+      rows.push([]);
+      rows.push(["II. NON-CURRENT LIABILITIES", 0]);
+      rows.push(["III. CURRENT LIABILITIES", ""]);
+      rows.push(["  Trade Payables (Sundry Creditors)", totalVendorPayables]);
+      rows.push(["TOTAL CURRENT LIABILITIES", totalCurrentLiabilities]);
+      rows.push(["TOTAL EQUITY & LIABILITIES", totalEquityAndLiabilities]);
+      rows.push([]);
+      rows.push(["PART II - ASSETS", ""]);
+      rows.push(["I. NON-CURRENT ASSETS", ""]);
+      rows.push(["  Property, Plant & Equipment (Gross Block)", totalGrossBlock]);
+      rows.push(["  Less: Accumulated Depreciation", -totalAccDep]);
+      rows.push(["  Net Block Fixed Assets", totalNetBlock]);
+      rows.push(["II. CURRENT ASSETS", ""]);
+      rows.push(["  Trade Receivables (Sundry Debtors)", totalReceivables]);
+      rows.push(["  Cash & Bank Balances", closingBankCashBalance]);
+      rows.push(["  Input Tax Credit Balance (GST ITC)", excessITC]);
+      rows.push(["  TDS Tax Asset Balance (Form 26Q)", tdsReceivable]);
+      rows.push(["TOTAL CURRENT ASSETS", totalCurrentAssets]);
+      rows.push(["TOTAL ASSETS", totalAssets]);
+    } else if (activeTab === "cashflow") {
+      const opCash = pbt + totalCurrentYearDep - totalReceivables + totalVendorPayables;
+      const invCash = -totalGrossBlock;
+      const finCash = openingCapital;
+      const totalNetCash = opCash + invCash + finCash;
+
+      rows.push(["Particulars (AS 3 Indirect Method)", "Amount (INR)"]);
+      rows.push(["A. CASH FLOW FROM OPERATING ACTIVITIES", ""]);
+      rows.push(["  Profit Before Tax (PBT)", pbt]);
+      rows.push(["  Add: Depreciation & Amortisation", totalCurrentYearDep]);
+      rows.push(["  Operating Profit Before Working Capital Changes", pbt + totalCurrentYearDep]);
+      rows.push(["  (Increase)/Decrease in Trade Receivables", -totalReceivables]);
+      rows.push(["  Increase/(Decrease) in Trade Payables", totalVendorPayables]);
+      rows.push(["NET CASH FROM OPERATING ACTIVITIES (A)", opCash]);
+      rows.push([]);
+      rows.push(["B. CASH FLOW FROM INVESTING ACTIVITIES", ""]);
+      rows.push(["  Purchase of Fixed Assets / Equipment", -totalGrossBlock]);
+      rows.push(["NET CASH USED IN INVESTING ACTIVITIES (B)", invCash]);
+      rows.push([]);
+      rows.push(["C. CASH FLOW FROM FINANCING ACTIVITIES", ""]);
+      rows.push(["  Capital Introduced / Equity Contribution", openingCapital]);
+      rows.push(["NET CASH FROM FINANCING ACTIVITIES (C)", finCash]);
+      rows.push([]);
+      rows.push(["NET INCREASE IN CASH & CASH EQUIVALENTS (A+B+C)", totalNetCash]);
+      rows.push(["CLOSING CASH & BANK BALANCE", closingBankCashBalance]);
+    } else if (activeTab === "receivables") {
+      rows.push(["Customer Name", "Invoice No", "Date", "Status", "Amount (INR)"]);
+      validInvoices.forEach((inv) => {
+        rows.push([
+          inv.customerName || "Walk-in Customer",
+          inv.invoiceNumber,
+          inv.date ? new Date(inv.date).toLocaleDateString("en-IN") : "",
+          inv.status,
+          Number(inv.grandTotal ?? 0),
+        ]);
+      });
+      rows.push(["TOTAL RECEIVABLES", "", "", "", totalBilled]);
+    } else if (activeTab === "payables") {
+      rows.push(["Vendor Name", "Category", "Date", "TDS Amount", "Net Amount (INR)"]);
+      validExpenses.forEach((exp) => {
+        rows.push([
+          exp.vendorName || "General Vendor",
+          exp.category?.name || "Expense",
+          exp.date ? new Date(exp.date).toLocaleDateString("en-IN") : "",
+          Number(exp.tdsAmount ?? 0),
+          Number(exp.netAmount ?? 0),
+        ]);
+      });
+      rows.push(["TOTAL PAYABLES", "", "", "", totalOperatingExpenses]);
+    } else if (activeTab === "assets") {
+      rows.push(["Asset Name", "Category", "Purchase Date", "Gross Cost", "Rate %", "Acc. Dep", "Current Dep", "Net Block"]);
+      depSchedule.forEach((a) => {
+        rows.push([a.name, a.category, a.purchaseDate, a.grossCost, `${a.ratePct}%`, a.accDep, a.currentYearDep, a.closingWdv]);
+      });
+      rows.push(["TOTAL FIXED ASSETS", "", "", totalGrossBlock, "", totalAccDep, totalCurrentYearDep, totalNetBlock]);
+    } else {
+      rows.push(["Particulars", "Amount (INR)"]);
+      rows.push(["Statement Summary", "Refer to detailed view"]);
+    }
+
+    const csvContent =
+      "\uFEFF" +
+      rows
+        .map((r) =>
+          r
+            .map((cell) => {
+              const str = String(cell ?? "").replace(/"/g, '""');
+              return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+            })
+            .join(",")
+        )
+        .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${cleanFileName}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setExportMenuOpen(false);
+  };
+
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
@@ -1117,14 +1266,41 @@ export function FinancialReportsClient({
             </button>
           </div>
 
-          {/* Export Button */}
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="h-[38px] px-4 text-xs font-bold rounded-xl border border-[#D9E3DC] bg-white text-[#166534] hover:bg-[#F0FDF4] shadow-2xs cursor-pointer flex items-center gap-1.5 transition-colors"
-          >
-            Export
-          </button>
+          {/* Export Dropdown Menu */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setExportMenuOpen((prev) => !prev)}
+              className="h-[38px] px-4 text-xs font-extrabold rounded-xl border border-[#D9E3DC] bg-white text-[#166534] hover:bg-[#F0FDF4] shadow-2xs cursor-pointer flex items-center gap-2 transition-all"
+            >
+              <span>Export</span>
+              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+              </svg>
+            </button>
+
+            {exportMenuOpen && (
+              <div className="absolute right-0 mt-1.5 w-52 bg-white border border-[#D9E3DC] rounded-xl shadow-lg z-50 overflow-hidden py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    window.print();
+                  }}
+                  className="w-full px-3.5 py-2 text-left text-xs font-bold text-[#111827] hover:bg-[#F0FDF4] hover:text-[#166534] flex items-center gap-2 cursor-pointer"
+                >
+                  <span>🖨️</span> Print / Export PDF (1 Page)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportExcel}
+                  className="w-full px-3.5 py-2 text-left text-xs font-bold text-[#111827] hover:bg-[#F0FDF4] hover:text-[#166534] flex items-center gap-2 cursor-pointer border-t border-[#EEF2EF]"
+                >
+                  <span>📊</span> Export to Excel (.csv)
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1312,7 +1488,7 @@ export function FinancialReportsClient({
                   Statement of Assets, Equity and Liabilities as at 31st March ({fy}).
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5 print:hidden">
                 {/* Format Toggle Pill: Vertical (Schedule III) vs Horizontal (T-Format) */}
                 <div className="flex items-center bg-[#F3F4F6] rounded-xl p-1 border border-[#E5E7EB] shrink-0">
                   <button

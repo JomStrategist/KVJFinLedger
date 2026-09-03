@@ -68,13 +68,49 @@ input[type="number"] {
     print-color-adjust: exact !important;
   }
 
-  /* Page setup for clean A4 printing with statutory margins */
+  /* Compact 1-Page A4 Setup with statutory margins */
   @page {
     size: A4 portrait;
-    margin: 12mm 10mm 15mm 10mm;
+    margin: 5mm 8mm 10mm 8mm;
   }
 
-  /* Prevent awkward page break splits */
+  /* Compress element spacing in print mode to force 1-page fit */
+  .space-y-6 > :not([hidden]) ~ :not([hidden]),
+  .space-y-4 > :not([hidden]) ~ :not([hidden]),
+  .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  .p-6, .p-8, .p-5, .p-4, .p-3 {
+    padding: 0.25rem !important;
+  }
+
+  .py-3, .py-3.5, .py-4, .pb-4 {
+    padding-top: 0.15rem !important;
+    padding-bottom: 0.15rem !important;
+  }
+
+  .my-2.5, .my-3, .mt-4, .mt-6, .mt-12 {
+    margin-top: 0.2rem !important;
+    margin-bottom: 0.2rem !important;
+  }
+
+  .h-12 {
+    height: 1.5rem !important;
+  }
+
+  .text-xs, .text-sm {
+    font-size: 9.5px !important;
+    line-height: 12px !important;
+  }
+
+  .text-lg, .text-xl, .text-2xl {
+    font-size: 13px !important;
+    line-height: 16px !important;
+  }
+
+  /* Prevent page breaks inside printable tables & cards */
   .printable-card,
   table,
   tr,
@@ -82,11 +118,6 @@ input[type="number"] {
   .break-inside-avoid {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-  }
-
-  .print-page-break {
-    break-before: page !important;
-    page-break-before: always !important;
   }
 }
 
