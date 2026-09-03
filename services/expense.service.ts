@@ -124,7 +124,7 @@ export class ExpenseService {
           paidBy: data.paidBy || "COMPANY",
           employeeId: data.paidBy === "EMPLOYEE" ? data.employeeId || null : null,
           status: data.status || "APPROVED",
-          paymentStatus: data.paymentStatus || (data.paidBy === "EMPLOYEE" ? "UNPAID" : "PAID"),
+          paymentStatus: "PAID",
 
           subtotal: Number(data.subtotal ?? data.taxableAmount ?? 0),
           discountAmount: Number(data.discountAmount || 0),
@@ -175,7 +175,7 @@ export class ExpenseService {
   static async updateExpense(id: string, data: any) {
     const current = await prisma.expense.findUnique({ where: { id } });
     if (!current) throw new Error("Expense not found");
-    if (current.status !== "DRAFT") throw new Error("Only draft expenses can be freely edited.");
+    if (current.status === "CANCELLED") throw new Error("Cannot edit a cancelled expense.");
 
     return await prisma.$transaction(async (tx) => {
       // Delete existing items

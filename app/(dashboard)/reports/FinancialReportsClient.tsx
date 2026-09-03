@@ -541,46 +541,35 @@ export function FinancialReportsClient({
   const collectionEfficiency = totalBilled > 0 ? (actualCustomerCollections / totalBilled) * 100 : 0;
 
   // ── 9. TRADE PAYABLES & EXPENSE DISBURSEMENTS ──────────────────────────────
-  const { totalPayables, actualExpenseDisbursements, payablesWithAge, payAgeing, employeePayables, vendorPayables } = useMemo(() => {
-    let paySum = 0;
+  // Business Policy: All purchases and expenses are settled immediately on-time via Bank.
+  // Zero trade payables are carried for expenses; every expense is deducted directly from Bank upon purchase.
+  const { totalPayables, actualExpenseDisbursements, expenseDisbursementsList, totalEmployeePayables, totalVendorPayables } = useMemo(() => {
     let disbursedSum = 0;
-    const payList: any[] = [];
-    const empList: any[] = [];
-    const vendList: any[] = [];
-    const ageingMap: Record<AgeBucket, number> = { "0–30": 0, "31–60": 0, "61–90": 0, "90+": 0 };
+    const disbursedList: any[] = [];
 
     for (const exp of validExpenses) {
       const netAmt = Number(exp.netAmount || exp.grossAmount || 0);
-      if (exp.paymentStatus === "PAID") {
-        disbursedSum += netAmt;
-      } else {
-        paySum += netAmt;
-        const days = daysBetween(exp.expenseDate || exp.createdAt);
-        const bucket = ageBucket(days);
-        const item = { ...exp, daysOld: days, bucket, outstanding: netAmt };
-        payList.push(item);
-        ageingMap[bucket] += netAmt;
-        if (exp.paidBy === "EMPLOYEE") {
-          empList.push(item);
-        } else {
-          vendList.push(item);
-        }
-      }
+      disbursedSum += netAmt;
+      const days = daysBetween(exp.expenseDate || exp.createdAt);
+      disbursedList.push({
+        ...exp,
+        daysOld: days,
+        amountPaid: netAmt,
+        paymentDate: exp.expenseDate || exp.createdAt,
+        settlementStatus: "PAID VIA BANK",
+      });
     }
 
-    payList.sort((a, b) => b.daysOld - a.daysOld);
+    disbursedList.sort((a, b) => new Date(b.expenseDate || b.createdAt || 0).getTime() - new Date(a.expenseDate || a.createdAt || 0).getTime());
+
     return {
-      totalPayables: paySum,
+      totalPayables: 0, // No Payables in Expense (settled on-time upon purchase)
       actualExpenseDisbursements: disbursedSum,
-      payablesWithAge: payList,
-      payAgeing: ageingMap,
-      employeePayables: empList,
-      vendorPayables: vendList,
+      expenseDisbursementsList: disbursedList,
+      totalEmployeePayables: 0,
+      totalVendorPayables: 0,
     };
   }, [validExpenses]);
-
-  const totalEmployeePayables = useMemo(() => employeePayables.reduce((s, e) => s + e.outstanding, 0), [employeePayables]);
-  const totalVendorPayables = useMemo(() => vendorPayables.reduce((s, e) => s + e.outstanding, 0), [vendorPayables]);
 
   // ── 10. BALANCE SHEET DOUBLE-ENTRY FORMULATION ─────────────────────────────
   // Opening Balance segregation:
@@ -923,8 +912,8 @@ export function FinancialReportsClient({
                 <div>
                   <p className="font-bold text-[#17211B] text-xs mb-1">III. Current Liabilities</p>
                   <div className="divide-y divide-[#F0F4F1] pl-2">
-                    <Row label="Trade Payables (Sundry Creditors)" amount={totalVendorPayables} indent note={vendorPayables.length > 0 ? `${vendorPayables.length} unpaid` : "Nil"} />
-                    <Row label="Employee Payables (Reimbursements)" amount={totalEmployeePayables} indent note={employeePayables.length > 0 ? `${employeePayables.length} pending` : "Nil"} />
+                    <Row label="Trade Payables (Sundry Creditors)" amount={totalVendorPayables} indent note="Nil — Settled via Bank on Purchase" />
+                    <Row label="Employee Payables (Reimbursements)" amount={totalEmployeePayables} indent note="Nil — Settled via Bank on Purchase" />
                     <Row label="Statutory GST Payable (Net of ITC)" amount={netGSTPayable} indent note={netGSTPayable > 0 ? "Payable" : "Covered by ITC"} red={netGSTPayable > 0} />
                     <Row label="TDS Payable (To be deposited)" amount={tdsPayable} indent note={tdsPayable > 0 ? "Form 26Q" : "Nil"} red={tdsPayable > 0} />
                   </div>
@@ -1521,57 +1510,71 @@ export function FinancialReportsClient({
         )}
 
         {/* ================================================================= */}
-        {/* TAB 7: PAYABLES — SUNDRY CREDITORS & AGEING */}
+        {/* TAB 7: PAYABLES — SPOT BANK SETTLEMENT (ZERO TRADE PAYABLES) */}
         {/* ================================================================= */}
         {activeTab === "payables" && (
           <div className="space-y-6 text-xs">
             <div className="border-b border-[#D9E3DC] pb-3">
-              <h3 className="text-base font-bold text-[#17211B]">Accounts Payable (Creditors Ledger &amp; Ageing)</h3>
-              <p className="text-[11px] text-[#68756C]">Vendor &amp; employee outstanding payables | As of {fmtDate(TODAY)}</p>
+              <h3 className="text-base font-bold text-[#17211B]">Accounts Payable &amp; Expense Settlements</h3>
+              <p className="text-[11px] text-[#68756C]">
+                Spot settlement accounting: All purchases and expenses are paid on time via Bank. Zero trade payables carried on the balance sheet.
+              </p>
+            </div>
+
+            {/* Policy Banner */}
+            <div className="bg-[#F6FAF7] border border-[#D9E3DC] rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <span className="text-[10px] font-bold text-[#177B55] uppercase tracking-widest block">
+                  CASH / SPOT PAYMENT POLICY
+                </span>
+                <p className="font-bold text-sm text-[#17211B] mt-0.5">
+                  100% On-Time Payment Settlement via Bank
+                </p>
+                <p className="text-[#68756C] text-xs mt-0.5">
+                  Every business purchase is disbursed on time directly from the corporate bank account upon purchase.
+                </p>
+              </div>
+              <div className="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 font-extrabold text-xs">
+                ✓ Zero Overdue Payables
+              </div>
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              <KpiCard label="Total Payables" value={formatCurrency(totalPayables)} color="text-[#B94B4B]" sub={`${payablesWithAge.length} unpaid expenses`} />
-              {AGE_BUCKETS.map((b) => (
-                <KpiCard
-                  key={b}
-                  label={`${b} Days`}
-                  value={formatCurrency(payAgeing[b])}
-                  color={b === "0–30" ? "text-[#177B55]" : b === "31–60" ? "text-[#B27A17]" : "text-[#B94B4B]"}
-                />
-              ))}
-            </div>
-
-            {/* Three-Way Payables Categorisation */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="border border-[#D9E3DC] rounded-xl p-4 bg-white shadow-2xs">
-                <p className="text-[11px] font-bold text-[#738078] uppercase tracking-wider mb-2">Trade Payables (Vendors)</p>
-                <p className="text-xl font-extrabold text-[#B94B4B]">{formatCurrency(totalVendorPayables)}</p>
-                <p className="text-[10px] text-[#9aaa9e] mt-0.5">{vendorPayables.length} unpaid vendor bills</p>
-              </div>
-              <div className="border border-[#D9E3DC] rounded-xl p-4 bg-white shadow-2xs">
-                <p className="text-[11px] font-bold text-[#738078] uppercase tracking-wider mb-2">Employee Reimbursements</p>
-                <p className="text-xl font-extrabold text-[#B27A17]">{formatCurrency(totalEmployeePayables)}</p>
-                <p className="text-[10px] text-[#9aaa9e] mt-0.5">{employeePayables.length} pending employee claims</p>
-              </div>
-              <div className="border border-[#D9E3DC] rounded-xl p-4 bg-white shadow-2xs">
-                <p className="text-[11px] font-bold text-[#738078] uppercase tracking-wider mb-2">Statutory Tax Payables</p>
-                <p className="text-xl font-extrabold text-[#B94B4B]">{formatCurrency(netGSTPayable + tdsPayable)}</p>
-                <p className="text-[10px] text-[#9aaa9e] mt-0.5">GST: {formatCurrency(netGSTPayable)} | TDS: {formatCurrency(tdsPayable)}</p>
-              </div>
+              <KpiCard
+                label="Trade Payables (Creditors)"
+                value="₹0.00"
+                color="text-[#177B55]"
+                sub="Nil — Paid on time upon purchase"
+              />
+              <KpiCard
+                label="Total Expenses Settled via Bank"
+                value={formatCurrency(actualExpenseDisbursements)}
+                color="text-[#17211B]"
+                sub={`${expenseDisbursementsList.length} expenses disbursed from bank`}
+              />
+              <KpiCard
+                label="Statutory Tax Payables"
+                value={formatCurrency(netGSTPayable + tdsPayable)}
+                color="text-[#B27A17]"
+                sub={`GST: ${formatCurrency(netGSTPayable)} | TDS: ${formatCurrency(tdsPayable)}`}
+              />
             </div>
 
-            {/* Payables Table */}
+            {/* Settled Disbursements Table */}
             <div className="border border-[#D9E3DC] rounded-xl overflow-hidden shadow-2xs">
+              <div className="bg-[#F6FAF7] px-4 py-2.5 font-bold text-[11px] uppercase text-[#738078] tracking-wider border-b border-[#D9E3DC] flex justify-between items-center">
+                <span>Disbursements Ledger — Deducted from Bank ({fy})</span>
+                <span className="text-[10px] text-[#177B55] font-semibold lowercase">paid on time upon purchase</span>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[700px]">
-                  <TableHead cols={["Vendor / Payee", "Expense No.", "Date", "Days Old", "Amount Due", "Bracket"]} />
+                  <TableHead cols={["Vendor / Payee", "Expense No.", "Purchase Date", "Category", "Amount Deducted from Bank", "Status"]} />
                   <tbody className="divide-y divide-[#E9EEE9]">
-                    {payablesWithAge.length === 0 ? (
-                      <EmptyRow cols={6} msg="No outstanding trade payables. All expenses have been settled." />
+                    {expenseDisbursementsList.length === 0 ? (
+                      <EmptyRow cols={6} msg="No expense purchases recorded for this financial year." />
                     ) : (
-                      payablesWithAge.map((exp) => (
+                      expenseDisbursementsList.map((exp) => (
                         <tr key={exp.id} className="hover:bg-[#F9FAF8]">
                           <td className="py-3 px-3 font-bold text-[#17211B]">
                             {exp.vendor?.name || exp.notes || "Vendor"}
@@ -1579,28 +1582,26 @@ export function FinancialReportsClient({
                               <span className="ml-1.5 px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded text-[9px] font-bold">EMP</span>
                             )}
                           </td>
-                          <td className="py-3 px-3 text-[#68756C]">{exp.expenseNumber || "—"}</td>
+                          <td className="py-3 px-3 text-[#68756C] font-mono">{exp.expenseNumber || "—"}</td>
                           <td className="py-3 px-3 text-[#68756C]">{fmtDate(exp.expenseDate || exp.createdAt)}</td>
-                          <td className={`py-3 px-3 font-bold tabular-nums ${exp.daysOld > 90 ? "text-[#B94B4B]" : exp.daysOld > 60 ? "text-[#B27A17]" : "text-[#17211B]"}`}>
-                            {exp.daysOld} days
-                          </td>
-                          <td className="py-3 px-3 text-right tabular-nums font-bold text-[#B94B4B]">
-                            {formatCurrency(exp.outstanding)}
+                          <td className="py-3 px-3 text-[#17211B] font-medium">{exp.category?.name || "Operating Expense"}</td>
+                          <td className="py-3 px-3 text-right tabular-nums font-bold text-[#17211B]">
+                            {formatCurrency(exp.amountPaid)}
                           </td>
                           <td className="py-3 px-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${AGE_COLORS[exp.bucket as AgeBucket]}`}>
-                              {exp.bucket}
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[#EBF3ED] text-[#177B55] border border-emerald-200">
+                              ✓ PAID VIA BANK
                             </span>
                           </td>
                         </tr>
                       ))
                     )}
                   </tbody>
-                  {payablesWithAge.length > 0 && (
+                  {expenseDisbursementsList.length > 0 && (
                     <tfoot>
                       <tr className="border-t-2 border-[#17211B] font-extrabold bg-[#F6FAF7]">
-                        <td colSpan={4} className="py-3 px-3">Total Sundry Creditors (Current Liability)</td>
-                        <td className="py-3 px-3 text-right tabular-nums text-sm text-[#B94B4B]">{formatCurrency(totalPayables)}</td>
+                        <td colSpan={4} className="py-3 px-3">Total Expense Outflows Deducted from Bank</td>
+                        <td className="py-3 px-3 text-right tabular-nums text-sm font-black text-[#17211B]">{formatCurrency(actualExpenseDisbursements)}</td>
                         <td />
                       </tr>
                     </tfoot>

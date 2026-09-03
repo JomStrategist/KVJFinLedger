@@ -185,6 +185,7 @@ export function ExpenseModal({
       tdsAmount: calculatedTds,
       grossAmount: totalTaxable + totalGst,
       netAmount: netTotal,
+      paymentStatus: "PAID",
       isGstEligible,
       isTdsApplicable,
       items: items.map((i) => ({
