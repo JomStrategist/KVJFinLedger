@@ -1141,6 +1141,21 @@ export function FinancialReportsClient({
 
       {/* Main Card */}
       <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 md:p-8 space-y-6 print:p-0 print:border-none print:shadow-none">
+        {/* Print-Only Corporate Header with KVJ Analytics Logo */}
+        <div className="hidden print:flex items-center justify-between border-b-2 border-slate-900 pb-4 mb-4">
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">KVJ ANALYTICS</h2>
+            <p className="text-xs font-bold text-slate-600 mt-0.5">
+              Corporate Financial Statements &amp; Statutory Reports
+            </p>
+          </div>
+          <img
+            src="/kvj-logo.png"
+            alt="KVJ Analytics Logo"
+            className="h-12 w-auto object-contain shrink-0"
+          />
+        </div>
+
         {/* ================================================================= */}
         {/* TAB 1: PROFIT & LOSS — Schedule III (Part II) */}
         {/* ================================================================= */}
