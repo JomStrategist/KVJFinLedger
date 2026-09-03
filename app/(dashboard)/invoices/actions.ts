@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { TaxInvoiceService } from "@/services/tax-invoice.service";
+import { prisma } from "@/lib/prisma";
 
 export async function convertProformaToTaxInvoiceAction(proformaId: string) {
   try {
@@ -53,5 +54,35 @@ export async function recordInvoicePaymentAction(
   } catch (error: any) {
     console.error("Failed to record invoice payment:", error);
     return { success: false, error: error.message || "Failed to record payment." };
+  }
+}
+
+/**
+ * Mark GST as remitted to the Government for a specific invoice.
+ * Records CPIN/challan reference and date of payment.
+ * Affects: GST Report (reduces pending GST liability) & Balance Sheet (GST Payable reduced).
+ */
+export async function markInvoiceGstPaidAction(
+  invoiceId: string,
+  challanRef: string,
+  paidDate: string
+) {
+  try {
+    await prisma.taxInvoice.update({
+      where: { id: invoiceId },
+      data: {
+        gstPaidToGovt: true,
+        gstPaidDate: new Date(paidDate),
+        gstChallanRef: challanRef.trim(),
+      },
+    });
+    revalidatePath("/invoices");
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/reports");
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to mark GST paid:", error);
+    return { success: false, error: error.message || "Failed to mark GST as paid." };
   }
 }

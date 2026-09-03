@@ -1,9 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ExpenseModal } from "./ExpenseModal";
 import { useRouter } from "next/navigation";
 import { markExpenseTdsPaidAction } from "../reports/tds-actions";
+
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+function getMonthRange(offset: 0 | -1): { start: Date; end: Date } {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0, 23, 59, 59);
+  return { start, end };
+}
+
+type DatePreset = "ALL" | "CURRENT_MONTH" | "LAST_MONTH" | "RANGE";
 
 export function ExpensesClientList({
   initialExpenses = [],
@@ -21,8 +31,29 @@ export function ExpensesClientList({
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [vendorFilter, setVendorFilter] = useState("ALL");
 
+  // Date Filter State
+  const [datePreset, setDatePreset] = useState<DatePreset>("ALL");
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
+
+  // Compute date bounds
+  const dateBounds = useMemo<{ start: Date | null; end: Date | null }>(() => {
+    if (datePreset === "CURRENT_MONTH") {
+      const { start, end } = getMonthRange(0);
+      return { start, end };
+    }
+    if (datePreset === "LAST_MONTH") {
+      const { start, end } = getMonthRange(-1);
+      return { start, end };
+    }
+    if (datePreset === "RANGE" && rangeStart && rangeEnd) {
+      return { start: new Date(rangeStart), end: new Date(rangeEnd + "T23:59:59") };
+    }
+    return { start: null, end: null };
+  }, [datePreset, rangeStart, rangeEnd]);
 
   const handleMarkTdsPaid = async (expId: string) => {
     const challan = prompt("Enter ITNS 281 Challan / CIN Reference:", `ITNS281/0510001/${Math.floor(10000 + Math.random() * 90000)}`);
@@ -50,7 +81,13 @@ export function ExpensesClientList({
     const matchesVendor =
       vendorFilter === "ALL" || exp.vendorId === vendorFilter;
 
-    return matchesSearch && matchesCategory && matchesVendor;
+    let matchesDate = true;
+    if (dateBounds.start && dateBounds.end) {
+      const expDate = new Date(exp.expenseDate || exp.createdAt);
+      matchesDate = expDate >= dateBounds.start && expDate <= dateBounds.end;
+    }
+
+    return matchesSearch && matchesCategory && matchesVendor && matchesDate;
   });
 
   const handleOpenAddModal = () => {
@@ -62,6 +99,13 @@ export function ExpensesClientList({
     setSelectedExpense(expense);
     setIsModalOpen(true);
   };
+
+  const DATE_PRESETS: { value: DatePreset; label: string }[] = [
+    { value: "ALL", label: "All Dates" },
+    { value: "CURRENT_MONTH", label: "Current Month" },
+    { value: "LAST_MONTH", label: "Last Month" },
+    { value: "RANGE", label: "Date Range" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -76,7 +120,7 @@ export function ExpensesClientList({
         <button
           type="button"
           onClick={handleOpenAddModal}
-          className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent rounded-xl text-xs font-bold text-white bg-[#1b5e4b] hover:bg-[#136f58] shadow-xs transition-colors gap-1.5 shrink-0"
+          className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent rounded-xl text-xs font-bold text-white bg-[#1b5e4b] hover:bg-[#136f58] shadow-xs transition-colors gap-1.5 shrink-0 cursor-pointer"
         >
           <span>+</span> Add Expense
         </button>
@@ -126,6 +170,48 @@ export function ExpensesClientList({
           </select>
         </div>
 
+        {/* Row 2: Date Filter */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-[#F3F4F6] pt-3">
+          <span className="text-[11px] font-bold text-[#738078] uppercase tracking-wider mr-1">Date:</span>
+          {DATE_PRESETS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setDatePreset(value)}
+              className={`h-[33px] px-3.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                datePreset === value
+                  ? "bg-[#177B55] text-white border-[#177B55] shadow-sm"
+                  : "border-[#D9E3DC] text-[#4B5563] bg-white hover:bg-[#F4F7F3]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+
+          {datePreset === "RANGE" && (
+            <div className="flex items-center gap-2 ml-1">
+              <input
+                type="date"
+                value={rangeStart}
+                onChange={(e) => setRangeStart(e.target.value)}
+                className="h-[33px] px-2.5 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white"
+              />
+              <span className="text-[11px] text-[#738078] font-semibold">to</span>
+              <input
+                type="date"
+                value={rangeEnd}
+                min={rangeStart}
+                onChange={(e) => setRangeEnd(e.target.value)}
+                className="h-[33px] px-2.5 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white"
+              />
+            </div>
+          )}
+
+          <span className="ml-auto text-[11px] text-[#738078] font-semibold">
+            {filteredExpenses.length} expense{filteredExpenses.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+
         {/* Expenses Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[980px]">
@@ -136,7 +222,9 @@ export function ExpensesClientList({
                 <th className="py-3 px-3">ITEM</th>
                 <th className="py-3 px-3">CATEGORY</th>
                 <th className="py-3 px-3">GST</th>
-                <th className="py-3 px-3">TDS</th>
+                <th className="py-3 px-3" title="TDS applicable only on specified payments under Sec 194C/194J/194I. Not all expenses attract TDS.">
+                  TDS ℹ
+                </th>
                 <th className="py-3 px-3 text-right">AMOUNT</th>
                 <th className="py-3 px-3 text-center">STATUS</th>
                 <th className="py-3 px-2 text-right">ACTION</th>

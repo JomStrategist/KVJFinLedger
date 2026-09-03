@@ -262,6 +262,11 @@ model TaxInvoice {
   grossAmount     Float
   netAmount       Float
 
+  // GST Remittance to Government tracking
+  gstPaidToGovt   Boolean   @default(false)
+  gstPaidDate     DateTime?
+  gstChallanRef   String?   // CPIN / BSR Code / Challan reference
+
   notes           String?
   cancellationReason String?
   cancelledAt     DateTime?
