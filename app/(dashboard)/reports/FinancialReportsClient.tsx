@@ -103,15 +103,15 @@ function pct(num: number, den: number, dec = 1): string {
 }
 
 type Tab = "pnl" | "bs" | "cashflow" | "gst" | "tds" | "receivables" | "payables" | "assets";
-const TABS: { id: Tab; label: string }[] = [
-  { id: "pnl",         label: "Profit & Loss" },
-  { id: "bs",          label: "Balance Sheet" },
-  { id: "cashflow",    label: "Cash Flow" },
-  { id: "gst",         label: "GST & Tax Slabs" },
-  { id: "tds",         label: "TDS (Form 26Q)" },
-  { id: "receivables", label: "Receivables (Debtors)" },
-  { id: "payables",    label: "Payables (Creditors)" },
-  { id: "assets",      label: "Fixed Assets Schedule" },
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: "pnl",         label: "Profit & Loss",        icon: "📊" },
+  { id: "bs",          label: "Balance Sheet",       icon: "⚖️" },
+  { id: "cashflow",    label: "Cash Flow",           icon: "💵" },
+  { id: "gst",         label: "GST & Tax Slabs",     icon: "📑" },
+  { id: "tds",         label: "TDS (Form 26Q)",      icon: "🏛️" },
+  { id: "receivables", label: "Receivables (Debtors)", icon: "📈" },
+  { id: "payables",    label: "Payables (Disbursements)", icon: "💳" },
+  { id: "assets",      label: "Fixed Assets Schedule", icon: "🏢" },
 ];
 
 const FY_OPTIONS = ["FY 2026–27", "FY 2025–26", "FY 2024–25"];
@@ -125,58 +125,192 @@ const QUARTERS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// REUSABLE UI PRIMITIVES
+// REUSABLE UI PRIMITIVES (SCHEDULE III CORPORATE STANDARDS)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <span className="font-bold text-[10px] text-[#738078] tracking-widest uppercase block mb-2">
+    <span className="font-extrabold text-[10px] text-[#4B5750] tracking-widest uppercase block mb-1">
       {title}
     </span>
   );
 }
+
+function LedgerRow({
+  code,
+  label,
+  amount,
+  indent = 0,
+  note,
+  bold = false,
+  green = false,
+  red = false,
+  isHeader = false,
+}: {
+  code?: string;
+  label: string;
+  amount?: number | null;
+  indent?: number;
+  note?: string;
+  bold?: boolean;
+  green?: boolean;
+  red?: boolean;
+  isHeader?: boolean;
+}) {
+  const indentClass = indent === 1 ? "pl-4 sm:pl-6" : indent === 2 ? "pl-7 sm:pl-10" : "";
+  const textColor = green ? "text-[#166534]" : red ? "text-[#B94B4B]" : bold ? "text-[#111827]" : "text-[#1F2937]";
+
+  if (isHeader) {
+    return (
+      <div className={`py-2 px-3 bg-[#F8FAF8] border-y border-[#E2E8E4] text-xs font-black uppercase tracking-wider text-[#374151] ${indentClass}`}>
+        {label}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex items-center justify-between py-2.5 px-3 text-xs hover:bg-[#F9FAF9] transition-colors border-b border-[#EEF2EF] ${indentClass}`}>
+      <div className="flex items-baseline gap-2 flex-1 pr-3 min-w-0">
+        {code && <span className="font-mono text-[10px] text-[#78887D] font-bold shrink-0">{code}</span>}
+        <span className={`truncate ${bold ? "font-bold text-[#111827]" : "text-[#374151] font-medium"}`}>
+          {label}
+        </span>
+        {note && (
+          <span className="text-[10px] text-[#6B7280] font-normal truncate shrink-0">
+            • {note}
+          </span>
+        )}
+      </div>
+      <div className="border-b border-dotted border-[#CBD5E1] flex-1 mx-2 hidden sm:block opacity-50" />
+      <div className={`tabular-nums font-mono text-right shrink-0 min-w-[120px] ${bold ? "font-black text-sm" : "font-semibold"} ${textColor}`}>
+        {amount !== undefined && amount !== null ? (amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)) : "—"}
+      </div>
+    </div>
+  );
+}
+
+function SubtotalRow({
+  label,
+  amount,
+  green = false,
+  red = false,
+  bg = "bg-[#F7F9F7]",
+}: {
+  label: string;
+  amount: number;
+  green?: boolean;
+  red?: boolean;
+  bg?: string;
+}) {
+  const textColor = green ? "text-[#166534]" : red ? "text-[#B94B4B]" : "text-[#111827]";
+  return (
+    <div className={`py-2.5 px-3 flex justify-between items-center text-xs font-bold border-t border-b border-[#D2DCD4] ${bg} my-1 rounded-md`}>
+      <span className="uppercase tracking-wider text-[11px] font-extrabold text-[#1F2937]">{label}</span>
+      <span className={`tabular-nums font-mono text-sm font-black ${textColor}`}>
+        {amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)}
+      </span>
+    </div>
+  );
+}
+
+function GrandTotalRow({
+  label,
+  amount,
+  highlight = "emerald",
+}: {
+  label: string;
+  amount: number;
+  highlight?: "emerald" | "slate" | "amber";
+}) {
+  const bg =
+    highlight === "emerald"
+      ? "bg-[#F0FDF4] border-t-2 border-b-4 border-double border-[#166534] text-[#166534]"
+      : highlight === "amber"
+      ? "bg-[#FFFBEB] border-t-2 border-b-4 border-double border-[#B45309] text-[#B45309]"
+      : "bg-[#F8FAFC] border-t-2 border-b-4 border-double border-[#1E293B] text-[#0F172A]";
+
+  return (
+    <div className={`py-3.5 px-4 flex justify-between items-center text-sm font-black rounded-xl ${bg} shadow-xs my-2`}>
+      <span className="tracking-wide uppercase text-xs sm:text-sm font-extrabold">{label}</span>
+      <span className="tabular-nums font-mono text-base sm:text-lg font-black">
+        {amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)}
+      </span>
+    </div>
+  );
+}
+
 function Row({ label, amount, bold, green, red, indent, note }: {
   label: string; amount: number; bold?: boolean; green?: boolean; red?: boolean; indent?: boolean; note?: string;
 }) {
-  const color = green ? "text-[#177B55]" : red ? "text-[#B94B4B]" : "text-[#17211B]";
   return (
-    <div className={`py-2 flex justify-between ${bold ? "font-bold" : "font-normal"} ${indent ? "pl-4" : ""}`}>
-      <span className={`text-[#17211B] ${bold ? "font-bold" : ""}`}>
-        {label}
-        {note && <span className="text-[10px] text-[#9aaa9e] ml-1.5 font-normal">{note}</span>}
-      </span>
-      <span className={`font-semibold tabular-nums ${color}`}>{formatCurrency(amount)}</span>
-    </div>
+    <LedgerRow
+      label={label}
+      amount={amount}
+      indent={indent ? 1 : 0}
+      bold={bold}
+      green={green}
+      red={red}
+      note={note}
+    />
   );
 }
+
 function TotalRow({ label, amount, green, red }: { label: string; amount: number; green?: boolean; red?: boolean }) {
+  return <SubtotalRow label={label} amount={amount} green={green} red={red} />;
+}
+
+function KpiCard({
+  label,
+  value,
+  sub,
+  color,
+  badge,
+  icon,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  color?: string;
+  badge?: string;
+  icon?: string;
+}) {
   return (
-    <div className={`py-2.5 flex justify-between font-extrabold text-sm border-t-2 border-[#17211B] bg-[#F6FAF7] px-2 rounded-b-lg -mx-2 ${green ? "text-[#177B55]" : red ? "text-[#B94B4B]" : "text-[#17211B]"}`}>
-      <span>{label}</span>
-      <span className="tabular-nums">{formatCurrency(amount)}</span>
+    <div className="bg-white border border-[#E2E8E4] rounded-2xl p-4.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] transition-all relative overflow-hidden group">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold text-[#5F6D64] uppercase tracking-wider block">
+          {label}
+        </span>
+        {icon && <span className="text-base opacity-70 group-hover:scale-110 transition-transform">{icon}</span>}
+      </div>
+      <div className={`text-2xl font-black tracking-tight mt-1.5 tabular-nums ${color || "text-[#17211B]"}`}>
+        {value}
+      </div>
+      {sub && (
+        <div className="text-[11px] text-[#7A887F] font-medium mt-1 flex items-center gap-1.5">
+          {sub}
+        </div>
+      )}
+      {badge && (
+        <span className="mt-2 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0]">
+          {badge}
+        </span>
+      )}
     </div>
   );
 }
-function KpiCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
-  return (
-    <div className="bg-white border border-[#D9E3DC] rounded-xl p-4 shadow-2xs">
-      <span className="text-[11px] font-semibold text-[#68756C] block">{label}</span>
-      <strong className={`text-xl font-extrabold mt-1 block ${color || "text-[#17211B]"}`}>{value}</strong>
-      {sub && <span className="text-[10px] text-[#9aaa9e] block mt-0.5">{sub}</span>}
-    </div>
-  );
-}
+
 function TableHead({ cols }: { cols: string[] }) {
   return (
     <thead>
-      <tr className="border-b border-[#D9E3DC] text-[10px] uppercase text-[#738078] font-bold tracking-wider">
+      <tr className="bg-[#F8FAF8] border-b-2 border-[#DCE4DE] text-[10px] uppercase text-[#4B5750] font-black tracking-wider">
         {cols.map((c, i) => (
-          <th key={i} className={`py-3 px-3 ${i > 1 ? "text-right" : ""}`}>{c}</th>
+          <th key={i} className={`py-3 px-3.5 ${i > 1 ? "text-right" : "text-left"}`}>{c}</th>
         ))}
       </tr>
     </thead>
   );
 }
+
 function EmptyRow({ cols, msg = "No data recorded." }: { cols: number; msg?: string }) {
   return (
     <tr>
@@ -815,182 +949,258 @@ export function FinancialReportsClient({
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <span className="text-[11px] font-bold text-[#177B55] tracking-widest uppercase block">
-            FINANCIAL REPORTING • INDIAN STATUTORY STANDARDS
-          </span>
-          <h1 className="text-3xl font-extrabold text-[#17211B] mt-0.5 tracking-tight">Financial Reports</h1>
-          <p className="text-[#68756C] text-sm mt-0.5">
-            Double-entry verified balance sheets, dynamic GST &amp; TDS tax slabs, and Schedule III financial statements.
-          </p>
+      {/* Top Header & Toolbar */}
+      <div className="bg-white border border-[#E2E8E4] rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-[#EEF2EF] pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-800 border border-emerald-300">
+                ICAI &amp; Schedule III Compliant
+              </span>
+              <span className="text-xs text-[#6B7280] font-medium">• Corporate ERP Financial Reporting</span>
+            </div>
+            <h1 className="text-2xl font-black text-[#111827] tracking-tight mt-1">
+              Financial Statements &amp; Statutory Reports
+            </h1>
+            <p className="text-xs text-[#6B7280] mt-0.5">
+              Comprehensive double-entry general ledger statements, statutory taxation, and cash movement schedules.
+            </p>
+          </div>
+
+          {/* Controls: FY Switcher, Depreciation Method, Print */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center bg-[#F3F4F6] rounded-xl p-1 border border-[#E5E7EB]">
+              {FY_OPTIONS.map((year) => (
+                <button
+                  key={year}
+                  type="button"
+                  onClick={() => setFy(year)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    fy === year
+                      ? "bg-white text-[#111827] shadow-xs"
+                      : "text-[#6B7280] hover:text-[#111827]"
+                  }`}
+                >
+                  {year}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center bg-[#F3F4F6] rounded-xl p-1 border border-[#E5E7EB]">
+              <span className="text-[10px] font-bold text-[#6B7280] px-2">Dep:</span>
+              <button
+                type="button"
+                onClick={() => setDepMethod("WDV")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                  depMethod === "WDV" ? "bg-white text-[#166534] shadow-xs" : "text-[#6B7280]"
+                }`}
+                title="Written Down Value (Income Tax Act)"
+              >
+                WDV
+              </button>
+              <button
+                type="button"
+                onClick={() => setDepMethod("SLM")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                  depMethod === "SLM" ? "bg-white text-[#166534] shadow-xs" : "text-[#6B7280]"
+                }`}
+                title="Straight Line Method (Companies Act Schedule II)"
+              >
+                SLM
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="px-3.5 py-2 text-xs font-bold rounded-xl border border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F9FAFB] shadow-2xs cursor-pointer flex items-center gap-1.5 transition-colors"
+            >
+              <span>🖨️</span> Print / PDF
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2.5">
-          <select
-            value={fy}
-            onChange={(e) => setFy(e.target.value)}
-            className="border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-bold bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#177B55] shadow-2xs"
-          >
-            {FY_OPTIONS.map((f) => (
-              <option key={f} value={f}>{f}</option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="px-4 py-2 border border-[#D9E3DC] rounded-xl text-xs font-bold text-[#17211B] bg-white hover:bg-[#F6FAF7] transition-colors shadow-2xs"
-          >
-            Print / Export
-          </button>
+
+        {/* Segmented Tab Navigation Bar */}
+        <div className="overflow-x-auto pb-1">
+          <div className="flex items-center gap-1.5 min-w-max bg-[#F3F6F4] p-1.5 rounded-xl border border-[#E2E8E4]">
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-[#177B55] text-white shadow-sm"
+                      : "text-[#4B5750] hover:text-[#17211B] hover:bg-white/60"
+                  }`}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* Main Card */}
       <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 md:p-8 space-y-6">
-        {/* Navigation Tabs */}
-        <div className="flex flex-wrap gap-2 border-b border-[#D9E3DC] pb-4">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setActiveTab(t.id)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === t.id
-                  ? "bg-[#177B55] text-white shadow-xs"
-                  : "bg-white text-[#68756C] hover:bg-[#F4F7F3] hover:text-[#17211B] border border-[#D9E3DC]"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
         {/* ================================================================= */}
         {/* TAB 1: PROFIT & LOSS — Schedule III (Part II) */}
         {/* ================================================================= */}
         {activeTab === "pnl" && (
           <div className="space-y-6 text-xs">
-            <div className="flex justify-between items-baseline border-b border-[#D9E3DC] pb-3">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
-                <h3 className="text-base font-bold text-[#17211B]">Statement of Profit &amp; Loss</h3>
-                <p className="text-[11px] text-[#68756C]">Schedule III — Companies Act 2013 | {fy}</p>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-[#111827]">Statement of Profit &amp; Loss</h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0]">
+                    Schedule III • Part II
+                  </span>
+                </div>
+                <p className="text-xs text-[#6B7280] mt-0.5">
+                  Statement of Comprehensive Income for the financial year ended 31st March ({fy}).
+                </p>
               </div>
-              <span className="text-xs font-bold text-[#68756C]">Amount in ₹ (INR)</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-[#4B5750] bg-[#F8FAF8] border border-[#DCE4DE] px-3 py-1.5 rounded-xl">
+                  Reporting Currency: INR (₹) • Accrual Basis
+                </span>
+              </div>
             </div>
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <KpiCard label="Revenue from Operations" value={formatCurrency(totalRevenue)} color="text-[#177B55]" sub={`${validInvoices.length} Invoices`} />
-              <KpiCard label="Operating Expenses" value={formatCurrency(totalOperatingExpenses)} color="text-[#B27A17]" sub={`${validExpenses.length} Expenses`} />
+              <KpiCard label="Revenue from Operations" value={formatCurrency(totalRevenue)} color="text-[#166534]" sub={`${validInvoices.length} Invoices Billed`} icon="📈" />
+              <KpiCard label="Operating Expenses" value={formatCurrency(totalOperatingExpenses)} color="text-[#B45309]" sub={`${validExpenses.length} Expense Disbursements`} icon="💳" />
               <KpiCard
                 label="Profit Before Tax (PBT)"
                 value={formatCurrency(pbt)}
-                color={pbt >= 0 ? "text-[#177B55]" : "text-[#B94B4B]"}
-                sub={pbt >= 0 ? "Operating Surplus" : "Deficit"}
+                color={pbt >= 0 ? "text-[#166534]" : "text-[#B94B4B]"}
+                sub={pbt >= 0 ? "Operating Surplus" : "Operating Deficit"}
+                icon="⚖️"
               />
               <KpiCard
                 label="Net Profit Margin"
                 value={`${netMargin.toFixed(1)}%`}
                 sub={`Gross Margin: ${grossMargin.toFixed(1)}%`}
-                color={netMargin >= 0 ? "text-[#177B55]" : "text-[#B94B4B]"}
+                color={netMargin >= 0 ? "text-[#166534]" : "text-[#B94B4B]"}
+                icon="📊"
               />
             </div>
 
-            <div className="divide-y divide-[#E9EEE9]">
-              {/* I. Revenue from Operations */}
-              <div className="pb-4">
-                <SectionHeader title="I. Revenue from Operations (Net of Taxes)" />
-                <div className="pl-3 divide-y divide-[#F0F4F1]">
-                  {revenueByCategory.length === 0 ? (
-                    <p className="py-2 text-[#68756C] italic">No confirmed sales recorded for this period.</p>
-                  ) : revenueByCategory.map(([cat, amt]) => (
-                    <Row key={cat} label={cat} amount={amt} indent />
-                  ))}
-                </div>
-                <TotalRow label="Total Revenue from Operations (I)" amount={totalRevenue} green />
+            {/* Schedule III P&L Ledger Container */}
+            <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="bg-[#F8FAF8] px-4 py-3 border-b border-[#DCE4DE] flex justify-between items-center text-[11px] font-extrabold text-[#374151] uppercase tracking-wider">
+                <span>Particulars / Nature of Line Item</span>
+                <span>Amount for Period (₹)</span>
               </div>
 
-              {/* II. Expenses */}
-              <div className="py-4 space-y-2">
-                <SectionHeader title="II. Expenses" />
-
-                {/* Employee Benefit Expense */}
-                <div>
-                  <p className="font-semibold text-[#17211B] py-1">(a) Employee Benefit Expense</p>
-                  <div className="pl-3 divide-y divide-[#F0F4F1]">
-                    {employeeExpenses.length === 0 ? (
-                      <p className="py-1 text-[#68756C] italic pl-4">No employee expenses recorded.</p>
-                    ) : employeeExpenses.map((exp) => (
-                      <Row key={exp.id} label={exp.category?.name ?? "Employee Costs"} amount={Number(exp.netAmount ?? 0)} indent />
-                    ))}
+              <div className="divide-y divide-[#E2E8E4]">
+                {/* I. Revenue from Operations */}
+                <div className="p-3 sm:p-4 space-y-1">
+                  <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider flex justify-between items-center">
+                    <span>I. REVENUE FROM OPERATIONS (NET OF STATUTORY TAXES)</span>
+                    <span className="text-[10px] text-[#6B7280] font-mono font-normal">Schedule 1</span>
                   </div>
-                  <div className="flex justify-between py-1.5 pl-3 font-semibold text-[#17211B]">
-                    <span>Total Employee Benefit Expense</span>
-                    <span className="tabular-nums">{formatCurrency(totalEmployeeExp)}</span>
+                  <div className="space-y-0.5">
+                    {revenueByCategory.length === 0 ? (
+                      <p className="py-2 text-[#6B7280] italic px-4">No confirmed revenue recorded for this period.</p>
+                    ) : (
+                      revenueByCategory.map(([cat, amt]) => (
+                        <LedgerRow key={cat} label={cat} amount={amt} indent={1} />
+                      ))
+                    )}
                   </div>
+                  <SubtotalRow label="Total Revenue from Operations (I)" amount={totalRevenue} green bg="bg-[#F0FDF4]/70" />
                 </div>
 
-                {/* Finance Costs */}
-                <div>
-                  <p className="font-semibold text-[#17211B] py-1">(b) Finance Costs</p>
-                  <div className="pl-3">
-                    {financeExpenses.length === 0 ? (
-                      <p className="py-1 text-[#68756C] italic pl-4">No finance charges recorded.</p>
-                    ) : financeExpenses.map((exp) => (
-                      <Row key={exp.id} label={exp.category?.name ?? "Finance Charge"} amount={Number(exp.netAmount ?? 0)} indent />
-                    ))}
+                {/* II. Expenses */}
+                <div className="p-3 sm:p-4 space-y-3">
+                  <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider flex justify-between items-center">
+                    <span>II. EXPENSES</span>
+                    <span className="text-[10px] text-[#6B7280] font-mono font-normal">Schedule 2</span>
                   </div>
-                  <div className="flex justify-between py-1.5 pl-3 font-semibold text-[#17211B]">
-                    <span>Total Finance Costs</span>
-                    <span className="tabular-nums">{formatCurrency(totalFinanceExp)}</span>
+
+                  {/* (a) Employee Benefit Expense */}
+                  <div className="space-y-1">
+                    <div className="text-xs font-bold text-[#374151] px-2 flex justify-between">
+                      <span>(a) Employee Benefit Expense</span>
+                      <span className="font-mono tabular-nums font-bold text-[#374151]">{formatCurrency(totalEmployeeExp)}</span>
+                    </div>
+                    {employeeExpenses.length > 0 ? (
+                      employeeExpenses.map((exp) => (
+                        <LedgerRow key={exp.id} label={exp.category?.name ?? "Employee Costs"} amount={Number(exp.netAmount ?? 0)} indent={2} />
+                      ))
+                    ) : (
+                      <div className="text-[11px] text-[#9CA3AF] italic px-6 py-1">No employee costs incurred.</div>
+                    )}
                   </div>
+
+                  {/* (b) Finance Costs */}
+                  <div className="space-y-1">
+                    <div className="text-xs font-bold text-[#374151] px-2 flex justify-between">
+                      <span>(b) Finance Costs &amp; Bank Charges</span>
+                      <span className="font-mono tabular-nums font-bold text-[#374151]">{formatCurrency(totalFinanceExp)}</span>
+                    </div>
+                    {financeExpenses.length > 0 ? (
+                      financeExpenses.map((exp) => (
+                        <LedgerRow key={exp.id} label={exp.category?.name ?? "Finance Charge"} amount={Number(exp.netAmount ?? 0)} indent={2} />
+                      ))
+                    ) : (
+                      <div className="text-[11px] text-[#9CA3AF] italic px-6 py-1">No finance charges or interest expense.</div>
+                    )}
+                  </div>
+
+                  {/* (c) Depreciation & Amortisation */}
+                  <div className="space-y-1">
+                    <div className="text-xs font-bold text-[#374151] px-2 flex justify-between items-center">
+                      <span>
+                        (c) Depreciation &amp; Amortisation Expense
+                        <span className="text-[10px] font-normal text-[#6B7280] ml-2">({depMethod} Method)</span>
+                      </span>
+                      <span className="font-mono tabular-nums font-bold text-[#374151]">{formatCurrency(totalCurrentYearDep)}</span>
+                    </div>
+                  </div>
+
+                  {/* (d) Other Operating Expenses */}
+                  <div className="space-y-1">
+                    <div className="text-xs font-bold text-[#374151] px-2 flex justify-between">
+                      <span>(d) Other Operating Expenses</span>
+                      <span className="font-mono tabular-nums font-bold text-[#374151]">{formatCurrency(totalOtherOpex)}</span>
+                    </div>
+                    {otherOpexByCategory.length > 0 ? (
+                      otherOpexByCategory.map(([cat, amt]) => (
+                        <LedgerRow key={cat} label={cat} amount={amt} indent={2} />
+                      ))
+                    ) : (
+                      <div className="text-[11px] text-[#9CA3AF] italic px-6 py-1">No other operating expenses.</div>
+                    )}
+                  </div>
+
+                  <SubtotalRow label="Total Operating Expenses (II)" amount={totalOperatingExpenses} red bg="bg-[#FEF2F2]/60" />
                 </div>
 
-                {/* Depreciation */}
-                <div>
-                  <p className="font-semibold text-[#17211B] py-1">
-                    (c) Depreciation &amp; Amortisation
-                    <span className="text-[10px] font-normal text-[#9aaa9e] ml-2">({depMethod} Method)</span>
-                  </p>
-                  <div className="flex justify-between py-1.5 pl-3 font-semibold text-[#17211B]">
-                    <span>Depreciation for the Year</span>
-                    <span className="tabular-nums">{formatCurrency(totalCurrentYearDep)}</span>
+                {/* III. Profit Before Tax & Net Profit Transferred */}
+                <div className="p-3 sm:p-4 space-y-2 bg-[#FAFBF9]">
+                  <LedgerRow
+                    label="III. PROFIT BEFORE EXCEPTIONAL ITEMS & TAX (I - II)"
+                    amount={pbt}
+                    bold
+                    green={pbt >= 0}
+                    red={pbt < 0}
+                  />
+                  <div className="flex justify-between py-2 px-3 text-xs text-[#6B7280] italic">
+                    <span>IV. Tax Expense / Provisions (Advance Tax &amp; Self-Assessment)</span>
+                    <span className="font-mono font-medium">₹0.00</span>
                   </div>
-                </div>
-
-                {/* Other Expenses */}
-                <div>
-                  <p className="font-semibold text-[#17211B] py-1">(d) Other Operating Expenses</p>
-                  <div className="pl-3 divide-y divide-[#F0F4F1]">
-                    {otherOpexByCategory.length === 0 ? (
-                      <p className="py-1 text-[#68756C] italic pl-4">No operating expenses recorded.</p>
-                    ) : otherOpexByCategory.map(([cat, amt]) => (
-                      <Row key={cat} label={cat} amount={amt} indent />
-                    ))}
-                  </div>
-                  <div className="flex justify-between py-1.5 pl-3 font-semibold text-[#17211B]">
-                    <span>Total Other Expenses</span>
-                    <span className="tabular-nums">{formatCurrency(totalOtherOpex)}</span>
-                  </div>
-                </div>
-
-                <TotalRow label="Total Operating Expenses (II)" amount={totalOperatingExpenses} red />
-              </div>
-
-              {/* Profit Before Tax */}
-              <div className="pt-4 space-y-2">
-                <div className={`flex justify-between items-center py-3 px-3 rounded-xl font-extrabold text-sm ${pbt >= 0 ? "bg-[#EBF3ED] text-[#0B5F46]" : "bg-red-50 text-[#B94B4B]"}`}>
-                  <span>Profit Before Tax (PBT)</span>
-                  <span className="tabular-nums text-base">{formatCurrency(pbt)}</span>
-                </div>
-                <div className="flex justify-between py-2 px-3 text-[#68756C] italic">
-                  <span>Tax Provision (Advance Tax / Self-Assessment)</span>
-                  <span>— (Transferred to Balance Sheet)</span>
-                </div>
-                <div className={`flex justify-between items-center py-3 px-3 rounded-xl font-extrabold text-sm border-2 ${pbt >= 0 ? "border-[#177B55] text-[#177B55]" : "border-[#B94B4B] text-[#B94B4B]"}`}>
-                  <span>Net Profit Transferred to Reserves &amp; Surplus (PAT)</span>
-                  <span className="tabular-nums text-base">{formatCurrency(pbt)}</span>
+                  <GrandTotalRow
+                    label="V. NET PROFIT TRANSFERRED TO RESERVES & SURPLUS (PAT)"
+                    amount={pbt}
+                    highlight={pbt >= 0 ? "emerald" : "amber"}
+                  />
                 </div>
               </div>
             </div>
@@ -1001,14 +1211,21 @@ export function FinancialReportsClient({
         {/* TAB 2: BALANCE SHEET — Schedule III (Part I) — DOUBLE ENTRY PROOF */}
         {/* ================================================================= */}
         {activeTab === "bs" && (
-          <div className="space-y-5 text-xs">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline border-b border-[#D9E3DC] pb-3 gap-2">
+          <div className="space-y-6 text-xs">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
-                <h3 className="text-base font-bold text-[#17211B]">Balance Sheet (Statement of Financial Position)</h3>
-                <p className="text-[11px] text-[#68756C]">Schedule III — Part I | As at 31st March ({fy})</p>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-[#111827]">Balance Sheet (Statement of Financial Position)</h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-50 text-blue-800 border border-blue-200">
+                    Schedule III • Part I
+                  </span>
+                </div>
+                <p className="text-xs text-[#6B7280] mt-0.5">
+                  Statement of Assets, Equity and Liabilities as at 31st March ({fy}).
+                </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`text-xs font-bold px-3 py-1 rounded-full border flex items-center gap-1.5 ${
+                <span className={`text-xs font-black px-3.5 py-1.5 rounded-xl border flex items-center gap-2 shadow-2xs ${
                   isBalanced
                     ? "bg-emerald-50 text-emerald-800 border-emerald-300"
                     : "bg-red-50 text-red-800 border-red-300"
@@ -1016,193 +1233,233 @@ export function FinancialReportsClient({
                   {isBalanced ? (
                     <>
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      ✓ Balanced to the Paise (Diff: ₹0.00)
+                      <span>✓ Balanced to the Paise (Variance: ₹0.00)</span>
                     </>
                   ) : (
-                    `⚠ Variance: ${formatCurrency(Math.abs(bsDiff))}`
+                    `⚠️ Variance Detected: ${formatCurrency(Math.abs(bsDiff))}`
                   )}
                 </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Symmetrical Dual Ledger Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
               {/* Left Column: EQUITY & LIABILITIES */}
-              <div className="border border-[#D9E3DC] rounded-xl p-5 space-y-4 bg-white shadow-2xs">
-                <div className="border-b border-[#D9E3DC] pb-2">
-                  <SectionHeader title="EQUITY & LIABILITIES" />
-                </div>
-
-                {/* I. Shareholders' Funds */}
+              <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs flex flex-col justify-between">
                 <div>
-                  <p className="font-bold text-[#17211B] text-xs mb-1">I. Shareholders&apos; Funds</p>
-                  <div className="divide-y divide-[#F0F4F1] pl-2">
-                    <Row
-                      label="Capital / Proprietor's Fund"
-                      amount={openingCapital}
-                      note="(Opening Balance)"
-                      indent
-                    />
-                    <Row
-                      label="Reserves &amp; Surplus (P&amp;L Net Profit)"
-                      amount={reservesAndSurplus}
-                      green={reservesAndSurplus >= 0}
-                      red={reservesAndSurplus < 0}
-                      indent
-                    />
+                  <div className="bg-[#F8FAF8] px-4 py-3 border-b border-[#DCE4DE] flex justify-between items-center text-[11px] font-black text-[#374151] uppercase tracking-wider">
+                    <span>Equity &amp; Liabilities (Sources of Funds)</span>
+                    <span>Amount (₹)</span>
                   </div>
-                  <div className="flex justify-between py-1.5 font-bold text-[#17211B] border-t border-[#D9E3DC] mt-1 pl-2">
-                    <span>Total Shareholders&apos; Funds</span>
-                    <span className="tabular-nums">{formatCurrency(totalShareholdersEquity)}</span>
-                  </div>
-                </div>
 
-                {/* II. Non-Current Liabilities */}
-                <div>
-                  <p className="font-bold text-[#17211B] text-xs mb-1">II. Non-Current Liabilities</p>
-                  <div className="divide-y divide-[#F0F4F1] pl-2">
-                    {otherOpeningLiabilities.length === 0 ? (
-                      <p className="py-1 text-[#68756C] italic pl-4">Long-term borrowings &amp; liabilities: ₹0.00</p>
-                    ) : (
-                      otherOpeningLiabilities.map((ob) => (
-                        <Row key={ob.id} label={ob.position} amount={Number(ob.amount || 0)} indent />
-                      ))
-                    )}
-                  </div>
-                  {otherOpeningLiabilities.length > 0 && (
-                    <div className="flex justify-between py-1.5 font-bold text-[#17211B] border-t border-[#D9E3DC] mt-1 pl-2">
-                      <span>Total Non-Current Liabilities</span>
-                      <span className="tabular-nums">{formatCurrency(otherOpeningLiabilitiesTotal)}</span>
+                  <div className="p-4 space-y-4">
+                    {/* I. Shareholders' Funds */}
+                    <div className="space-y-1">
+                      <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider">
+                        I. SHAREHOLDERS&apos; FUNDS
+                      </div>
+                      <LedgerRow
+                        label="Capital / Proprietor's Fund"
+                        amount={openingCapital}
+                        note="Opening Balance"
+                        indent={1}
+                      />
+                      <LedgerRow
+                        label="Reserves &amp; Surplus (P&amp;L Net Surplus)"
+                        amount={reservesAndSurplus}
+                        green={reservesAndSurplus >= 0}
+                        red={reservesAndSurplus < 0}
+                        indent={1}
+                      />
+                      <SubtotalRow
+                        label="Total Shareholders' Funds"
+                        amount={totalShareholdersEquity}
+                      />
                     </div>
-                  )}
+
+                    {/* II. Non-Current Liabilities */}
+                    <div className="space-y-1">
+                      <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider">
+                        II. NON-CURRENT LIABILITIES
+                      </div>
+                      {otherOpeningLiabilities.length === 0 ? (
+                        <div className="text-[11px] text-[#9CA3AF] italic px-6 py-1">
+                          Long-term borrowings &amp; liabilities: Nil
+                        </div>
+                      ) : (
+                        otherOpeningLiabilities.map((ob) => (
+                          <LedgerRow key={ob.id} label={ob.position} amount={Number(ob.amount || 0)} indent={1} />
+                        ))
+                      )}
+                      {otherOpeningLiabilities.length > 0 && (
+                        <SubtotalRow
+                          label="Total Non-Current Liabilities"
+                          amount={otherOpeningLiabilitiesTotal}
+                        />
+                      )}
+                    </div>
+
+                    {/* III. Current Liabilities */}
+                    <div className="space-y-1">
+                      <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider">
+                        III. CURRENT LIABILITIES
+                      </div>
+                      <LedgerRow
+                        label="Trade Payables (Sundry Creditors)"
+                        amount={totalVendorPayables}
+                        indent={1}
+                        note="Nil — Spot Settlement Policy"
+                      />
+                      <LedgerRow
+                        label="Employee Payables (Reimbursements)"
+                        amount={totalEmployeePayables}
+                        indent={1}
+                        note="Nil — Spot Settlement Policy"
+                      />
+                      <LedgerRow
+                        label="Statutory GST Payable (Net of ITC)"
+                        amount={effectiveGSTPayable}
+                        indent={1}
+                        note={
+                          isGstFiled
+                            ? `Nil — GSTR-3B Filed & Paid (${currentGstFiling?.arn || "Challan Paid"})`
+                            : effectiveGSTPayable > 0
+                            ? "Pending Return Filing"
+                            : "Covered by ITC"
+                        }
+                        red={!isGstFiled && effectiveGSTPayable > 0}
+                        green={isGstFiled}
+                      />
+                      <LedgerRow
+                        label="TDS Payable (Statutory Withholding)"
+                        amount={outstandingTdsPayable}
+                        indent={1}
+                        note={
+                          outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0
+                            ? "Nil — Deposited via Challan ITNS 281"
+                            : outstandingTdsPayable > 0
+                            ? "Form 26Q (Pending Deposit)"
+                            : "Nil"
+                        }
+                        red={outstandingTdsPayable > 0}
+                        green={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0}
+                      />
+                      <SubtotalRow
+                        label="Total Current Liabilities"
+                        amount={totalCurrentLiabilities}
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                {/* III. Current Liabilities */}
-                <div>
-                  <p className="font-bold text-[#17211B] text-xs mb-1">III. Current Liabilities</p>
-                  <div className="divide-y divide-[#F0F4F1] pl-2">
-                    <Row label="Trade Payables (Sundry Creditors)" amount={totalVendorPayables} indent note="Nil — Settled via Bank on Purchase" />
-                    <Row label="Employee Payables (Reimbursements)" amount={totalEmployeePayables} indent note="Nil — Settled via Bank on Purchase" />
-                    <Row
-                      label="Statutory GST Payable (Net of ITC)"
-                      amount={effectiveGSTPayable}
-                      indent
-                      note={isGstFiled ? `Nil — GSTR-3B Filed & Paid (${currentGstFiling?.arn || "Challan Paid"})` : effectiveGSTPayable > 0 ? "Pending Return Filing" : "Covered by ITC"}
-                      red={!isGstFiled && effectiveGSTPayable > 0}
-                      green={isGstFiled}
-                    />
-                    <Row
-                      label="TDS Payable (To be deposited)"
-                      amount={outstandingTdsPayable}
-                      indent
-                      note={
-                        outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0
-                          ? "Nil — Deposited via Challan ITNS 281"
-                          : outstandingTdsPayable > 0
-                          ? "Form 26Q (Pending Deposit)"
-                          : "Nil"
-                      }
-                      red={outstandingTdsPayable > 0}
-                      green={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0}
-                    />
-                  </div>
-                  <div className="flex justify-between py-1.5 font-bold text-[#17211B] border-t border-[#D9E3DC] mt-1 pl-2">
-                    <span>Total Current Liabilities</span>
-                    <span className="tabular-nums">{formatCurrency(totalCurrentLiabilities)}</span>
-                  </div>
-                </div>
-
-                <div className="py-3 flex justify-between font-extrabold text-sm text-white bg-[#17211B] px-3.5 rounded-xl mt-3">
-                  <span>TOTAL EQUITY &amp; LIABILITIES</span>
-                  <span className="tabular-nums">{formatCurrency(totalEquityAndLiabilities)}</span>
+                <div className="p-4 bg-[#FAFBF9] border-t border-[#DCE4DE]">
+                  <GrandTotalRow
+                    label="TOTAL EQUITY & LIABILITIES"
+                    amount={totalEquityAndLiabilities}
+                    highlight="slate"
+                  />
                 </div>
               </div>
 
               {/* Right Column: ASSETS */}
-              <div className="border border-[#D9E3DC] rounded-xl p-5 space-y-4 bg-white shadow-2xs">
-                <div className="border-b border-[#D9E3DC] pb-2">
-                  <SectionHeader title="ASSETS" />
-                </div>
-
-                {/* I. Non-Current Assets */}
+              <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs flex flex-col justify-between">
                 <div>
-                  <p className="font-bold text-[#17211B] text-xs mb-1">I. Non-Current Assets</p>
-                  <div className="divide-y divide-[#F0F4F1] pl-2">
-                    <div className="py-1.5 pl-2">
-                      <div className="flex justify-between">
-                        <span className="text-[#68756C]">Property, Plant &amp; Equipment (Gross Block)</span>
-                        <span className="tabular-nums font-medium">{formatCurrency(totalGrossBlock)}</span>
+                  <div className="bg-[#F8FAF8] px-4 py-3 border-b border-[#DCE4DE] flex justify-between items-center text-[11px] font-black text-[#374151] uppercase tracking-wider">
+                    <span>Assets (Application of Funds)</span>
+                    <span>Amount (₹)</span>
+                  </div>
+
+                  <div className="p-4 space-y-4">
+                    {/* I. Non-Current Assets */}
+                    <div className="space-y-1">
+                      <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider">
+                        I. NON-CURRENT ASSETS
                       </div>
-                      <div className="flex justify-between text-[#68756C] mt-0.5">
-                        <span className="pl-3">Less: Accumulated Depreciation ({depMethod})</span>
-                        <span className="tabular-nums text-[#B94B4B]">({formatCurrency(totalAccDep)})</span>
+                      <LedgerRow
+                        label="Property, Plant &amp; Equipment (Gross Block)"
+                        amount={totalGrossBlock}
+                        indent={1}
+                      />
+                      <LedgerRow
+                        label={`Less: Accumulated Depreciation (${depMethod})`}
+                        amount={totalAccDep > 0 ? -totalAccDep : 0}
+                        red={totalAccDep > 0}
+                        indent={1}
+                      />
+                      <SubtotalRow
+                        label="Net Block (Net Book Value)"
+                        amount={totalNetBlock}
+                      />
+                    </div>
+
+                    {/* II. Current Assets */}
+                    <div className="space-y-1">
+                      <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider">
+                        II. CURRENT ASSETS
                       </div>
-                      <div className="flex justify-between font-bold text-[#17211B] mt-0.5">
-                        <span className="pl-3">Net Block (Net Book Value)</span>
-                        <span className="tabular-nums">{formatCurrency(totalNetBlock)}</span>
-                      </div>
+                      <LedgerRow
+                        label="Cash &amp; Bank Balances"
+                        amount={closingBankCashBalance}
+                        indent={1}
+                        green={closingBankCashBalance > 0}
+                        note={`Opening ${formatCurrency(openingBankCash)} + Receipts ${formatCurrency(actualCustomerCollections)} - Outflows ${formatCurrency(actualExpenseDisbursements + gstChallanPaid + tdsPaidViaBank)}`}
+                      />
+                      <LedgerRow
+                        label="Trade Receivables (Sundry Debtors)"
+                        amount={totalReceivables}
+                        indent={1}
+                        note={receivablesWithAge.length > 0 ? `${receivablesWithAge.length} customer invoices` : "All settled"}
+                      />
+                      <LedgerRow
+                        label="TDS Receivable (Advance Tax Asset)"
+                        amount={tdsReceivable}
+                        indent={1}
+                        green={tdsReceivable > 0}
+                        note="Deducted by customers (Form 16A/26AS)"
+                      />
+                      {excessITC > 0 && (
+                        <LedgerRow
+                          label="GST Input Tax Credit (ITC Carried Forward)"
+                          amount={excessITC}
+                          indent={1}
+                          green
+                        />
+                      )}
+                      {otherOpeningAssets.map((ob) => (
+                        <LedgerRow key={ob.id} label={ob.position} amount={Number(ob.amount || 0)} indent={1} />
+                      ))}
+                      <SubtotalRow
+                        label="Total Current Assets"
+                        amount={totalCurrentAssets}
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* II. Current Assets */}
-                <div>
-                  <p className="font-bold text-[#17211B] text-xs mb-1">II. Current Assets</p>
-                  <div className="divide-y divide-[#F0F4F1] pl-2">
-                    <Row
-                      label="Cash &amp; Bank Balances"
-                      amount={closingBankCashBalance}
-                      note={`(Opening: ${formatCurrency(openingBankCash)} + Rec: ${formatCurrency(actualCustomerCollections)} - Disb: ${formatCurrency(actualExpenseDisbursements)}${gstChallanPaid > 0 ? ` - GST Paid: ${formatCurrency(gstChallanPaid)}` : ""}${tdsPaidViaBank > 0 ? ` - TDS Paid: ${formatCurrency(tdsPaidViaBank)}` : ""})`}
-                      indent
-                      green={closingBankCashBalance > 0}
-                    />
-                    <Row
-                      label="Trade Receivables (Sundry Debtors)"
-                      amount={totalReceivables}
-                      note={receivablesWithAge.length > 0 ? `${receivablesWithAge.length} customer invoices` : "All paid"}
-                      indent
-                    />
-                    <Row
-                      label="TDS Receivable (Advance Tax Asset)"
-                      amount={tdsReceivable}
-                      note="Deducted by customers (Form 16A/26AS)"
-                      indent
-                      green={tdsReceivable > 0}
-                    />
-                    {excessITC > 0 && (
-                      <Row
-                        label="GST Input Tax Credit (ITC Carried Forward)"
-                        amount={excessITC}
-                        indent
-                        green
-                      />
-                    )}
-                    {otherOpeningAssets.map((ob) => (
-                      <Row key={ob.id} label={ob.position} amount={Number(ob.amount || 0)} indent />
-                    ))}
-                  </div>
-                  <div className="flex justify-between py-1.5 font-bold text-[#17211B] border-t border-[#D9E3DC] mt-1 pl-2">
-                    <span>Total Current Assets</span>
-                    <span className="tabular-nums">{formatCurrency(totalCurrentAssets)}</span>
-                  </div>
-                </div>
-
-                <div className="py-3 flex justify-between font-extrabold text-sm text-white bg-[#17211B] px-3.5 rounded-xl mt-3">
-                  <span>TOTAL ASSETS</span>
-                  <span className="tabular-nums">{formatCurrency(totalAssets)}</span>
+                <div className="p-4 bg-[#FAFBF9] border-t border-[#DCE4DE]">
+                  <GrandTotalRow
+                    label="TOTAL ASSETS"
+                    amount={totalAssets}
+                    highlight="slate"
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Reconciliation Note */}
-            <div className="p-4 bg-[#F6FAF7] border border-[#D9E3DC] rounded-xl text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <div>
-                <strong className="text-[#17211B] block">Double-Entry Accounting Verification (ICAI Standard):</strong>
-                <span className="text-[#68756C] mt-0.5 block">
+            {/* Reconciliation Audit Trail Box */}
+            <div className="p-4 sm:p-5 bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl shadow-2xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">⚖️</span>
+                  <strong className="text-[#166534] text-sm">Double-Entry Accounting Verification (ICAI Standard)</strong>
+                </div>
+                <p className="text-xs text-[#14532D]">
                   Total Assets ({formatCurrency(totalAssets)}) = Total Shareholders&apos; Funds ({formatCurrency(totalShareholdersEquity)}) + Total Liabilities ({formatCurrency(totalCurrentLiabilities + otherOpeningLiabilitiesTotal)}).
-                </span>
+                </p>
               </div>
-              <div className="shrink-0 font-bold text-emerald-800 bg-emerald-100 px-3 py-1.5 rounded-lg">
-                Variance: ₹0.00
+              <div className="shrink-0 flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-[#86EFAC] shadow-xs">
+                <span className="text-[11px] font-bold text-[#6B7280]">Variance:</span>
+                <span className="font-mono text-sm font-black text-[#166534]">₹0.00</span>
               </div>
             </div>
           </div>
@@ -1213,111 +1470,146 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {activeTab === "cashflow" && (
           <div className="space-y-6 text-xs">
-            <div className="flex justify-between items-baseline border-b border-[#D9E3DC] pb-3">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
-                <h3 className="text-base font-bold text-[#17211B]">Statement of Cash Flows</h3>
-                <p className="text-[11px] text-[#68756C]">Accounting Standard (AS 3) — Indirect Method | {fy}</p>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-[#111827]">Statement of Cash Flows</h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                    AS 3 • Indirect Method
+                  </span>
+                </div>
+                <p className="text-xs text-[#6B7280] mt-0.5">
+                  Reconciliation of operating, investing, and financing cash flows for {fy}.
+                </p>
               </div>
-              <span className="text-xs font-bold text-[#68756C]">Amount in ₹</span>
+              <span className="text-[11px] font-bold text-[#4B5750] bg-[#F8FAF8] border border-[#DCE4DE] px-3 py-1.5 rounded-xl">
+                Amount in ₹ (INR)
+              </span>
             </div>
 
             {/* Operating Activities */}
-            <div className="border border-[#D9E3DC] rounded-xl overflow-hidden">
-              <div className="bg-[#F6FAF7] px-4 py-2.5 font-bold text-[11px] uppercase text-[#738078] tracking-wider border-b border-[#D9E3DC]">
-                A. Cash Flow from Operating Activities
+            <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="bg-[#F8FAF8] px-4 py-3 border-b border-[#DCE4DE] flex justify-between items-center text-[11px] font-black text-[#374151] uppercase tracking-wider">
+                <span>A. Cash Flow from Operating Activities</span>
+                <span>Amount (₹)</span>
               </div>
               <div className="p-4 space-y-1">
-                <Row label="Net Profit Before Tax (PBT)" amount={cfOperating_pbt} bold />
-                <p className="text-[10px] text-[#738078] uppercase tracking-wider pt-2 pb-1">Adjustments for non-cash &amp; financing items:</p>
-                <Row label="Add: Depreciation &amp; Amortisation" amount={cfOperating_dep} indent />
-                <Row label="Add: Finance Costs" amount={cfOperating_finance} indent />
-                <div className="flex justify-between py-1.5 font-semibold text-[#17211B] border-t border-[#D9E3DC] mt-1">
-                  <span>Operating Profit before Working Capital Changes</span>
-                  <span className="tabular-nums">{formatCurrency(cfOperating_beforeWC)}</span>
+                <LedgerRow label="Net Profit Before Tax (PBT)" amount={cfOperating_pbt} bold />
+                <div className="text-[10px] font-black text-[#6B7280] uppercase tracking-wider pt-2 pb-1 px-3">
+                  Adjustments for non-cash &amp; financing items:
                 </div>
-                <p className="text-[10px] text-[#738078] uppercase tracking-wider pt-2 pb-1">Changes in Working Capital:</p>
-                <div className="flex justify-between py-1.5 pl-3">
-                  <span className="text-[#17211B]">(Increase) / Decrease in Trade Receivables</span>
-                  <span className={`font-semibold tabular-nums ${cfWC_receivables >= 0 ? "text-[#177B55]" : "text-[#B94B4B]"}`}>
-                    {cfWC_receivables >= 0 ? "" : "("}{formatCurrency(Math.abs(cfWC_receivables))}{cfWC_receivables < 0 ? ")" : ""}
-                  </span>
+                <LedgerRow label="Add: Depreciation &amp; Amortisation" amount={cfOperating_dep} indent={1} />
+                <LedgerRow label="Add: Finance Costs" amount={cfOperating_finance} indent={1} />
+                <SubtotalRow
+                  label="Operating Profit before Working Capital Changes"
+                  amount={cfOperating_beforeWC}
+                />
+
+                <div className="text-[10px] font-black text-[#6B7280] uppercase tracking-wider pt-2 pb-1 px-3">
+                  Changes in Working Capital:
                 </div>
-                <div className="flex justify-between py-1.5 pl-3">
-                  <span className="text-[#17211B]">Increase / (Decrease) in Trade Payables</span>
-                  <span className={`font-semibold tabular-nums ${cfWC_payables >= 0 ? "text-[#177B55]" : "text-[#B94B4B]"}`}>
-                    {formatCurrency(cfWC_payables)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-1.5 pl-3">
-                  <span className="text-[#17211B]">Less: Statutory GST Payable</span>
-                  <span className="font-semibold tabular-nums text-[#B94B4B]">({formatCurrency(netGSTPayable)})</span>
-                </div>
-                <div className="flex justify-between py-1.5 pl-3">
-                  <span className="text-[#17211B]">Less: TDS Payable Remittance</span>
-                  <span className="font-semibold tabular-nums text-[#B94B4B]">({formatCurrency(tdsPayable)})</span>
-                </div>
-                <div className={`flex justify-between py-2.5 font-extrabold text-sm border-t-2 border-[#17211B] px-2 rounded-b-lg mt-1 ${cfFromOperating >= 0 ? "text-[#177B55]" : "text-[#B94B4B]"}`}>
-                  <span>Net Cash from Operating Activities (A)</span>
-                  <span className="tabular-nums">{formatCurrency(cfFromOperating)}</span>
-                </div>
+                <LedgerRow
+                  label="(Increase) / Decrease in Trade Receivables"
+                  amount={cfWC_receivables}
+                  indent={1}
+                  red={cfWC_receivables < 0}
+                  green={cfWC_receivables > 0}
+                />
+                <LedgerRow
+                  label="Increase / (Decrease) in Trade Payables"
+                  amount={cfWC_payables}
+                  indent={1}
+                />
+                <LedgerRow
+                  label="Less: Statutory GST Liability Set-off / Outflow"
+                  amount={-netGSTPayable}
+                  indent={1}
+                  red
+                />
+                <LedgerRow
+                  label="Less: TDS Remittance on Vendor Expenses"
+                  amount={-tdsPayable}
+                  indent={1}
+                  red={tdsPayable > 0}
+                />
+
+                <SubtotalRow
+                  label="Net Cash from Operating Activities (A)"
+                  amount={cfFromOperating}
+                  green={cfFromOperating >= 0}
+                  red={cfFromOperating < 0}
+                  bg={cfFromOperating >= 0 ? "bg-[#F0FDF4]/70" : "bg-[#FEF2F2]/70"}
+                />
               </div>
             </div>
 
             {/* Investing Activities */}
-            <div className="border border-[#D9E3DC] rounded-xl overflow-hidden">
-              <div className="bg-[#F6FAF7] px-4 py-2.5 font-bold text-[11px] uppercase text-[#738078] tracking-wider border-b border-[#D9E3DC]">
-                B. Cash Flow from Investing Activities
+            <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="bg-[#F8FAF8] px-4 py-3 border-b border-[#DCE4DE] flex justify-between items-center text-[11px] font-black text-[#374151] uppercase tracking-wider">
+                <span>B. Cash Flow from Investing Activities</span>
+                <span>Amount (₹)</span>
               </div>
               <div className="p-4 space-y-1">
-                <div className="flex justify-between py-1.5">
-                  <span className="text-[#17211B]">Purchase of Fixed Assets (Capital Expenditure)</span>
-                  <span className="font-semibold tabular-nums text-[#B94B4B]">
-                    {totalCapex > 0 ? `(${formatCurrency(totalCapex)})` : "₹0.00"}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2.5 font-extrabold text-sm border-t-2 border-[#17211B] mt-1 text-[#B94B4B]">
-                  <span>Net Cash from Investing Activities (B)</span>
-                  <span className="tabular-nums">{totalCapex > 0 ? `(${formatCurrency(totalCapex)})` : "₹0.00"}</span>
-                </div>
+                <LedgerRow
+                  label="Purchase of Fixed Assets (Capital Expenditure)"
+                  amount={totalCapex > 0 ? -totalCapex : 0}
+                  red={totalCapex > 0}
+                  indent={1}
+                />
+                <SubtotalRow
+                  label="Net Cash from Investing Activities (B)"
+                  amount={cfFromInvesting}
+                  red={cfFromInvesting < 0}
+                  bg="bg-[#F8FAF8]"
+                />
               </div>
             </div>
 
             {/* Financing Activities */}
-            <div className="border border-[#D9E3DC] rounded-xl overflow-hidden">
-              <div className="bg-[#F6FAF7] px-4 py-2.5 font-bold text-[11px] uppercase text-[#738078] tracking-wider border-b border-[#D9E3DC]">
-                C. Cash Flow from Financing Activities
+            <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="bg-[#F8FAF8] px-4 py-3 border-b border-[#DCE4DE] flex justify-between items-center text-[11px] font-black text-[#374151] uppercase tracking-wider">
+                <span>C. Cash Flow from Financing Activities</span>
+                <span>Amount (₹)</span>
               </div>
               <div className="p-4 space-y-1">
-                <Row label="Capital Introduced (Opening Capital)" amount={openingCapital} indent />
-                <div className="flex justify-between py-1.5 pl-3">
-                  <span className="text-[#17211B]">Finance Costs Paid</span>
-                  <span className="font-semibold tabular-nums text-[#B94B4B]">
-                    {totalFinanceExp > 0 ? `(${formatCurrency(totalFinanceExp)})` : "₹0.00"}
-                  </span>
-                </div>
-                <div className={`flex justify-between py-2.5 font-extrabold text-sm border-t-2 border-[#17211B] mt-1 ${cfFromFinancing >= 0 ? "text-[#177B55]" : "text-[#B94B4B]"}`}>
-                  <span>Net Cash from Financing Activities (C)</span>
-                  <span className="tabular-nums">{formatCurrency(cfFromFinancing)}</span>
-                </div>
+                <LedgerRow
+                  label="Capital Introduced (Opening Capital)"
+                  amount={openingCapital}
+                  indent={1}
+                />
+                <LedgerRow
+                  label="Finance Costs Paid"
+                  amount={totalFinanceExp > 0 ? -totalFinanceExp : 0}
+                  red={totalFinanceExp > 0}
+                  indent={1}
+                />
+                <SubtotalRow
+                  label="Net Cash from Financing Activities (C)"
+                  amount={cfFromFinancing}
+                  green={cfFromFinancing >= 0}
+                  red={cfFromFinancing < 0}
+                  bg="bg-[#F8FAF8]"
+                />
               </div>
             </div>
 
             {/* Net Movement Reconciliation */}
-            <div className="border-2 border-[#17211B] rounded-xl p-4 space-y-2 bg-[#FAFCFA]">
-              <div className="flex justify-between font-bold text-sm text-[#17211B]">
+            <div className="border border-[#DCE4DE] rounded-2xl p-5 space-y-2 bg-[#FAFBF9] shadow-2xs">
+              <div className="flex justify-between items-center text-xs font-bold text-[#111827]">
                 <span>Net Cash Movement for the Period (A + B + C)</span>
-                <span className={`tabular-nums ${netCashMovement >= 0 ? "text-[#177B55]" : "text-[#B94B4B]"}`}>
-                  {formatCurrency(netCashMovement)}
+                <span className={`tabular-nums font-mono text-sm font-black ${netCashMovement >= 0 ? "text-[#166534]" : "text-[#B94B4B]"}`}>
+                  {netCashMovement < 0 ? `(${formatCurrency(Math.abs(netCashMovement))})` : formatCurrency(netCashMovement)}
                 </span>
               </div>
-              <div className="flex justify-between text-[#68756C]">
-                <span>Opening Cash &amp; Bank Equivalents</span>
-                <span className="tabular-nums">{formatCurrency(openingBankCash)}</span>
+              <div className="flex justify-between items-center text-xs text-[#6B7280]">
+                <span>Add: Opening Cash &amp; Bank Equivalents</span>
+                <span className="tabular-nums font-mono font-semibold">{formatCurrency(openingBankCash)}</span>
               </div>
-              <div className="flex justify-between font-extrabold text-sm text-[#177B55] border-t border-[#D9E3DC] pt-2">
-                <span>Closing Cash &amp; Bank Balance</span>
-                <span className="tabular-nums">{formatCurrency(closingBankCashBalance)}</span>
-              </div>
+              <GrandTotalRow
+                label="CLOSING CASH & BANK BALANCE"
+                amount={closingBankCashBalance}
+                highlight="emerald"
+              />
             </div>
           </div>
         )}
@@ -1327,36 +1619,41 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {activeTab === "gst" && (
           <div className="space-y-6 text-xs">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#D9E3DC] pb-3 gap-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
-                <h3 className="text-base font-bold text-[#17211B]">GST Statement &amp; Tax Slabs Analysis</h3>
-                <p className="text-[11px] text-[#68756C]">
-                  GSTR-3B &amp; GSTR-1 rate slab breakdown. Taxes automatically calculated dynamically per transaction rate.
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-[#111827]">GST Statement &amp; Tax Slabs Analysis</h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                    GSTR-3B &amp; GSTR-1
+                  </span>
+                </div>
+                <p className="text-xs text-[#6B7280] mt-0.5">
+                  Statutory GST computation, rate-wise slabs analysis, and electronic cash ledger reconciliation for {fy}.
                 </p>
               </div>
-              <span className="text-[11px] font-semibold text-[#177B55] bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg">
+              <span className="text-[11px] font-black text-[#166534] bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-xl">
                 Financial Year: {fy}
               </span>
             </div>
 
             {/* GSTR-3B Statutory Filing & Settlement Compliance Panel */}
-            <div className={`border rounded-2xl p-5 shadow-2xs transition-all ${isGstFiled ? "bg-[#F0FDF4] border-[#BBF7D0]" : "bg-[#FFFBEB] border-[#FDE68A]"}`}>
+            <div className={`border-2 rounded-2xl p-5 shadow-xs transition-all ${isGstFiled ? "bg-[#F0FDF4] border-[#86EFAC]" : "bg-[#FFFBEB] border-[#FCD34D]"}`}>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-black tracking-wide uppercase border ${isGstFiled ? "bg-[#DCFCE7] text-[#166534] border-[#86EFAC]" : "bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]"}`}>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide uppercase border ${isGstFiled ? "bg-[#DCFCE7] text-[#166534] border-[#86EFAC]" : "bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]"}`}>
                       {isGstFiled ? "✓ GSTR-3B Return Filed & Settled" : "⚠️ GSTR-3B Return Pending Filing"}
                     </span>
-                    <span className="text-xs font-bold text-[#68756C]">• {fy}</span>
+                    <span className="text-xs font-bold text-[#6B7280]">• {fy}</span>
                   </div>
-                  <h4 className="text-base font-extrabold text-[#17211B] mt-1">
+                  <h4 className="text-base font-black text-[#111827]">
                     {isGstFiled
                       ? `Statutory Tax Discharged via Electronic Cash Ledger`
                       : `Net Output GST Liability to be Paid: ${formatCurrency(netGSTPayable)}`}
                   </h4>
-                  <p className="text-xs text-[#68756C]">
+                  <p className="text-xs text-[#4B5563]">
                     {isGstFiled
-                      ? `Filed on ${fmtDate(currentGstFiling?.filingDate)} | ARN: ${currentGstFiling?.arn || "N/A"} | Challan: ${currentGstFiling?.challanNumber || "Bank Settlement"}`
+                      ? `Return filed on ${fmtDate(currentGstFiling?.filingDate)} | ARN: ${currentGstFiling?.arn || "N/A"} | Settled via Bank Challan.`
                       : "Output liability after Section 49(5) ITC set-off must be deposited via PMT-06 challan and filed in Form GSTR-3B."}
                   </p>
                 </div>
@@ -1367,7 +1664,7 @@ export function FinancialReportsClient({
                       type="button"
                       onClick={() => handleReopenGstFiling(currentGstFiling.id)}
                       disabled={isFilingPending}
-                      className="px-3.5 py-2 text-xs font-bold rounded-xl border border-[#D9E3DC] bg-white text-[#B94B4B] hover:bg-red-50 hover:border-red-200 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                      className="px-3.5 py-2 text-xs font-bold rounded-xl border border-[#D1D5DB] bg-white text-[#B94B4B] hover:bg-red-50 hover:border-red-200 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
                     >
                       {isFilingPending ? "Reopening..." : "Reopen / Unfile"}
                     </button>
@@ -1379,7 +1676,7 @@ export function FinancialReportsClient({
                         setFilingChallan(`CIN/GST/${Date.now().toString().slice(-8)}`);
                         setIsFilingModalOpen(true);
                       }}
-                      className="px-4 py-2.5 text-xs font-extrabold rounded-xl bg-[#177B55] text-white hover:bg-[#126344] transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+                      className="px-4 py-2.5 text-xs font-extrabold rounded-xl bg-[#177B55] text-white hover:bg-[#126344] transition-all shadow-sm cursor-pointer flex items-center gap-2"
                     >
                       <span>✓</span> Mark GSTR-3B as Filed &amp; Paid
                     </button>
@@ -1388,22 +1685,22 @@ export function FinancialReportsClient({
               </div>
 
               {isGstFiled && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-3.5 border-t border-[#BBF7D0]/60 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-3.5 border-t border-[#BBF7D0] text-xs">
                   <div>
-                    <span className="text-[#68756C] block text-[10px] uppercase font-bold tracking-wider">Filing Date</span>
-                    <span className="font-extrabold text-[#17211B]">{fmtDate(currentGstFiling?.filingDate)}</span>
+                    <span className="text-[#6B7280] block text-[10px] uppercase font-bold tracking-wider">Filing Date</span>
+                    <span className="font-extrabold text-[#111827]">{fmtDate(currentGstFiling?.filingDate)}</span>
                   </div>
                   <div>
-                    <span className="text-[#68756C] block text-[10px] uppercase font-bold tracking-wider">Ack Ref / ARN</span>
-                    <span className="font-mono font-bold text-[#177B55]">{currentGstFiling?.arn}</span>
+                    <span className="text-[#6B7280] block text-[10px] uppercase font-bold tracking-wider">Ack Ref / ARN</span>
+                    <span className="font-mono font-bold text-[#166534]">{currentGstFiling?.arn}</span>
                   </div>
                   <div>
-                    <span className="text-[#68756C] block text-[10px] uppercase font-bold tracking-wider">Challan / Ref</span>
-                    <span className="font-mono font-medium text-[#17211B]">{currentGstFiling?.challanNumber || "Net Banking"}</span>
+                    <span className="text-[#6B7280] block text-[10px] uppercase font-bold tracking-wider">Challan / CIN</span>
+                    <span className="font-mono font-medium text-[#111827]">{currentGstFiling?.challanNumber || "Net Banking"}</span>
                   </div>
                   <div>
-                    <span className="text-[#68756C] block text-[10px] uppercase font-bold tracking-wider">Challan Paid from Bank</span>
-                    <span className="font-extrabold text-[#177B55] tabular-nums">{formatCurrency(gstChallanPaid)}</span>
+                    <span className="text-[#6B7280] block text-[10px] uppercase font-bold tracking-wider">Challan Paid from Bank</span>
+                    <span className="font-extrabold text-[#166534] font-mono tabular-nums">{formatCurrency(gstChallanPaid)}</span>
                   </div>
                 </div>
               )}
@@ -1411,57 +1708,58 @@ export function FinancialReportsClient({
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <KpiCard label="Output GST (Sales)" value={formatCurrency(totalOutputGST)} color="text-[#B27A17]" sub={`${validInvoices.length} invoices`} />
-              <KpiCard label="Input Tax Credit (ITC)" value={formatCurrency(totalInputGST)} color="text-[#177B55]" sub={`${validExpenses.length} purchases`} />
+              <KpiCard label="Output GST (Sales)" value={formatCurrency(totalOutputGST)} color="text-[#B45309]" sub={`${validInvoices.length} invoices billed`} icon="📤" />
+              <KpiCard label="Input Tax Credit (ITC)" value={formatCurrency(totalInputGST)} color="text-[#166534]" sub={`${validExpenses.length} business purchases`} icon="📥" />
               <KpiCard
                 label={isGstFiled ? "Net GST (Discharged)" : "Net GST Payable"}
                 value={isGstFiled ? "₹0.00 (Settled)" : formatCurrency(netGSTPayable)}
-                color={isGstFiled ? "text-[#177B55]" : netGSTPayable > 0 ? "text-[#B94B4B]" : "text-[#177B55]"}
-                sub={isGstFiled ? "Discharged via Bank Challan" : netGSTPayable <= 0 ? "Credit balance" : "Payable via Electronic Cash Ledger"}
+                color={isGstFiled ? "text-[#166534]" : netGSTPayable > 0 ? "text-[#B94B4B]" : "text-[#166534]"}
+                sub={isGstFiled ? "Discharged via Bank Challan" : netGSTPayable <= 0 ? "Credit balance carried forward" : "Payable via Electronic Cash Ledger"}
+                icon="⚖️"
               />
-              <KpiCard label="B2B / B2C Turnover" value={pct(b2bTaxable, totalRevenue)} sub={`B2C: ${pct(b2cTaxable, totalRevenue)}`} />
+              <KpiCard label="B2B / B2C Turnover" value={pct(b2bTaxable, totalRevenue)} sub={`B2C Share: ${pct(b2cTaxable, totalRevenue)}`} icon="📊" />
             </div>
 
-            {/* DYNAMIC RATE SLABS BREAKDOWN (The User's Core Requirement) */}
-            <div className="border border-[#D9E3DC] rounded-xl overflow-hidden shadow-2xs">
-              <div className="bg-[#F6FAF7] px-4 py-2.5 font-bold text-[11px] uppercase text-[#738078] tracking-wider border-b border-[#D9E3DC] flex justify-between items-center">
+            {/* DYNAMIC RATE SLABS BREAKDOWN */}
+            <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="bg-[#F8FAF8] px-4 py-3 font-black text-[11px] uppercase text-[#374151] tracking-wider border-b border-[#DCE4DE] flex justify-between items-center">
                 <span>Rate-Wise Tax Slabs Breakdown ({fy})</span>
-                <span className="text-[10px] text-[#177B55] lowercase font-semibold">Automatic calculation per tax rate %</span>
+                <span className="text-[10px] text-[#166534] font-bold">Dynamic computation per item rate %</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[700px]">
                   <TableHead cols={["Tax Slab %", "Invoices", "Taxable Turnover", "CGST (Half)", "SGST (Half)", "IGST (Full)", "Total Tax"]} />
-                  <tbody className="divide-y divide-[#E9EEE9]">
+                  <tbody className="divide-y divide-[#EEF2EF]">
                     {dynamicTaxSlabs.length === 0 ? (
                       <EmptyRow cols={7} msg="No tax transactions recorded for this financial year." />
                     ) : (
                       dynamicTaxSlabs.map((slab) => (
-                        <tr key={slab.rate} className="hover:bg-[#F9FAF8]">
-                          <td className="py-3 px-3 font-bold text-[#17211B] flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded-md bg-[#EBF3ED] text-[#177B55] font-extrabold text-[11px]">
+                        <tr key={slab.rate} className="hover:bg-[#F9FAF9] transition-colors">
+                          <td className="py-3 px-3.5 font-bold text-[#111827] flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-md bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0] font-black text-[11px]">
                               {slab.rate}%
                             </span>
-                            {slab.rate === 0 && <span className="text-[10px] text-[#68756C]">(Export / Exempt)</span>}
+                            {slab.rate === 0 && <span className="text-[10px] text-[#6B7280] font-medium">(Export / Exempt)</span>}
                           </td>
-                          <td className="py-3 px-3 text-[#68756C]">{slab.count} inv</td>
-                          <td className="py-3 px-3 text-right tabular-nums font-medium">{formatCurrency(slab.taxable)}</td>
-                          <td className="py-3 px-3 text-right tabular-nums text-[#B27A17]">{formatCurrency(slab.cgst)}</td>
-                          <td className="py-3 px-3 text-right tabular-nums text-[#B27A17]">{formatCurrency(slab.sgst)}</td>
-                          <td className="py-3 px-3 text-right tabular-nums text-[#B27A17]">{formatCurrency(slab.igst)}</td>
-                          <td className="py-3 px-3 text-right tabular-nums font-bold text-[#17211B]">{formatCurrency(slab.totalTax)}</td>
+                          <td className="py-3 px-3.5 text-[#6B7280] font-medium">{slab.count} inv</td>
+                          <td className="py-3 px-3.5 text-right tabular-nums font-mono font-medium">{formatCurrency(slab.taxable)}</td>
+                          <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#B45309]">{formatCurrency(slab.cgst)}</td>
+                          <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#B45309]">{formatCurrency(slab.sgst)}</td>
+                          <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#B45309]">{formatCurrency(slab.igst)}</td>
+                          <td className="py-3 px-3.5 text-right tabular-nums font-mono font-black text-[#111827]">{formatCurrency(slab.totalTax)}</td>
                         </tr>
                       ))
                     )}
                   </tbody>
                   {dynamicTaxSlabs.length > 0 && (
                     <tfoot>
-                      <tr className="bg-[#F6FAF7] font-extrabold border-t-2 border-[#17211B]">
-                        <td className="py-3 px-3" colSpan={2}>Total Rate Slabs</td>
-                        <td className="py-3 px-3 text-right tabular-nums text-[#17211B]">{formatCurrency(totalRevenue)}</td>
-                        <td className="py-3 px-3 text-right tabular-nums text-[#B27A17]">{formatCurrency(outputCGST)}</td>
-                        <td className="py-3 px-3 text-right tabular-nums text-[#B27A17]">{formatCurrency(outputSGST)}</td>
-                        <td className="py-3 px-3 text-right tabular-nums text-[#B27A17]">{formatCurrency(outputIGST)}</td>
-                        <td className="py-3 px-3 text-right tabular-nums font-black text-sm text-[#177B55]">{formatCurrency(totalOutputGST)}</td>
+                      <tr className="bg-[#F8FAF8] font-black border-t-2 border-[#111827]">
+                        <td className="py-3.5 px-3.5 uppercase tracking-wider text-xs" colSpan={2}>Total Rate Slabs</td>
+                        <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-[#111827]">{formatCurrency(totalRevenue)}</td>
+                        <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-[#B45309]">{formatCurrency(outputCGST)}</td>
+                        <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-[#B45309]">{formatCurrency(outputSGST)}</td>
+                        <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-[#B45309]">{formatCurrency(outputIGST)}</td>
+                        <td className="py-3.5 px-3.5 text-right tabular-nums font-mono font-black text-sm text-[#166534]">{formatCurrency(totalOutputGST)}</td>
                       </tr>
                     </tfoot>
                   )}
@@ -1470,39 +1768,39 @@ export function FinancialReportsClient({
             </div>
 
             {/* Table 3.1: Outward Supplies (GSTR-3B) */}
-            <div className="border border-[#D9E3DC] rounded-xl overflow-hidden shadow-2xs">
-              <div className="bg-[#F6FAF7] px-4 py-2.5 font-bold text-[11px] uppercase text-[#738078] tracking-wider border-b border-[#D9E3DC]">
+            <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="bg-[#F8FAF8] px-4 py-3 font-black text-[11px] uppercase text-[#374151] tracking-wider border-b border-[#DCE4DE]">
                 GSTR-3B Table 3.1 — Details of Outward Supplies
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[600px]">
                   <TableHead cols={["Nature of Supply", "Taxable Turnover", "CGST", "SGST", "IGST", "Total GST"]} />
-                  <tbody className="divide-y divide-[#E9EEE9]">
-                    <tr className="hover:bg-[#F9FAF8]">
-                      <td className="py-3 px-3 text-[#17211B] font-medium">Intrastate Supplies (CGST + SGST)</td>
-                      <td className="py-3 px-3 text-right tabular-nums">{formatCurrency(intrastateTaxable)}</td>
-                      <td className="py-3 px-3 text-right tabular-nums text-[#B27A17]">{formatCurrency(outputCGST)}</td>
-                      <td className="py-3 px-3 text-right tabular-nums text-[#B27A17]">{formatCurrency(outputSGST)}</td>
-                      <td className="py-3 px-3 text-right text-[#68756C]">—</td>
-                      <td className="py-3 px-3 text-right tabular-nums font-bold">{formatCurrency(outputCGST + outputSGST)}</td>
+                  <tbody className="divide-y divide-[#EEF2EF]">
+                    <tr className="hover:bg-[#F9FAF9] transition-colors">
+                      <td className="py-3 px-3.5 text-[#111827] font-semibold">Intrastate Supplies (CGST + SGST)</td>
+                      <td className="py-3 px-3.5 text-right tabular-nums font-mono">{formatCurrency(intrastateTaxable)}</td>
+                      <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#B45309]">{formatCurrency(outputCGST)}</td>
+                      <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#B45309]">{formatCurrency(outputSGST)}</td>
+                      <td className="py-3 px-3.5 text-right text-[#9CA3AF]">—</td>
+                      <td className="py-3 px-3.5 text-right tabular-nums font-mono font-black">{formatCurrency(outputCGST + outputSGST)}</td>
                     </tr>
-                    <tr className="hover:bg-[#F9FAF8]">
-                      <td className="py-3 px-3 text-[#17211B] font-medium">Interstate &amp; Export Supplies (IGST)</td>
-                      <td className="py-3 px-3 text-right tabular-nums">{formatCurrency(interstateTaxable)}</td>
-                      <td className="py-3 px-3 text-right text-[#68756C]">—</td>
-                      <td className="py-3 px-3 text-right text-[#68756C]">—</td>
-                      <td className="py-3 px-3 text-right tabular-nums text-[#B27A17]">{formatCurrency(outputIGST)}</td>
-                      <td className="py-3 px-3 text-right tabular-nums font-bold">{formatCurrency(outputIGST)}</td>
+                    <tr className="hover:bg-[#F9FAF9] transition-colors">
+                      <td className="py-3 px-3.5 text-[#111827] font-semibold">Interstate &amp; Export Supplies (IGST)</td>
+                      <td className="py-3 px-3.5 text-right tabular-nums font-mono">{formatCurrency(interstateTaxable)}</td>
+                      <td className="py-3 px-3.5 text-right text-[#9CA3AF]">—</td>
+                      <td className="py-3 px-3.5 text-right text-[#9CA3AF]">—</td>
+                      <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#B45309]">{formatCurrency(outputIGST)}</td>
+                      <td className="py-3 px-3.5 text-right tabular-nums font-mono font-black">{formatCurrency(outputIGST)}</td>
                     </tr>
                   </tbody>
                   <tfoot>
-                    <tr className="bg-[#F6FAF7] font-extrabold border-t-2 border-[#17211B]">
-                      <td className="py-3 px-3">Total Outward Supplies</td>
-                      <td className="py-3 px-3 text-right tabular-nums">{formatCurrency(totalRevenue)}</td>
-                      <td className="py-3 px-3 text-right tabular-nums">{formatCurrency(outputCGST)}</td>
-                      <td className="py-3 px-3 text-right tabular-nums">{formatCurrency(outputSGST)}</td>
-                      <td className="py-3 px-3 text-right tabular-nums">{formatCurrency(outputIGST)}</td>
-                      <td className="py-3 px-3 text-right tabular-nums text-[#177B55]">{formatCurrency(totalOutputGST)}</td>
+                    <tr className="bg-[#F8FAF8] font-black border-t-2 border-[#111827]">
+                      <td className="py-3.5 px-3.5 uppercase tracking-wider text-xs">Total Outward Supplies</td>
+                      <td className="py-3.5 px-3.5 text-right tabular-nums font-mono">{formatCurrency(totalRevenue)}</td>
+                      <td className="py-3.5 px-3.5 text-right tabular-nums font-mono">{formatCurrency(outputCGST)}</td>
+                      <td className="py-3.5 px-3.5 text-right tabular-nums font-mono">{formatCurrency(outputSGST)}</td>
+                      <td className="py-3.5 px-3.5 text-right tabular-nums font-mono">{formatCurrency(outputIGST)}</td>
+                      <td className="py-3.5 px-3.5 text-right tabular-nums font-mono font-black text-sm text-[#166534]">{formatCurrency(totalOutputGST)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -1510,20 +1808,20 @@ export function FinancialReportsClient({
             </div>
 
             {/* Net Set-off Summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
-                { label: "CGST", output: outputCGST, input: inputCGST, net: netCGST },
-                { label: "SGST", output: outputSGST, input: inputSGST, net: netSGST },
-                { label: "IGST", output: outputIGST, input: inputIGST, net: netIGST },
+                { label: "CGST (Central Tax)", output: outputCGST, input: inputCGST, net: netCGST },
+                { label: "SGST (State Tax)", output: outputSGST, input: inputSGST, net: netSGST },
+                { label: "IGST (Integrated Tax)", output: outputIGST, input: inputIGST, net: netIGST },
               ].map((g) => (
-                <div key={g.label} className="border border-[#D9E3DC] rounded-xl p-4 bg-white shadow-2xs">
-                  <p className="font-bold text-[#17211B] mb-2">{g.label}</p>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between"><span className="text-[#68756C]">Output Tax</span><span className="tabular-nums font-semibold">{formatCurrency(g.output)}</span></div>
-                    <div className="flex justify-between"><span className="text-[#68756C]">Input Tax Credit (ITC)</span><span className="tabular-nums text-[#177B55] font-semibold">({formatCurrency(g.input)})</span></div>
-                    <div className={`flex justify-between font-extrabold pt-1.5 border-t border-[#D9E3DC] ${g.net > 0 ? "text-[#B94B4B]" : "text-[#177B55]"}`}>
-                      <span>Net {g.net > 0 ? "Payable" : "Credit"}</span>
-                      <span className="tabular-nums">{formatCurrency(g.net)}</span>
+                <div key={g.label} className="border border-[#DCE4DE] rounded-2xl p-4.5 bg-white shadow-2xs">
+                  <p className="font-black text-[#111827] text-xs mb-3 border-b border-[#EEF2EF] pb-2">{g.label}</p>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between"><span className="text-[#6B7280]">Output Tax</span><span className="tabular-nums font-mono font-semibold">{formatCurrency(g.output)}</span></div>
+                    <div className="flex justify-between"><span className="text-[#6B7280]">Input Tax Credit (ITC)</span><span className="tabular-nums font-mono text-[#166534] font-semibold">({formatCurrency(g.input)})</span></div>
+                    <div className={`flex justify-between font-black pt-2 border-t border-[#E2E8E4] ${g.net > 0 ? "text-[#B94B4B]" : "text-[#166534]"}`}>
+                      <span className="uppercase text-[11px]">{g.net > 0 ? "Net Payable" : "Net Credit"}</span>
+                      <span className="tabular-nums font-mono text-sm">{formatCurrency(g.net)}</span>
                     </div>
                   </div>
                 </div>
@@ -1537,17 +1835,29 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {activeTab === "tds" && (
           <div className="space-y-6 text-xs">
-            <div className="border-b border-[#D9E3DC] pb-3">
-              <h3 className="text-base font-bold text-[#17211B]">TDS Statement &amp; Form 26Q Compliance</h3>
-              <p className="text-[11px] text-[#68756C]">Section-wise TDS analysis under Income Tax Act 1961 | {fy}</p>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-[#111827]">TDS Statement &amp; Form 26Q Compliance</h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-50 text-blue-800 border border-blue-200">
+                    Income Tax Act 1961
+                  </span>
+                </div>
+                <p className="text-xs text-[#6B7280] mt-0.5">
+                  Section-wise TDS analysis, Form 26Q deduction ledger, and Challan ITNS 281 deposits for {fy}.
+                </p>
+              </div>
+              <span className="text-[11px] font-bold text-[#4B5750] bg-[#F8FAF8] border border-[#DCE4DE] px-3 py-1.5 rounded-xl">
+                Chapter XVII-B Compliance
+              </span>
             </div>
 
             {/* TDS Challan ITNS 281 Compliance & Deposit Banner */}
-            <div className={`border rounded-2xl p-5 shadow-2xs transition-all ${outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0 ? "bg-[#F0FDF4] border-[#BBF7D0]" : outstandingTdsPayable > 0 ? "bg-[#FFFBEB] border-[#FDE68A]" : "bg-[#F6FAF7] border-[#D9E3DC]"}`}>
+            <div className={`border-2 rounded-2xl p-5 shadow-xs transition-all ${outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0 ? "bg-[#F0FDF4] border-[#86EFAC]" : outstandingTdsPayable > 0 ? "bg-[#FFFBEB] border-[#FCD34D]" : "bg-[#F8FAF8] border-[#DCE4DE]"}`}>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-black tracking-wide uppercase border ${
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide uppercase border ${
                       outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0
                         ? "bg-[#DCFCE7] text-[#166534] border-[#86EFAC]"
                         : outstandingTdsPayable > 0
@@ -1560,16 +1870,16 @@ export function FinancialReportsClient({
                         ? "⚠️ Form 26Q TDS Pending Deposit"
                         : "No TDS Liabilities"}
                     </span>
-                    <span className="text-xs font-bold text-[#68756C]">• {fy}</span>
+                    <span className="text-xs font-bold text-[#6B7280]">• {fy}</span>
                   </div>
-                  <h4 className="text-base font-extrabold text-[#17211B] mt-1">
+                  <h4 className="text-base font-black text-[#111827]">
                     {outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0
                       ? `All Deductions Discharged via Challan ITNS 281 (Net Liability: ₹0.00)`
                       : outstandingTdsPayable > 0
                       ? `Statutory TDS Payable to Income Tax Dept: ${formatCurrency(outstandingTdsPayable)}`
                       : `Zero Outstanding TDS Liability`}
                   </h4>
-                  <p className="text-xs text-[#68756C]">
+                  <p className="text-xs text-[#4B5563]">
                     {outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0
                       ? `Total Deposited: ${formatCurrency(totalTdsDeposited)} via Bank Challan ITNS 281. Balance Sheet liability cleared to Nil.`
                       : outstandingTdsPayable > 0
@@ -1583,7 +1893,7 @@ export function FinancialReportsClient({
                     <button
                       type="button"
                       onClick={() => handleOpenTdsModal()}
-                      className="px-4 py-2.5 text-xs font-extrabold rounded-xl bg-[#177B55] text-white hover:bg-[#126344] transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+                      className="px-4 py-2.5 text-xs font-extrabold rounded-xl bg-[#177B55] text-white hover:bg-[#126344] transition-all shadow-sm cursor-pointer flex items-center gap-2"
                     >
                       <span>✓</span> Pay All Pending TDS (Challan ITNS 281)
                     </button>
@@ -1592,25 +1902,25 @@ export function FinancialReportsClient({
               </div>
 
               {fyTdsDeposits.length > 0 && (
-                <div className="mt-4 pt-3.5 border-t border-[#BBF7D0]/60 space-y-2">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#68756C] block">
+                <div className="mt-4 pt-3.5 border-t border-[#BBF7D0] space-y-2">
+                  <span className="text-[10px] uppercase font-black tracking-wider text-[#4B5563] block">
                     Recorded ITNS 281 Bank Challan Deposits ({fyTdsDeposits.length}):
                   </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                     {fyTdsDeposits.map((dep: any) => (
-                      <div key={dep.id} className="bg-white/80 border border-[#BBF7D0] rounded-xl p-2.5 text-xs flex justify-between items-center">
+                      <div key={dep.id} className="bg-white border border-[#BBF7D0] rounded-xl p-3 text-xs flex justify-between items-center shadow-xs">
                         <div>
-                          <div className="font-mono font-bold text-[#177B55] text-[11px]">{dep.challanNumber}</div>
-                          <div className="text-[#68756C] text-[10px]">
+                          <div className="font-mono font-bold text-[#166534] text-[11px]">{dep.challanNumber}</div>
+                          <div className="text-[#6B7280] text-[10px] mt-0.5">
                             {fmtDate(dep.depositDate)} • BSR: {dep.bsrCode || "—"}
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-black text-[#17211B]">{formatCurrency(dep.amountPaid)}</div>
+                          <div className="font-black font-mono text-[#111827]">{formatCurrency(dep.amountPaid)}</div>
                           <button
                             type="button"
                             onClick={() => handleReopenTdsDeposit(dep.id)}
-                            className="text-[10px] text-red-600 hover:underline font-semibold cursor-pointer"
+                            className="text-[10px] text-red-600 hover:underline font-bold cursor-pointer mt-0.5 block"
                           >
                             Reopen
                           </button>
@@ -1622,30 +1932,32 @@ export function FinancialReportsClient({
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <KpiCard label="TDS Receivable (Asset)" value={formatCurrency(tdsReceivable)} sub="Tax deducted by customers (Form 16A/26AS)" color="text-[#386F9E]" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <KpiCard label="TDS Receivable (Asset)" value={formatCurrency(tdsReceivable)} sub="Tax deducted by customers (Form 16A/26AS)" color="text-[#0369A1]" icon="📥" />
               <KpiCard
                 label={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0 ? "TDS Payable (Settled)" : "TDS Payable (Liability)"}
                 value={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0 ? "₹0.00 (Nil)" : formatCurrency(outstandingTdsPayable)}
                 sub={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0 ? "Deposited via Challan ITNS 281" : "Deducted on vendor expenses (Form 26Q)"}
-                color={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0 ? "text-[#177B55]" : outstandingTdsPayable > 0 ? "text-[#B94B4B]" : "text-[#177B55]"}
+                color={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0 ? "text-[#166534]" : outstandingTdsPayable > 0 ? "text-[#B94B4B]" : "text-[#166534]"}
+                icon="📤"
               />
               <KpiCard
                 label="Net TDS Position"
                 value={tdsReceivable >= outstandingTdsPayable ? `${formatCurrency(tdsReceivable - outstandingTdsPayable)} Net Credit` : `${formatCurrency(outstandingTdsPayable - tdsReceivable)} Net Payable`}
-                color={tdsReceivable >= outstandingTdsPayable ? "text-[#177B55]" : "text-[#B94B4B]"}
+                color={tdsReceivable >= outstandingTdsPayable ? "text-[#166534]" : "text-[#B94B4B]"}
+                icon="⚖️"
               />
             </div>
 
             {/* TDS Receivable (Deducted by Customers) */}
-            <div className="border border-[#D9E3DC] rounded-xl overflow-hidden shadow-2xs">
-              <div className="bg-[#F6FAF7] px-4 py-2.5 font-bold text-[11px] uppercase text-[#738078] tracking-wider border-b border-[#D9E3DC]">
-                TDS Receivable — Deducted by Customers at Source
+            <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="bg-[#F8FAF8] px-4 py-3 font-black text-[11px] uppercase text-[#374151] tracking-wider border-b border-[#DCE4DE]">
+                TDS Receivable — Deducted by Customers at Source (Form 16A/26AS)
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left min-w-[650px]">
                   <TableHead cols={["Customer", "Invoice No.", "Invoice Date", "Invoice Gross", "TDS Deducted", "Net Receipt"]} />
-                  <tbody className="divide-y divide-[#E9EEE9]">
+                  <tbody className="divide-y divide-[#EEF2EF]">
                     {tdsReceivableEntries.length === 0 ? (
                       <EmptyRow cols={6} msg="No TDS deductions recorded on customer invoices." />
                     ) : (
@@ -1655,13 +1967,13 @@ export function FinancialReportsClient({
                         const effectiveTds = pTds > 0 ? pTds : Number(inv.tdsAmount || 0);
                         const bankReceipt = payments.reduce((s: number, p: any) => s + Number(p.bankReceipt || p.paymentAmount || 0), 0);
                         return (
-                          <tr key={inv.id} className="hover:bg-[#F9FAF8]">
-                            <td className="py-3 px-3 font-bold text-[#17211B]">{inv.customerNameSnapshot || inv.customer?.legalName || "Customer"}</td>
-                            <td className="py-3 px-3 text-[#17211B]">{inv.invoiceNumber}</td>
-                            <td className="py-3 px-3 text-[#68756C]">{fmtDate(inv.invoiceDate || inv.createdAt)}</td>
-                            <td className="py-3 px-3 text-right tabular-nums">{formatCurrency(Number(inv.grossAmount || inv.netAmount || 0))}</td>
-                            <td className="py-3 px-3 text-right tabular-nums font-bold text-[#386F9E]">{formatCurrency(effectiveTds)}</td>
-                            <td className="py-3 px-3 text-right tabular-nums font-semibold text-[#177B55]">{formatCurrency(bankReceipt)}</td>
+                          <tr key={inv.id} className="hover:bg-[#F9FAF9] transition-colors">
+                            <td className="py-3 px-3.5 font-bold text-[#111827]">{inv.customerNameSnapshot || inv.customer?.legalName || "Customer"}</td>
+                            <td className="py-3 px-3.5 text-[#111827] font-medium font-mono">{inv.invoiceNumber}</td>
+                            <td className="py-3 px-3.5 text-[#6B7280]">{fmtDate(inv.invoiceDate || inv.createdAt)}</td>
+                            <td className="py-3 px-3.5 text-right tabular-nums font-mono">{formatCurrency(Number(inv.grossAmount || inv.netAmount || 0))}</td>
+                            <td className="py-3 px-3.5 text-right tabular-nums font-mono font-bold text-[#0369A1]">{formatCurrency(effectiveTds)}</td>
+                            <td className="py-3 px-3.5 text-right tabular-nums font-mono font-semibold text-[#166534]">{formatCurrency(bankReceipt)}</td>
                           </tr>
                         );
                       })
@@ -1669,9 +1981,9 @@ export function FinancialReportsClient({
                   </tbody>
                   {tdsReceivableEntries.length > 0 && (
                     <tfoot>
-                      <tr className="border-t-2 border-[#17211B] font-extrabold bg-[#F6FAF7]">
-                        <td colSpan={4} className="py-3 px-3">Total TDS Receivable (Advance Tax Asset)</td>
-                        <td className="py-3 px-3 text-right tabular-nums text-[#386F9E]">{formatCurrency(tdsReceivable)}</td>
+                      <tr className="border-t-2 border-[#111827] font-black bg-[#F8FAF8]">
+                        <td colSpan={4} className="py-3.5 px-3.5 uppercase tracking-wider text-xs">Total TDS Receivable (Advance Tax Asset)</td>
+                        <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-sm text-[#0369A1]">{formatCurrency(tdsReceivable)}</td>
                         <td />
                       </tr>
                     </tfoot>
@@ -1681,53 +1993,53 @@ export function FinancialReportsClient({
             </div>
 
             {/* TDS Payable (Section-wise Form 26Q) */}
-            <div className="border border-[#D9E3DC] rounded-xl overflow-hidden shadow-2xs">
-              <div className="bg-[#F6FAF7] px-4 py-2.5 font-bold text-[11px] uppercase text-[#738078] tracking-wider border-b border-[#D9E3DC]">
+            <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="bg-[#F8FAF8] px-4 py-3 font-black text-[11px] uppercase text-[#374151] tracking-wider border-b border-[#DCE4DE]">
                 TDS Payable — Vendor Deductions by Section (Form 26Q)
               </div>
               {tdsPayableBySection.length === 0 ? (
-                <div className="p-8 text-center text-[#68756C] italic">No TDS deducted on vendor payments for this FY.</div>
+                <div className="p-8 text-center text-[#6B7280] italic">No TDS deducted on vendor payments for this FY.</div>
               ) : (
                 tdsPayableBySection.map(([section, data]) => (
-                  <div key={section} className="border-b border-[#E9EEE9] last:border-0">
-                    <div className="bg-[#FAFCFA] px-4 py-2 font-bold text-[11px] text-[#17211B] flex justify-between">
-                      <span>{section}</span>
-                      <span className="text-[#B27A17]">{formatCurrency(data.total)}</span>
+                  <div key={section} className="border-b border-[#EEF2EF] last:border-0">
+                    <div className="bg-[#FAFBF9] px-4 py-2.5 font-black text-xs text-[#111827] flex justify-between border-b border-[#EEF2EF]">
+                      <span>Section {section}</span>
+                      <span className="font-mono text-[#B45309]">{formatCurrency(data.total)}</span>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left min-w-[700px]">
                         <TableHead cols={["Payee / Vendor", "PAN", "Expense No.", "Gross Amount", "TDS Deducted", "Deposit Status", "Action"]} />
-                        <tbody className="divide-y divide-[#E9EEE9]">
+                        <tbody className="divide-y divide-[#EEF2EF]">
                           {data.entries.map((exp: any) => {
                             const isPaid = isExpenseTdsPaid(exp);
                             return (
-                              <tr key={exp.id} className="hover:bg-[#F9FAF8]">
-                                <td className="py-3 px-3 font-bold text-[#17211B]">{exp.vendor?.name || exp.notes || "Vendor"}</td>
-                                <td className="py-3 px-3 font-mono text-[#68756C]">{exp.vendor?.pan || "—"}</td>
-                                <td className="py-3 px-3 text-[#68756C]">{exp.expenseNumber || "—"}</td>
-                                <td className="py-3 px-3 text-right tabular-nums">{formatCurrency(Number(exp.grossAmount || exp.netAmount || 0))}</td>
-                                <td className="py-3 px-3 text-right tabular-nums font-bold text-[#B27A17]">{formatCurrency(Number(exp.tdsAmount || 0))}</td>
-                                <td className="py-3 px-3">
+                              <tr key={exp.id} className="hover:bg-[#F9FAF9] transition-colors">
+                                <td className="py-3 px-3.5 font-bold text-[#111827]">{exp.vendor?.name || exp.notes || "Vendor"}</td>
+                                <td className="py-3 px-3.5 font-mono text-[#6B7280] text-[11px]">{exp.vendor?.pan || "—"}</td>
+                                <td className="py-3 px-3.5 text-[#6B7280] font-mono text-[11px]">{exp.expenseNumber || "—"}</td>
+                                <td className="py-3 px-3.5 text-right tabular-nums font-mono">{formatCurrency(Number(exp.grossAmount || exp.netAmount || 0))}</td>
+                                <td className="py-3 px-3.5 text-right tabular-nums font-mono font-bold text-[#B45309]">{formatCurrency(Number(exp.tdsAmount || 0))}</td>
+                                <td className="py-3 px-3.5">
                                   {isPaid ? (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#E5F3EC] text-[#0B5F46] border border-emerald-200">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#DCFCE7] text-[#166534] border border-[#86EFAC]">
                                       <span>✓</span> PAID (ITNS 281)
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FFF3D8] text-[#B27A17] border border-amber-200">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#FEF3C7] text-[#92400E] border border-[#FCD34D]">
                                       <span>⚠️</span> PENDING
                                     </span>
                                   )}
                                 </td>
-                                <td className="py-3 px-3 text-right">
+                                <td className="py-3 px-3.5 text-right">
                                   {isPaid ? (
-                                    <span className="text-[10px] text-[#68756C] font-mono">
+                                    <span className="text-[10px] text-[#6B7280] font-mono font-medium">
                                       {exp.tdsChallanNumber || "Settled"}
                                     </span>
                                   ) : (
                                     <button
                                       type="button"
                                       onClick={() => handleOpenTdsModal(exp)}
-                                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#177B55] text-white hover:bg-[#126344] transition-all shadow-2xs cursor-pointer"
+                                      className="px-3 py-1 text-[11px] font-bold rounded-lg bg-[#177B55] text-white hover:bg-[#126344] transition-all shadow-2xs cursor-pointer"
                                     >
                                       Pay TDS
                                     </button>
@@ -1745,31 +2057,31 @@ export function FinancialReportsClient({
             </div>
 
             {/* Quarterly Summary */}
-            <div className="border border-[#D9E3DC] rounded-xl overflow-hidden shadow-2xs">
-              <div className="bg-[#F6FAF7] px-4 py-2.5 font-bold text-[11px] uppercase text-[#738078] tracking-wider border-b border-[#D9E3DC]">
+            <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="bg-[#F8FAF8] px-4 py-3 font-black text-[11px] uppercase text-[#374151] tracking-wider border-b border-[#DCE4DE]">
                 Quarterly TDS Schedule ({fy})
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left min-w-[450px]">
                   <TableHead cols={["Quarter", "TDS Deducted by Customers", "TDS Deducted on Vendors", "Net Statutory Balance"]} />
-                  <tbody className="divide-y divide-[#E9EEE9]">
+                  <tbody className="divide-y divide-[#EEF2EF]">
                     {quarterlyTDS.map((q) => (
-                      <tr key={q.id} className="hover:bg-[#F9FAF8]">
-                        <td className="py-3 px-3 font-bold text-[#17211B]">{q.label}</td>
-                        <td className="py-3 px-3 text-right tabular-nums text-[#386F9E]">{formatCurrency(q.receivable)}</td>
-                        <td className="py-3 px-3 text-right tabular-nums text-[#B27A17]">{formatCurrency(q.payable)}</td>
-                        <td className={`py-3 px-3 text-right tabular-nums font-bold ${q.receivable >= q.payable ? "text-[#177B55]" : "text-[#B94B4B]"}`}>
+                      <tr key={q.id} className="hover:bg-[#F9FAF9] transition-colors">
+                        <td className="py-3 px-3.5 font-bold text-[#111827]">{q.label}</td>
+                        <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#0369A1]">{formatCurrency(q.receivable)}</td>
+                        <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#B45309]">{formatCurrency(q.payable)}</td>
+                        <td className={`py-3 px-3.5 text-right tabular-nums font-mono font-bold ${q.receivable >= q.payable ? "text-[#166534]" : "text-[#B94B4B]"}`}>
                           {formatCurrency(q.receivable - q.payable)}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t-2 border-[#17211B] font-extrabold bg-[#F6FAF7]">
-                      <td className="py-3 px-3">Full Year Total</td>
-                      <td className="py-3 px-3 text-right tabular-nums text-[#386F9E]">{formatCurrency(tdsReceivable)}</td>
-                      <td className="py-3 px-3 text-right tabular-nums text-[#B27A17]">{formatCurrency(tdsPayable)}</td>
-                      <td className={`py-3 px-3 text-right tabular-nums ${tdsReceivable >= tdsPayable ? "text-[#177B55]" : "text-[#B94B4B]"}`}>
+                    <tr className="border-t-2 border-[#111827] font-black bg-[#F8FAF8]">
+                      <td className="py-3.5 px-3.5 uppercase tracking-wider text-xs">Full Year Total</td>
+                      <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-[#0369A1]">{formatCurrency(tdsReceivable)}</td>
+                      <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-[#B45309]">{formatCurrency(tdsPayable)}</td>
+                      <td className={`py-3.5 px-3.5 text-right tabular-nums font-mono text-sm ${tdsReceivable >= tdsPayable ? "text-[#166534]" : "text-[#B94B4B]"}`}>
                         {formatCurrency(tdsReceivable - tdsPayable)}
                       </td>
                     </tr>
@@ -1785,50 +2097,62 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {activeTab === "receivables" && (
           <div className="space-y-6 text-xs">
-            <div className="border-b border-[#D9E3DC] pb-3">
-              <h3 className="text-base font-bold text-[#17211B]">Accounts Receivable (Debtors Ledger &amp; Ageing)</h3>
-              <p className="text-[11px] text-[#68756C]">Ageing analysis computed from invoice dates | As of {fmtDate(TODAY)}</p>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-[#111827]">Accounts Receivable (Debtors Ledger &amp; Ageing)</h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-300">
+                    Ageing Analysis
+                  </span>
+                </div>
+                <p className="text-xs text-[#6B7280] mt-0.5">
+                  Ageing buckets computed strictly from invoice due dates | As of {fmtDate(TODAY)}.
+                </p>
+              </div>
+              <span className="text-[11px] font-bold text-[#4B5750] bg-[#F8FAF8] border border-[#DCE4DE] px-3 py-1.5 rounded-xl">
+                Current Assets Schedule
+              </span>
             </div>
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              <KpiCard label="Total Debtors" value={formatCurrency(totalReceivables)} color="text-[#B27A17]" sub={`${receivablesWithAge.length} outstanding invoices`} />
+              <KpiCard label="Total Debtors" value={formatCurrency(totalReceivables)} color="text-[#B45309]" sub={`${receivablesWithAge.length} outstanding`} icon="👥" />
               {AGE_BUCKETS.map((b) => (
                 <KpiCard
                   key={b}
                   label={`${b} Days`}
                   value={formatCurrency(recAgeing[b])}
-                  color={b === "0–30" ? "text-[#177B55]" : b === "31–60" ? "text-[#B27A17]" : "text-[#B94B4B]"}
+                  color={b === "0–30" ? "text-[#166534]" : b === "31–60" ? "text-[#B45309]" : "text-[#B94B4B]"}
                 />
               ))}
             </div>
 
             {/* Collection Efficiency Banner */}
-            <div className="bg-[#F6FAF7] border border-[#D9E3DC] rounded-xl p-4 flex flex-col sm:flex-row justify-between gap-4">
+            <div className="bg-[#FAFBF9] border border-[#DCE4DE] rounded-2xl p-5 flex flex-col sm:flex-row justify-between gap-6 shadow-2xs">
               <div>
-                <p className="text-[11px] font-bold text-[#738078] uppercase tracking-wider">Collection Efficiency Ratio</p>
-                <p className={`text-2xl font-extrabold mt-1 ${collectionEfficiency >= 75 ? "text-[#177B55]" : "text-[#B27A17]"}`}>
+                <p className="text-[11px] font-black text-[#4B5563] uppercase tracking-wider">Collection Efficiency Ratio</p>
+                <p className={`text-3xl font-black mt-1 ${collectionEfficiency >= 75 ? "text-[#166534]" : "text-[#B45309]"}`}>
                   {collectionEfficiency.toFixed(1)}%
                 </p>
-                <p className="text-[10px] text-[#9aaa9e] mt-0.5">
+                <p className="text-xs text-[#6B7280] mt-1 font-medium">
                   Collected {formatCurrency(actualCustomerCollections)} of {formatCurrency(totalBilled)} total billing
                 </p>
               </div>
-              <div className="flex-1 max-w-sm">
-                <p className="text-[10px] font-bold text-[#738078] uppercase tracking-wider mb-2">Ageing Distribution</p>
-                <div className="flex rounded-full overflow-hidden h-3 bg-[#E9EEE9]">
+              <div className="flex-1 max-w-md">
+                <p className="text-[11px] font-black text-[#4B5563] uppercase tracking-wider mb-2">Ageing Distribution</p>
+                <div className="flex rounded-full overflow-hidden h-3.5 bg-[#E5EAE6] p-0.5">
                   {AGE_BUCKETS.map((b) => {
                     const w = totalReceivables > 0 ? (recAgeing[b] / totalReceivables) * 100 : 0;
                     const colors: Record<AgeBucket, string> = { "0–30": "bg-emerald-500", "31–60": "bg-amber-400", "61–90": "bg-orange-400", "90+": "bg-red-500" };
-                    return w > 0 ? <div key={b} className={`${colors[b]} h-full`} style={{ width: `${w}%` }} title={`${b} days: ${formatCurrency(recAgeing[b])}`} /> : null;
+                    return w > 0 ? <div key={b} className={`${colors[b]} h-full rounded-full`} style={{ width: `${w}%` }} title={`${b} days: ${formatCurrency(recAgeing[b])}`} /> : null;
                   })}
                 </div>
-                <div className="flex justify-between gap-2 mt-2">
+                <div className="flex justify-between gap-2 mt-2.5">
                   {AGE_BUCKETS.map((b) => {
                     const colors: Record<AgeBucket, string> = { "0–30": "bg-emerald-500", "31–60": "bg-amber-400", "61–90": "bg-orange-400", "90+": "bg-red-500" };
                     return (
-                      <span key={b} className="flex items-center gap-1 text-[10px] text-[#68756C]">
-                        <span className={`w-2 h-2 rounded-full ${colors[b]}`} />
+                      <span key={b} className="flex items-center gap-1.5 text-xs text-[#4B5563] font-medium">
+                        <span className={`w-2.5 h-2.5 rounded-full ${colors[b]}`} />
                         {b}d
                       </span>
                     );
@@ -1838,27 +2162,27 @@ export function FinancialReportsClient({
             </div>
 
             {/* Receivables Table */}
-            <div className="border border-[#D9E3DC] rounded-xl overflow-hidden shadow-2xs">
+            <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[700px]">
                   <TableHead cols={["Customer", "Invoice No.", "Invoice Date", "Age (Days)", "Outstanding Amount", "Age Bracket"]} />
-                  <tbody className="divide-y divide-[#E9EEE9]">
+                  <tbody className="divide-y divide-[#EEF2EF]">
                     {receivablesWithAge.length === 0 ? (
                       <EmptyRow cols={6} msg="No outstanding trade receivables for this financial year." />
                     ) : (
                       receivablesWithAge.map((inv) => (
-                        <tr key={inv.id} className="hover:bg-[#F9FAF8]">
-                          <td className="py-3 px-3 font-bold text-[#17211B]">{inv.customerNameSnapshot || inv.customer?.legalName || "Customer"}</td>
-                          <td className="py-3 px-3 text-[#17211B] font-medium">{inv.invoiceNumber}</td>
-                          <td className="py-3 px-3 text-[#68756C]">{fmtDate(inv.invoiceDate || inv.createdAt)}</td>
-                          <td className={`py-3 px-3 font-bold tabular-nums ${inv.daysOld > 90 ? "text-[#B94B4B]" : inv.daysOld > 60 ? "text-[#B27A17]" : "text-[#17211B]"}`}>
+                        <tr key={inv.id} className="hover:bg-[#F9FAF9] transition-colors">
+                          <td className="py-3 px-3.5 font-bold text-[#111827]">{inv.customerNameSnapshot || inv.customer?.legalName || "Customer"}</td>
+                          <td className="py-3 px-3.5 text-[#111827] font-mono font-medium">{inv.invoiceNumber}</td>
+                          <td className="py-3 px-3.5 text-[#6B7280]">{fmtDate(inv.invoiceDate || inv.createdAt)}</td>
+                          <td className={`py-3 px-3.5 font-bold tabular-nums ${inv.daysOld > 90 ? "text-[#B94B4B]" : inv.daysOld > 60 ? "text-[#B45309]" : "text-[#111827]"}`}>
                             {inv.daysOld} days
                           </td>
-                          <td className="py-3 px-3 text-right tabular-nums font-bold text-[#B27A17]">
+                          <td className="py-3 px-3.5 text-right tabular-nums font-mono font-bold text-[#B45309]">
                             {formatCurrency(inv.outstanding)}
                           </td>
-                          <td className="py-3 px-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${AGE_COLORS[inv.bucket as AgeBucket]}`}>
+                          <td className="py-3 px-3.5">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${AGE_COLORS[inv.bucket as AgeBucket]}`}>
                               {inv.bucket}
                             </span>
                           </td>
@@ -1868,9 +2192,9 @@ export function FinancialReportsClient({
                   </tbody>
                   {receivablesWithAge.length > 0 && (
                     <tfoot>
-                      <tr className="border-t-2 border-[#17211B] font-extrabold bg-[#F6FAF7]">
-                        <td colSpan={4} className="py-3 px-3">Total Sundry Debtors (Current Asset)</td>
-                        <td className="py-3 px-3 text-right tabular-nums text-sm text-[#B27A17]">{formatCurrency(totalReceivables)}</td>
+                      <tr className="border-t-2 border-[#111827] font-black bg-[#F8FAF8]">
+                        <td colSpan={4} className="py-3.5 px-3.5 uppercase tracking-wider text-xs">Total Sundry Debtors (Current Asset)</td>
+                        <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-sm font-black text-[#B45309]">{formatCurrency(totalReceivables)}</td>
                         <td />
                       </tr>
                     </tfoot>
@@ -1886,82 +2210,95 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {activeTab === "payables" && (
           <div className="space-y-6 text-xs">
-            <div className="border-b border-[#D9E3DC] pb-3">
-              <h3 className="text-base font-bold text-[#17211B]">Accounts Payable &amp; Expense Settlements</h3>
-              <p className="text-[11px] text-[#68756C]">
-                Spot settlement accounting: All purchases and expenses are paid on time via Bank. Zero trade payables carried on the balance sheet.
-              </p>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-[#111827]">Accounts Payable &amp; Expense Settlements</h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                    Spot Settlement
+                  </span>
+                </div>
+                <p className="text-xs text-[#6B7280] mt-0.5">
+                  Spot payment accounting: All business expenses disbursed on time via Bank. Zero trade payables carried on balance sheet.
+                </p>
+              </div>
+              <span className="text-[11px] font-bold text-[#4B5750] bg-[#F8FAF8] border border-[#DCE4DE] px-3 py-1.5 rounded-xl">
+                Current Liabilities Schedule
+              </span>
             </div>
 
             {/* Policy Banner */}
-            <div className="bg-[#F6FAF7] border border-[#D9E3DC] rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-2xs">
               <div>
-                <span className="text-[10px] font-bold text-[#177B55] uppercase tracking-widest block">
+                <span className="text-[10px] font-black text-[#166534] uppercase tracking-widest block">
                   CASH / SPOT PAYMENT POLICY
                 </span>
-                <p className="font-bold text-sm text-[#17211B] mt-0.5">
+                <p className="font-black text-sm text-[#111827] mt-0.5">
                   100% On-Time Payment Settlement via Bank
                 </p>
-                <p className="text-[#68756C] text-xs mt-0.5">
+                <p className="text-[#4B5563] text-xs mt-0.5">
                   Every business purchase is disbursed on time directly from the corporate bank account upon purchase.
                 </p>
               </div>
-              <div className="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 font-extrabold text-xs">
+              <div className="shrink-0 px-4 py-2 rounded-xl bg-white text-[#166534] border border-[#86EFAC] font-black text-xs shadow-xs">
                 ✓ Zero Overdue Payables
               </div>
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <KpiCard
                 label="Trade Payables (Creditors)"
                 value="₹0.00"
-                color="text-[#177B55]"
+                color="text-[#166534]"
                 sub="Nil — Paid on time upon purchase"
+                icon="💳"
               />
               <KpiCard
                 label="Total Expenses Settled via Bank"
                 value={formatCurrency(actualExpenseDisbursements)}
-                color="text-[#17211B]"
+                color="text-[#111827]"
                 sub={`${expenseDisbursementsList.length} expenses disbursed from bank`}
+                icon="🏦"
               />
               <KpiCard
                 label="Statutory Tax Payables"
                 value={formatCurrency(netGSTPayable + tdsPayable)}
-                color="text-[#B27A17]"
+                color="text-[#B45309]"
                 sub={`GST: ${formatCurrency(netGSTPayable)} | TDS: ${formatCurrency(tdsPayable)}`}
+                icon="⚖️"
               />
             </div>
 
             {/* Settled Disbursements Table */}
-            <div className="border border-[#D9E3DC] rounded-xl overflow-hidden shadow-2xs">
-              <div className="bg-[#F6FAF7] px-4 py-2.5 font-bold text-[11px] uppercase text-[#738078] tracking-wider border-b border-[#D9E3DC] flex justify-between items-center">
+            <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="bg-[#F8FAF8] px-4 py-3 font-black text-[11px] uppercase text-[#374151] tracking-wider border-b border-[#DCE4DE] flex justify-between items-center">
                 <span>Disbursements Ledger — Deducted from Bank ({fy})</span>
-                <span className="text-[10px] text-[#177B55] font-semibold lowercase">paid on time upon purchase</span>
+                <span className="text-[10px] text-[#166534] font-bold lowercase">paid on time upon purchase</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[700px]">
                   <TableHead cols={["Vendor / Payee", "Expense No.", "Purchase Date", "Category", "Amount Deducted from Bank", "Status"]} />
-                  <tbody className="divide-y divide-[#E9EEE9]">
+                  <tbody className="divide-y divide-[#EEF2EF]">
                     {expenseDisbursementsList.length === 0 ? (
                       <EmptyRow cols={6} msg="No expense purchases recorded for this financial year." />
                     ) : (
                       expenseDisbursementsList.map((exp) => (
-                        <tr key={exp.id} className="hover:bg-[#F9FAF8]">
-                          <td className="py-3 px-3 font-bold text-[#17211B]">
+                        <tr key={exp.id} className="hover:bg-[#F9FAF9] transition-colors">
+                          <td className="py-3 px-3.5 font-bold text-[#111827]">
                             {exp.vendor?.name || exp.notes || "Vendor"}
                             {exp.paidBy === "EMPLOYEE" && (
-                              <span className="ml-1.5 px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded text-[9px] font-bold">EMP</span>
+                              <span className="ml-1.5 px-2 py-0.5 bg-purple-50 text-purple-700 rounded-md text-[9px] font-bold border border-purple-200">EMP</span>
                             )}
                           </td>
-                          <td className="py-3 px-3 text-[#68756C] font-mono">{exp.expenseNumber || "—"}</td>
-                          <td className="py-3 px-3 text-[#68756C]">{fmtDate(exp.expenseDate || exp.createdAt)}</td>
-                          <td className="py-3 px-3 text-[#17211B] font-medium">{exp.category?.name || "Operating Expense"}</td>
-                          <td className="py-3 px-3 text-right tabular-nums font-bold text-[#17211B]">
+                          <td className="py-3 px-3.5 text-[#6B7280] font-mono text-[11px]">{exp.expenseNumber || "—"}</td>
+                          <td className="py-3 px-3.5 text-[#6B7280]">{fmtDate(exp.expenseDate || exp.createdAt)}</td>
+                          <td className="py-3 px-3.5 text-[#111827] font-semibold">{exp.category?.name || "Operating Expense"}</td>
+                          <td className="py-3 px-3.5 text-right tabular-nums font-mono font-bold text-[#111827]">
                             {formatCurrency(exp.amountPaid)}
                           </td>
-                          <td className="py-3 px-3">
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[#EBF3ED] text-[#177B55] border border-emerald-200">
+                          <td className="py-3 px-3.5">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#DCFCE7] text-[#166534] border border-[#86EFAC]">
                               ✓ PAID VIA BANK
                             </span>
                           </td>
@@ -1971,9 +2308,9 @@ export function FinancialReportsClient({
                   </tbody>
                   {expenseDisbursementsList.length > 0 && (
                     <tfoot>
-                      <tr className="border-t-2 border-[#17211B] font-extrabold bg-[#F6FAF7]">
-                        <td colSpan={4} className="py-3 px-3">Total Expense Outflows Deducted from Bank</td>
-                        <td className="py-3 px-3 text-right tabular-nums text-sm font-black text-[#17211B]">{formatCurrency(actualExpenseDisbursements)}</td>
+                      <tr className="border-t-2 border-[#111827] font-black bg-[#F8FAF8]">
+                        <td colSpan={4} className="py-3.5 px-3.5 uppercase tracking-wider text-xs">Total Expense Outflows Deducted from Bank</td>
+                        <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-sm font-black text-[#111827]">{formatCurrency(actualExpenseDisbursements)}</td>
                         <td />
                       </tr>
                     </tfoot>
@@ -1989,10 +2326,15 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {activeTab === "assets" && (
           <div className="space-y-6 text-xs">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#D9E3DC] pb-3 gap-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
-                <h3 className="text-base font-bold text-[#17211B]">Fixed Asset Schedule</h3>
-                <p className="text-[11px] text-[#68756C]">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-[#111827]">Fixed Asset Schedule</h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-50 text-blue-800 border border-blue-200">
+                    Companies Act Schedule II &amp; IT Act
+                  </span>
+                </div>
+                <p className="text-xs text-[#6B7280] mt-0.5">
                   Depreciation computed using{" "}
                   <strong>{depMethod === "WDV" ? "Written Down Value (WDV) — Income Tax Act" : "Straight Line Method (SLM) — Companies Act Schedule II"}</strong>
                 </p>
@@ -2001,14 +2343,14 @@ export function FinancialReportsClient({
                 <button
                   type="button"
                   onClick={() => setDepMethod("WDV")}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${depMethod === "WDV" ? "bg-[#177B55] text-white border-[#177B55] shadow-2xs" : "border-[#D9E3DC] text-[#68756C] bg-white"}`}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer ${depMethod === "WDV" ? "bg-[#177B55] text-white border-[#177B55] shadow-xs" : "border-[#D1D5DB] text-[#4B5563] bg-white hover:bg-[#F9FAFB]"}`}
                 >
                   WDV (IT Act)
                 </button>
                 <button
                   type="button"
                   onClick={() => setDepMethod("SLM")}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${depMethod === "SLM" ? "bg-[#177B55] text-white border-[#177B55] shadow-2xs" : "border-[#D9E3DC] text-[#68756C] bg-white"}`}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer ${depMethod === "SLM" ? "bg-[#177B55] text-white border-[#177B55] shadow-xs" : "border-[#D1D5DB] text-[#4B5563] bg-white hover:bg-[#F9FAFB]"}`}
                 >
                   SLM (Cos. Act)
                 </button>
@@ -2017,55 +2359,44 @@ export function FinancialReportsClient({
 
             {/* Summary Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <KpiCard label="Gross Block (Original Cost)" value={formatCurrency(totalGrossBlock)} color="text-[#17211B]" />
-              <KpiCard label="Accumulated Depreciation" value={formatCurrency(totalAccDep)} color="text-[#B27A17]" />
-              <KpiCard label="Current Year Depreciation" value={formatCurrency(totalCurrentYearDep)} color="text-[#B94B4B]" />
-              <KpiCard label="Net Book Value (Net Block)" value={formatCurrency(totalNetBlock)} color="text-[#177B55]" />
+              <KpiCard label="Gross Block (Original Cost)" value={formatCurrency(totalGrossBlock)} color="text-[#111827]" icon="🏢" />
+              <KpiCard label="Accumulated Depreciation" value={formatCurrency(totalAccDep)} color="text-[#B45309]" icon="📉" />
+              <KpiCard label="Current Year Depreciation" value={formatCurrency(totalCurrentYearDep)} color="text-[#B94B4B]" icon="⏳" />
+              <KpiCard label="Net Book Value (Net Block)" value={formatCurrency(totalNetBlock)} color="text-[#166534]" icon="✨" />
             </div>
 
             {/* Asset Schedule Table */}
-            <div className="border border-[#D9E3DC] rounded-xl overflow-hidden shadow-2xs">
+            <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[800px]">
-                  <thead>
-                    <tr className="border-b border-[#D9E3DC] text-[10px] uppercase text-[#738078] font-bold tracking-wider">
-                      <th className="py-3 px-3">Asset Description</th>
-                      <th className="py-3 px-3">Category</th>
-                      <th className="py-3 px-3">Acquisition Date</th>
-                      <th className="py-3 px-3 text-right">Gross Block</th>
-                      <th className="py-3 px-3 text-right">Dep. Rate</th>
-                      <th className="py-3 px-3 text-right">Accumulated Dep.</th>
-                      <th className="py-3 px-3 text-right">Current FY Dep.</th>
-                      <th className="py-3 px-3 text-right">Net Block</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#E9EEE9]">
+                  <TableHead cols={["Asset Description", "Category", "Acquisition Date", "Gross Block", "Dep. Rate", "Accumulated Dep.", "Current FY Dep.", "Net Block"]} />
+                  <tbody className="divide-y divide-[#EEF2EF]">
                     {depSchedule.length === 0 ? (
                       <EmptyRow cols={8} msg="No fixed assets recorded for this period. Capitalise capital items through Expenses categorized as ASSET." />
                     ) : (
                       depSchedule.map((a) => (
-                        <tr key={a.id} className="hover:bg-[#F9FAF8]">
-                          <td className="py-3 px-3 font-bold text-[#17211B]">{a.name}</td>
-                          <td className="py-3 px-3 text-[#68756C]">{a.category}</td>
-                          <td className="py-3 px-3 text-[#68756C]">{fmtDate(a.purchaseDate)}</td>
-                          <td className="py-3 px-3 text-right tabular-nums">{formatCurrency(a.grossCost)}</td>
-                          <td className="py-3 px-3 text-right font-mono text-[#68756C]">{a.ratePct}</td>
-                          <td className="py-3 px-3 text-right tabular-nums text-[#B27A17]">({formatCurrency(a.accDep)})</td>
-                          <td className="py-3 px-3 text-right tabular-nums text-[#B94B4B] font-bold">({formatCurrency(a.currentYearDep)})</td>
-                          <td className="py-3 px-3 text-right tabular-nums font-extrabold text-[#17211B]">{formatCurrency(a.closingWdv)}</td>
+                        <tr key={a.id} className="hover:bg-[#F9FAF9] transition-colors">
+                          <td className="py-3 px-3.5 font-bold text-[#111827]">{a.name}</td>
+                          <td className="py-3 px-3.5 text-[#6B7280]">{a.category}</td>
+                          <td className="py-3 px-3.5 text-[#6B7280]">{fmtDate(a.purchaseDate)}</td>
+                          <td className="py-3 px-3.5 text-right tabular-nums font-mono font-medium">{formatCurrency(a.grossCost)}</td>
+                          <td className="py-3 px-3.5 text-right font-mono text-[#6B7280] font-semibold">{a.ratePct}</td>
+                          <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#B45309]">({formatCurrency(a.accDep)})</td>
+                          <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#B94B4B] font-bold">({formatCurrency(a.currentYearDep)})</td>
+                          <td className="py-3 px-3.5 text-right tabular-nums font-mono font-black text-[#111827]">{formatCurrency(a.closingWdv)}</td>
                         </tr>
                       ))
                     )}
                   </tbody>
                   {depSchedule.length > 0 && (
                     <tfoot>
-                      <tr className="border-t-2 border-[#17211B] font-extrabold text-xs bg-[#F6FAF7]">
-                        <td colSpan={3} className="py-3.5 px-3">Total Fixed Assets (Non-Current Assets)</td>
-                        <td className="py-3.5 px-3 text-right tabular-nums">{formatCurrency(totalGrossBlock)}</td>
+                      <tr className="border-t-2 border-[#111827] font-black text-xs bg-[#F8FAF8]">
+                        <td colSpan={3} className="py-3.5 px-3.5 uppercase tracking-wider">Total Fixed Assets (Non-Current Assets)</td>
+                        <td className="py-3.5 px-3.5 text-right tabular-nums font-mono">{formatCurrency(totalGrossBlock)}</td>
                         <td />
-                        <td className="py-3.5 px-3 text-right tabular-nums text-[#B27A17]">({formatCurrency(totalAccDep)})</td>
-                        <td className="py-3.5 px-3 text-right tabular-nums text-[#B94B4B]">({formatCurrency(totalCurrentYearDep)})</td>
-                        <td className="py-3.5 px-3 text-right tabular-nums text-[#177B55]">{formatCurrency(totalNetBlock)}</td>
+                        <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-[#B45309]">({formatCurrency(totalAccDep)})</td>
+                        <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-[#B94B4B]">({formatCurrency(totalCurrentYearDep)})</td>
+                        <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-[#166534]">{formatCurrency(totalNetBlock)}</td>
                       </tr>
                     </tfoot>
                   )}
