@@ -1580,7 +1580,30 @@ export function FinancialReportsClient({
                         label="Trade Payables (Sundry Creditors)"
                         amount={totalVendorPayables}
                         indent={1}
+                        note={totalVendorPayables === 0 ? "Nil — Spot Settlement Policy" : undefined}
                       />
+                      <LedgerRow
+                        label="Statutory GST Payable (Net of Input Tax Credit)"
+                        amount={effectiveGSTPayable}
+                        indent={1}
+                        red={!isGstFiled && effectiveGSTPayable > 0}
+                        green={isGstFiled}
+                        note={
+                          isGstFiled
+                            ? `Nil — GSTR-3B Filed & Paid (${currentGstFiling?.arn || "CPIN Remitted"})`
+                            : effectiveGSTPayable > 0
+                            ? `Output GST (${formatCurrency(totalOutputGST)}) - Input ITC (${formatCurrency(totalInputGST)})`
+                            : "Covered by ITC"
+                        }
+                      />
+                      {outstandingTdsPayable > 0 && (
+                        <LedgerRow
+                          label="Statutory TDS Payable (Form 26Q Withholding)"
+                          amount={outstandingTdsPayable}
+                          indent={1}
+                          red
+                        />
+                      )}
                       <LedgerRow
                         label={`Provision for Income Tax (${effectiveTaxRate}% Tax Rate)`}
                         amount={incomeTaxProvision}
