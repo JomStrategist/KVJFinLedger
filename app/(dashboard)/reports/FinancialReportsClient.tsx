@@ -227,24 +227,59 @@ export function FinancialReportsClient({
     [expenses, fyStart, fyEnd]
   );
 
+  // Helper to extract true GST and Sales Revenue for an invoice
+  const getInvoiceTax = (inv: any) => {
+    const cgst = Number(inv.totalCGST || 0);
+    const sgst = Number(inv.totalSGST || 0);
+    const igst = Number(inv.totalIGST || 0);
+    const totalGst = Number(inv.totalGST || (cgst + sgst + igst) || 0);
+    return { cgst, sgst, igst, totalGst };
+  };
+
+  const getInvoiceRevenue = (inv: any) => {
+    const gross = Number(inv.grossAmount || (Number(inv.taxableAmount || 0) + Number(inv.totalGST || 0)) || inv.netAmount || 0);
+    const { totalGst } = getInvoiceTax(inv);
+    // Double-Entry Statutory Principle (AS 9 / Schedule III):
+    // Sales Revenue (Taxable Turnover) = Gross Invoice Receivable - Output GST
+    return Math.max(0, gross - totalGst);
+  };
+
+  const getExpenseTax = (exp: any) => {
+    const cgst = Number(exp.inputCGST || 0);
+    const sgst = Number(exp.inputSGST || 0);
+    const igst = Number(exp.inputIGST || 0);
+    const totalGst = Number(exp.totalInputGST || (cgst + sgst + igst) || 0);
+    return { cgst, sgst, igst, totalGst };
+  };
+
+  const getExpenseOperatingCost = (exp: any) => {
+    const gross = Number(exp.grossAmount || exp.netAmount || 0);
+    const { totalGst } = getExpenseTax(exp);
+    // When Input Tax Credit (ITC) is claimed, the GST portion offsets tax liability and is not an operating expense
+    return Math.max(0, gross - totalGst);
+  };
+
   // ── 2. REVENUE TRANSACTIONS ───────────────────────────────────────────────
   // Under Indian Accounting Standards, Revenue is Taxable Amount (excluding GST)
   const totalRevenue = useMemo(
-    () => validInvoices.reduce((s, inv) => s + Number(inv.taxableAmount ?? inv.subtotal ?? 0), 0),
+    () => validInvoices.reduce((s, inv) => s + getInvoiceRevenue(inv), 0),
     [validInvoices]
   );
 
   const revenueByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     for (const inv of validInvoices) {
+      const invRev = getInvoiceRevenue(inv);
       if (inv.items && inv.items.length > 0) {
+        const itemTaxableSum = inv.items.reduce((s: number, it: any) => s + Number(it.taxableAmount || it.totalAmount || 0), 0);
         for (const item of inv.items) {
           const k = item.name || "Services & Goods";
-          map[k] = (map[k] ?? 0) + Number(item.taxableAmount ?? item.totalAmount ?? 0);
+          const proportion = itemTaxableSum > 0 ? (Number(item.taxableAmount || item.totalAmount || 0) / itemTaxableSum) : (1 / inv.items.length);
+          map[k] = (map[k] ?? 0) + (invRev * proportion);
         }
       } else {
         const k = inv.customerNameSnapshot ? `Revenue (${inv.customerNameSnapshot})` : "Revenue from Operations";
-        map[k] = (map[k] ?? 0) + Number(inv.taxableAmount ?? 0);
+        map[k] = (map[k] ?? 0) + invRev;
       }
     }
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
@@ -273,16 +308,16 @@ export function FinancialReportsClient({
     [revenueExpenses, employeeExpenses, financeExpenses]
   );
 
-  const totalEmployeeExp = useMemo(() => employeeExpenses.reduce((s, e) => s + Number(e.netAmount ?? 0), 0), [employeeExpenses]);
-  const totalFinanceExp = useMemo(() => financeExpenses.reduce((s, e) => s + Number(e.netAmount ?? 0), 0), [financeExpenses]);
-  const totalCapex = useMemo(() => assetExpenses.reduce((s, e) => s + Number(e.netAmount ?? 0), 0), [assetExpenses]);
-  const totalOtherOpex = useMemo(() => otherOpex.reduce((s, e) => s + Number(e.netAmount ?? 0), 0), [otherOpex]);
+  const totalEmployeeExp = useMemo(() => employeeExpenses.reduce((s, e) => s + getExpenseOperatingCost(e), 0), [employeeExpenses]);
+  const totalFinanceExp = useMemo(() => financeExpenses.reduce((s, e) => s + getExpenseOperatingCost(e), 0), [financeExpenses]);
+  const totalCapex = useMemo(() => assetExpenses.reduce((s, e) => s + getExpenseOperatingCost(e), 0), [assetExpenses]);
+  const totalOtherOpex = useMemo(() => otherOpex.reduce((s, e) => s + getExpenseOperatingCost(e), 0), [otherOpex]);
 
   const otherOpexByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     for (const exp of otherOpex) {
       const k = exp.category?.name ?? "Operating Expenses";
-      map[k] = (map[k] ?? 0) + Number(exp.netAmount ?? 0);
+      map[k] = (map[k] ?? 0) + getExpenseOperatingCost(exp);
     }
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   }, [otherOpex]);
@@ -361,14 +396,14 @@ export function FinancialReportsClient({
   const dynamicTaxSlabs = useMemo(() => {
     const slabMap: Record<number, { taxable: number; cgst: number; sgst: number; igst: number; totalTax: number; count: number }> = {};
     for (const inv of validInvoices) {
-      const taxable = Number(inv.taxableAmount ?? 0);
-      const gst = Number(inv.totalGST ?? 0);
+      const taxable = getInvoiceRevenue(inv);
+      const { cgst, sgst, igst, totalGst } = getInvoiceTax(inv);
       let rate = 0;
       if (inv.items && inv.items.length > 0 && Number(inv.items[0].gstRate) >= 0) {
         rate = Number(inv.items[0].gstRate);
-      } else if (taxable > 0 && gst > 0) {
-        rate = Math.round((gst / taxable) * 100);
-      } else if (Number(inv.totalIGST) === 0 && Number(inv.totalGST) === 0) {
+      } else if (taxable > 0 && totalGst > 0) {
+        rate = Math.round((totalGst / taxable) * 100);
+      } else if (igst === 0 && totalGst === 0) {
         rate = 0; // Export or Exempt
       }
 
@@ -376,10 +411,10 @@ export function FinancialReportsClient({
         slabMap[rate] = { taxable: 0, cgst: 0, sgst: 0, igst: 0, totalTax: 0, count: 0 };
       }
       slabMap[rate].taxable += taxable;
-      slabMap[rate].cgst += Number(inv.totalCGST ?? 0);
-      slabMap[rate].sgst += Number(inv.totalSGST ?? 0);
-      slabMap[rate].igst += Number(inv.totalIGST ?? 0);
-      slabMap[rate].totalTax += gst;
+      slabMap[rate].cgst += cgst;
+      slabMap[rate].sgst += sgst;
+      slabMap[rate].igst += igst;
+      slabMap[rate].totalTax += totalGst;
       slabMap[rate].count += 1;
     }
     return Object.entries(slabMap)
@@ -390,12 +425,12 @@ export function FinancialReportsClient({
   // Intrastate vs Interstate
   const intrastateInvoices = useMemo(() => validInvoices.filter((inv) => Number(inv.totalIGST ?? 0) === 0), [validInvoices]);
   const interstateInvoices = useMemo(() => validInvoices.filter((inv) => Number(inv.totalIGST ?? 0) > 0), [validInvoices]);
-  const intrastateTaxable = useMemo(() => intrastateInvoices.reduce((s, inv) => s + Number(inv.taxableAmount ?? 0), 0), [intrastateInvoices]);
-  const interstateTaxable = useMemo(() => interstateInvoices.reduce((s, inv) => s + Number(inv.taxableAmount ?? 0), 0), [interstateInvoices]);
+  const intrastateTaxable = useMemo(() => intrastateInvoices.reduce((s, inv) => s + getInvoiceRevenue(inv), 0), [intrastateInvoices]);
+  const interstateTaxable = useMemo(() => interstateInvoices.reduce((s, inv) => s + getInvoiceRevenue(inv), 0), [interstateInvoices]);
 
   // B2B vs B2C
   const b2bTaxable = useMemo(
-    () => validInvoices.filter((inv) => inv.customer?.gstin || inv.gstinSnapshot).reduce((s, inv) => s + Number(inv.taxableAmount ?? 0), 0),
+    () => validInvoices.filter((inv) => inv.customer?.gstin || inv.gstinSnapshot).reduce((s, inv) => s + getInvoiceRevenue(inv), 0),
     [validInvoices]
   );
   const b2cTaxable = totalRevenue - b2bTaxable;
