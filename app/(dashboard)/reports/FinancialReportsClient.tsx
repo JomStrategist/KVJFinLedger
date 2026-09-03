@@ -165,25 +165,26 @@ function LedgerRow({
   const hasChildren = Boolean(children);
 
   const indentClass = indent === 1 ? "pl-3 sm:pl-5" : indent === 2 ? "pl-6 sm:pl-10" : "";
-  const textColor = green ? "text-emerald-700" : red ? "text-rose-600" : bold ? "text-slate-900 font-bold" : "text-slate-800 font-medium";
+  const textColor = green ? "text-emerald-700 font-bold" : red ? "text-rose-600 font-bold" : bold ? "text-slate-900 font-extrabold" : "text-slate-800 font-semibold";
 
   if (isHeader) {
     return (
-      <div className={`py-2.5 px-3 bg-slate-50 border-y border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-700 ${indentClass}`}>
+      <div className={`py-2.5 px-3.5 bg-slate-50 border-y border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-700 ${indentClass}`}>
         {label}
       </div>
     );
   }
 
   return (
-    <div className="border-b border-slate-100 font-sans">
+    <div className="border-b border-slate-100/80 font-sans">
       <div
         onClick={() => hasChildren && setIsOpen(!isOpen)}
-        className={`flex items-center justify-between py-3 px-3.5 text-xs sm:text-[13px] hover:bg-slate-50/80 transition-colors leading-relaxed ${indentClass} ${
+        className={`flex items-center justify-between py-3 px-3.5 text-xs sm:text-[13px] hover:bg-slate-50/80 transition-colors leading-relaxed gap-3 ${indentClass} ${
           hasChildren ? "cursor-pointer select-none" : ""
         }`}
       >
-        <div className="flex items-center gap-2.5 flex-1 pr-3 min-w-0">
+        {/* Left Section: Chevron + Code + Label + Note + Details Pill */}
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0 max-w-[70%] sm:max-w-[75%]">
           {/* Left-side Expandable Chevron Dropdown Toggle */}
           {hasChildren ? (
             <button
@@ -192,11 +193,11 @@ function LedgerRow({
                 e.stopPropagation();
                 setIsOpen(!isOpen);
               }}
-              className="p-1 -ml-1 rounded-md text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-all shrink-0 cursor-pointer"
+              className="p-1 -ml-1 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-all shrink-0 cursor-pointer"
               title={isOpen ? "Collapse breakdown details" : "Expand breakdown details"}
             >
               <svg
-                className={`w-3.5 h-3.5 transform transition-transform duration-150 ${isOpen ? "rotate-90 text-emerald-700" : ""}`}
+                className={`w-4 h-4 transform transition-transform duration-150 ${isOpen ? "rotate-90 text-emerald-700" : ""}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -206,28 +207,33 @@ function LedgerRow({
               </svg>
             </button>
           ) : (
-            <div className="w-3.5 shrink-0" />
+            <div className="w-4 shrink-0" />
           )}
 
-          {code && <span className="font-mono text-xs text-slate-500 font-semibold shrink-0">{code}</span>}
-          <span className={`truncate text-slate-800 ${bold ? "font-bold text-slate-900 text-sm" : "font-semibold text-xs sm:text-[13px]"}`}>
+          {code && <span className="font-mono text-xs text-slate-500 font-bold shrink-0">{code}</span>}
+          
+          <span className={`text-slate-800 ${bold ? "font-bold text-slate-900 text-sm" : "font-semibold text-xs sm:text-[13px]"}`}>
             {label}
           </span>
+
           {note && (
-            <span className="text-[11px] text-slate-500 font-normal truncate shrink-0">
+            <span className="text-[11px] text-slate-500 font-normal shrink-0">
               • {note}
             </span>
           )}
+
           {hasChildren && (
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200/80 shrink-0">
               {isOpen ? "Hide" : "Details"}
             </span>
           )}
         </div>
 
-        <div className="border-b border-dotted border-slate-300 flex-1 mx-3 hidden sm:block opacity-60" />
+        {/* Dotted Leader Line */}
+        <div className="border-b border-dotted border-slate-300 flex-1 mx-1 hidden sm:block opacity-60 min-w-[20px]" />
 
-        <div className={`tabular-nums font-mono text-right shrink-0 min-w-[130px] ${bold ? "font-bold text-sm text-slate-900" : "font-semibold text-xs sm:text-[13px]"} ${textColor}`}>
+        {/* Right Section: Amount */}
+        <div className={`tabular-nums font-mono text-right shrink-0 min-w-[120px] ${bold ? "font-bold text-sm text-slate-900" : "font-semibold text-xs sm:text-[13px]"} ${textColor}`}>
           {amount !== undefined && amount !== null ? (amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)) : "—"}
         </div>
       </div>
