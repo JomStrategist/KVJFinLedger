@@ -137,6 +137,10 @@ export class ExpenseService {
 
           tdsRate: Number(data.tdsRate || 0),
           tdsAmount: Number(data.tdsAmount || 0),
+          tdsPaymentStatus: data.tdsPaymentStatus || (Number(data.tdsAmount || 0) > 0 ? "UNPAID" : "NA"),
+          tdsPaidDate: data.tdsPaidDate ? new Date(data.tdsPaidDate) : null,
+          tdsChallanNumber: data.tdsChallanNumber || null,
+          tdsSection: data.tdsSection || (Number(data.tdsRate) === 10 ? "194J" : Number(data.tdsRate) === 2 ? "194C" : "194J"),
 
           grossAmount: Number(data.grossAmount ?? data.taxableAmount ?? 0),
           netAmount: Number(data.netAmount ?? data.grossAmount ?? 0),
@@ -209,6 +213,10 @@ export class ExpenseService {
 
           tdsRate: Number(data.tdsRate || 0),
           tdsAmount: Number(data.tdsAmount || 0),
+          tdsPaymentStatus: data.tdsPaymentStatus || (Number(data.tdsAmount || 0) > 0 ? "UNPAID" : "NA"),
+          tdsPaidDate: data.tdsPaidDate ? new Date(data.tdsPaidDate) : null,
+          tdsChallanNumber: data.tdsChallanNumber || null,
+          tdsSection: data.tdsSection || (Number(data.tdsRate) === 10 ? "194J" : Number(data.tdsRate) === 2 ? "194C" : "194J"),
 
           grossAmount: Number(data.grossAmount ?? data.taxableAmount ?? 0),
           netAmount: Number(data.netAmount ?? data.grossAmount ?? 0),

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ExpenseModal } from "./ExpenseModal";
 import { useRouter } from "next/navigation";
+import { markExpenseTdsPaidAction } from "../reports/tds-actions";
 
 export function ExpensesClientList({
   initialExpenses = [],
@@ -22,6 +23,17 @@ export function ExpensesClientList({
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
+
+  const handleMarkTdsPaid = async (expId: string) => {
+    const challan = prompt("Enter ITNS 281 Challan / CIN Reference:", `ITNS281/0510001/${Math.floor(10000 + Math.random() * 90000)}`);
+    if (!challan) return;
+    const res = await markExpenseTdsPaidAction(expId, challan);
+    if (res.success) {
+      router.refresh();
+    } else {
+      alert(res.error || "Failed to mark TDS paid");
+    }
+  };
 
   const filteredExpenses = initialExpenses.filter((exp) => {
     const searchLower = search.toLowerCase().trim();
@@ -194,7 +206,25 @@ export function ExpensesClientList({
 
                       {/* TDS */}
                       <td className="py-4 px-3 text-[#17211B] whitespace-nowrap">
-                        {tdsText}
+                        <div className="font-medium">{tdsText}</div>
+                        {tdsAmount > 0 && (
+                          <div className="mt-1 flex items-center gap-1.5">
+                            {expense.tdsPaymentStatus === "PAID" ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#166534] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                <span>✓</span> Paid
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleMarkTdsPaid(expense.id)}
+                                className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#92400E] bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full cursor-pointer transition-colors shadow-2xs"
+                                title="Click to record Challan ITNS 281 and pay TDS from Bank"
+                              >
+                                <span>⚠️</span> Pay TDS
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* AMOUNT */}

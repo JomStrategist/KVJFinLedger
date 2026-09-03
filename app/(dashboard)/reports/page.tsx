@@ -3,12 +3,13 @@ import { TaxInvoiceService } from '@/services/tax-invoice.service';
 import { ExpenseService } from '@/services/expense.service';
 import { OpeningClosingService } from '@/services/opening-closing.service';
 import { GstFilingService } from '@/services/gst-filing.service';
+import { TdsDepositService } from '@/services/tds-deposit.service';
 import { FinancialReportsClient } from './FinancialReportsClient';
 
 export default async function ReportsPage() {
   await requireAuth();
 
-  const [invoices, expenses, openingBalances, gstFilings] = await Promise.all([
+  const [invoices, expenses, openingBalances, gstFilings, tdsDeposits] = await Promise.all([
     TaxInvoiceService.getTaxInvoices().catch((err) => {
       console.warn("Could not fetch invoices for reports:", err);
       return [];
@@ -25,6 +26,10 @@ export default async function ReportsPage() {
       console.warn("Could not fetch GST filings for reports:", err);
       return [];
     }),
+    TdsDepositService.getAllTdsDeposits().catch((err) => {
+      console.warn("Could not fetch TDS deposits for reports:", err);
+      return [];
+    }),
   ]);
 
   return (
@@ -34,6 +39,7 @@ export default async function ReportsPage() {
         expenses={JSON.parse(JSON.stringify(expenses))}
         openingBalances={JSON.parse(JSON.stringify(openingBalances))}
         gstFilings={JSON.parse(JSON.stringify(gstFilings))}
+        tdsDeposits={JSON.parse(JSON.stringify(tdsDeposits))}
       />
     </div>
   );

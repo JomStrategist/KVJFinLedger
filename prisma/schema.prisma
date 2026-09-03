@@ -491,6 +491,10 @@ model Expense {
 
   tdsRate           Float?
   tdsAmount         Float @default(0)
+  tdsPaymentStatus  String?       @default("UNPAID") // "UNPAID", "PAID"
+  tdsPaidDate       DateTime?
+  tdsChallanNumber  String?       // Challan ITNS 281 / BSR Code / CIN
+  tdsSection        String?       @default("194J")   // 194C, 194J, 194I, etc.
 
   grossAmount       Float
   netAmount         Float
@@ -650,4 +654,22 @@ model GstFiling {
 
   @@unique([financialYear, returnType])
 }
+
+model TdsDeposit {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  financialYear   String    // e.g. "FY 2026–27"
+  quarter         String?   @default("Annual")
+  section         String?   @default("194J") // 194J, 194C, 194I, etc.
+  challanNumber   String    // ITNS 281 Challan / BSR Code / CIN
+  bsrCode         String?   // 7-digit branch code
+  challanSerial   String?   // 5-digit serial number
+  depositDate     DateTime  @default(now())
+  amountPaid      Float     @default(0)
+  status          String    @default("PAID")
+  bankAccount     String?   @default("Primary Bank Account")
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
 

@@ -3,6 +3,7 @@
 import { useState, useMemo, useTransition } from "react";
 import { formatCurrency } from "@/lib/utils/currency";
 import { recordGstFilingAction, deleteGstFilingAction } from "./gst-actions";
+import { recordTdsDepositAction, markExpenseTdsPaidAction, deleteTdsDepositAction } from "./tds-actions";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY HELPERS & INDIAN TAX LAWS CONSTANTS
@@ -193,11 +194,13 @@ export function FinancialReportsClient({
   expenses = [],
   openingBalances = [],
   gstFilings = [],
+  tdsDeposits = [],
 }: {
   invoices?: any[];
   expenses?: any[];
   openingBalances?: any[];
   gstFilings?: any[];
+  tdsDeposits?: any[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("pnl");
   const [fy, setFy] = useState("FY 2026–27");
@@ -210,6 +213,17 @@ export function FinancialReportsClient({
   const [filingArn, setFilingArn] = useState("");
   const [filingChallan, setFilingChallan] = useState("");
   const [isFilingPending, startFilingTransition] = useTransition();
+
+  // TDS Deposit State (Form 26Q & Challan ITNS 281)
+  const [allTdsDeposits, setAllTdsDeposits] = useState<any[]>(tdsDeposits);
+  const [localPaidTdsExpenseIds, setLocalPaidTdsExpenseIds] = useState<Set<string>>(new Set());
+  const [isTdsModalOpen, setIsTdsModalOpen] = useState(false);
+  const [selectedExpenseForTds, setSelectedExpenseForTds] = useState<any | null>(null);
+  const [tdsDepositDate, setTdsDepositDate] = useState(new Date().toISOString().split("T")[0]);
+  const [tdsChallanNumber, setTdsChallanNumber] = useState("");
+  const [tdsBsrCode, setTdsBsrCode] = useState("0510001");
+  const [tdsChallanSerial, setTdsChallanSerial] = useState("00124");
+  const [isTdsPending, startTdsTransition] = useTransition();
 
   // Filter range by financial year
   const { start: fyStart, end: fyEnd } = useMemo(() => getFyDateRange(fy), [fy]);
@@ -469,7 +483,31 @@ export function FinancialReportsClient({
   }, [validInvoices]);
 
   // TDS deducted by us on vendor expenses (Liability - payable to Govt under TAN)
-  const tdsPayable = useMemo(() => validExpenses.reduce((s, e) => s + Number(e.tdsAmount ?? 0), 0), [validExpenses]);
+  const totalTdsDeductedOnExpenses = useMemo(
+    () => validExpenses.reduce((s, e) => s + Number(e.tdsAmount ?? 0), 0),
+    [validExpenses]
+  );
+
+  const fyTdsDeposits = useMemo(
+    () => allTdsDeposits.filter((d: any) => d.financialYear === fy),
+    [allTdsDeposits, fy]
+  );
+
+  const isExpenseTdsPaid = (e: any) => {
+    return e.tdsPaymentStatus === "PAID" || localPaidTdsExpenseIds.has(e.id) || fyTdsDeposits.some((d) => d.challanNumber === e.tdsChallanNumber);
+  };
+
+  const totalTdsDeposited = useMemo(() => {
+    const challanPaid = fyTdsDeposits.reduce((s, d) => s + Number(d.amountPaid || 0), 0);
+    const directPaid = validExpenses
+      .filter((e) => (e.tdsPaymentStatus === "PAID" || localPaidTdsExpenseIds.has(e.id)) && !fyTdsDeposits.some((d) => d.challanNumber === e.tdsChallanNumber))
+      .reduce((s, e) => s + Number(e.tdsAmount || 0), 0);
+    return challanPaid + directPaid;
+  }, [fyTdsDeposits, validExpenses, localPaidTdsExpenseIds]);
+
+  const outstandingTdsPayable = Math.max(0, totalTdsDeductedOnExpenses - totalTdsDeposited);
+  const tdsPaidViaBank = Math.min(totalTdsDeductedOnExpenses, totalTdsDeposited);
+  const tdsPayable = outstandingTdsPayable;
 
   const tdsPayableEntries = useMemo(
     () => validExpenses.filter((e) => Number(e.tdsAmount ?? 0) > 0),
@@ -632,15 +670,15 @@ export function FinancialReportsClient({
   const otherOpeningLiabilitiesTotal = useMemo(() => otherOpeningLiabilities.reduce((s, ob) => s + Number(ob.amount || 0), 0), [otherOpeningLiabilities]);
 
   // Closing Cash & Bank Balance:
-  // Opening Bank + Inflows from Customer Receipts - Outflows for Expense Disbursements - GST Paid via Bank Challan
-  const closingBankCashBalance = openingBankCash + actualCustomerCollections - actualExpenseDisbursements - gstChallanPaid;
+  // Opening Bank + Inflows from Customer Receipts - Outflows for Expense Disbursements - GST Paid via Bank Challan - TDS Paid via Bank Challan
+  const closingBankCashBalance = openingBankCash + actualCustomerCollections - actualExpenseDisbursements - gstChallanPaid - tdsPaidViaBank;
 
   // Shareholders' Funds: Capital + Reserves & Surplus (Net Profit for period)
   const reservesAndSurplus = pbt;
   const totalShareholdersEquity = openingCapital + reservesAndSurplus;
 
   // Total Liabilities:
-  const totalCurrentLiabilities = totalVendorPayables + totalEmployeePayables + effectiveGSTPayable + tdsPayable;
+  const totalCurrentLiabilities = totalVendorPayables + totalEmployeePayables + effectiveGSTPayable + outstandingTdsPayable;
   const totalEquityAndLiabilities = totalShareholdersEquity + otherOpeningLiabilitiesTotal + totalCurrentLiabilities;
 
   // Total Assets:
@@ -705,6 +743,69 @@ export function FinancialReportsClient({
         setAllFilings((prev) => prev.filter((f) => f.id !== id));
       } else {
         alert(res.error || "Failed to reopen GST filing");
+      }
+    });
+  };
+
+  // ── TDS DEPOSIT (CHALLAN ITNS 281) HANDLERS ──────────────────────────────
+  const handleRecordTdsDeposit = () => {
+    startTdsTransition(async () => {
+      const amountToPay = selectedExpenseForTds ? Number(selectedExpenseForTds.tdsAmount || 0) : outstandingTdsPayable;
+      const expenseIds = selectedExpenseForTds
+        ? [selectedExpenseForTds.id]
+        : validExpenses.filter((e) => Number(e.tdsAmount || 0) > 0 && !isExpenseTdsPaid(e)).map((e) => e.id);
+
+      const challan = tdsChallanNumber.trim() || `ITNS281/${tdsBsrCode}/${tdsChallanSerial}`;
+
+      const payload = {
+        financialYear: fy,
+        quarter: "Annual",
+        section: selectedExpenseForTds?.tdsSection || "194J",
+        challanNumber: challan,
+        bsrCode: tdsBsrCode,
+        challanSerial: tdsChallanSerial,
+        depositDate: tdsDepositDate,
+        amountPaid: amountToPay,
+        bankAccount: "Primary Bank Account",
+        notes: `TDS Challan ITNS 281 deposited for ${fy}. Paid via Bank.`,
+        expenseIds,
+      };
+
+      const res = await recordTdsDepositAction(payload);
+      if (res.success && res.data) {
+        setAllTdsDeposits((prev) => [res.data, ...prev]);
+        setLocalPaidTdsExpenseIds((prev) => {
+          const next = new Set(prev);
+          expenseIds.forEach((id) => next.add(id));
+          return next;
+        });
+        setIsTdsModalOpen(false);
+        setSelectedExpenseForTds(null);
+      } else {
+        alert(res.error || "Failed to record TDS deposit");
+      }
+    });
+  };
+
+  const handleOpenTdsModal = (exp?: any) => {
+    setSelectedExpenseForTds(exp || null);
+    const bsr = "0510001";
+    const serial = String(Math.floor(10000 + Math.random() * 90000));
+    setTdsBsrCode(bsr);
+    setTdsChallanSerial(serial);
+    setTdsChallanNumber(`ITNS281/${bsr}/${serial}`);
+    setTdsDepositDate(new Date().toISOString().split("T")[0]);
+    setIsTdsModalOpen(true);
+  };
+
+  const handleReopenTdsDeposit = (id: string) => {
+    if (!confirm("Are you sure you want to reopen this TDS deposit? The TDS liability will be restored on the Balance Sheet.")) return;
+    startTdsTransition(async () => {
+      const res = await deleteTdsDepositAction(id);
+      if (res.success) {
+        setAllTdsDeposits((prev) => prev.filter((d) => d.id !== id));
+      } else {
+        alert(res.error || "Failed to reopen TDS deposit");
       }
     });
   };
@@ -989,7 +1090,20 @@ export function FinancialReportsClient({
                       red={!isGstFiled && effectiveGSTPayable > 0}
                       green={isGstFiled}
                     />
-                    <Row label="TDS Payable (To be deposited)" amount={tdsPayable} indent note={tdsPayable > 0 ? "Form 26Q" : "Nil"} red={tdsPayable > 0} />
+                    <Row
+                      label="TDS Payable (To be deposited)"
+                      amount={outstandingTdsPayable}
+                      indent
+                      note={
+                        outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0
+                          ? "Nil — Deposited via Challan ITNS 281"
+                          : outstandingTdsPayable > 0
+                          ? "Form 26Q (Pending Deposit)"
+                          : "Nil"
+                      }
+                      red={outstandingTdsPayable > 0}
+                      green={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0}
+                    />
                   </div>
                   <div className="flex justify-between py-1.5 font-bold text-[#17211B] border-t border-[#D9E3DC] mt-1 pl-2">
                     <span>Total Current Liabilities</span>
@@ -1037,7 +1151,7 @@ export function FinancialReportsClient({
                     <Row
                       label="Cash &amp; Bank Balances"
                       amount={closingBankCashBalance}
-                      note={`(Opening: ${formatCurrency(openingBankCash)} + Rec: ${formatCurrency(actualCustomerCollections)} - Disb: ${formatCurrency(actualExpenseDisbursements)}${gstChallanPaid > 0 ? ` - GST Paid: ${formatCurrency(gstChallanPaid)}` : ""})`}
+                      note={`(Opening: ${formatCurrency(openingBankCash)} + Rec: ${formatCurrency(actualCustomerCollections)} - Disb: ${formatCurrency(actualExpenseDisbursements)}${gstChallanPaid > 0 ? ` - GST Paid: ${formatCurrency(gstChallanPaid)}` : ""}${tdsPaidViaBank > 0 ? ` - TDS Paid: ${formatCurrency(tdsPaidViaBank)}` : ""})`}
                       indent
                       green={closingBankCashBalance > 0}
                     />
@@ -1428,13 +1542,98 @@ export function FinancialReportsClient({
               <p className="text-[11px] text-[#68756C]">Section-wise TDS analysis under Income Tax Act 1961 | {fy}</p>
             </div>
 
+            {/* TDS Challan ITNS 281 Compliance & Deposit Banner */}
+            <div className={`border rounded-2xl p-5 shadow-2xs transition-all ${outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0 ? "bg-[#F0FDF4] border-[#BBF7D0]" : outstandingTdsPayable > 0 ? "bg-[#FFFBEB] border-[#FDE68A]" : "bg-[#F6FAF7] border-[#D9E3DC]"}`}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-black tracking-wide uppercase border ${
+                      outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0
+                        ? "bg-[#DCFCE7] text-[#166534] border-[#86EFAC]"
+                        : outstandingTdsPayable > 0
+                        ? "bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]"
+                        : "bg-gray-100 text-gray-700 border-gray-300"
+                    }`}>
+                      {outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0
+                        ? "✓ All TDS Liabilities Deposited (ITNS 281)"
+                        : outstandingTdsPayable > 0
+                        ? "⚠️ Form 26Q TDS Pending Deposit"
+                        : "No TDS Liabilities"}
+                    </span>
+                    <span className="text-xs font-bold text-[#68756C]">• {fy}</span>
+                  </div>
+                  <h4 className="text-base font-extrabold text-[#17211B] mt-1">
+                    {outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0
+                      ? `All Deductions Discharged via Challan ITNS 281 (Net Liability: ₹0.00)`
+                      : outstandingTdsPayable > 0
+                      ? `Statutory TDS Payable to Income Tax Dept: ${formatCurrency(outstandingTdsPayable)}`
+                      : `Zero Outstanding TDS Liability`}
+                  </h4>
+                  <p className="text-xs text-[#68756C]">
+                    {outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0
+                      ? `Total Deposited: ${formatCurrency(totalTdsDeposited)} via Bank Challan ITNS 281. Balance Sheet liability cleared to Nil.`
+                      : outstandingTdsPayable > 0
+                      ? "TDS deducted from vendors under Chapter XVII-B must be deposited via Challan ITNS 281 by the 7th of the following month."
+                      : "No vendor payments subject to tax deduction at source in this period."}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2.5 shrink-0">
+                  {outstandingTdsPayable > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenTdsModal()}
+                      className="px-4 py-2.5 text-xs font-extrabold rounded-xl bg-[#177B55] text-white hover:bg-[#126344] transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span>✓</span> Pay All Pending TDS (Challan ITNS 281)
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {fyTdsDeposits.length > 0 && (
+                <div className="mt-4 pt-3.5 border-t border-[#BBF7D0]/60 space-y-2">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-[#68756C] block">
+                    Recorded ITNS 281 Bank Challan Deposits ({fyTdsDeposits.length}):
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {fyTdsDeposits.map((dep: any) => (
+                      <div key={dep.id} className="bg-white/80 border border-[#BBF7D0] rounded-xl p-2.5 text-xs flex justify-between items-center">
+                        <div>
+                          <div className="font-mono font-bold text-[#177B55] text-[11px]">{dep.challanNumber}</div>
+                          <div className="text-[#68756C] text-[10px]">
+                            {fmtDate(dep.depositDate)} • BSR: {dep.bsrCode || "—"}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-black text-[#17211B]">{formatCurrency(dep.amountPaid)}</div>
+                          <button
+                            type="button"
+                            onClick={() => handleReopenTdsDeposit(dep.id)}
+                            className="text-[10px] text-red-600 hover:underline font-semibold cursor-pointer"
+                          >
+                            Reopen
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <KpiCard label="TDS Receivable (Asset)" value={formatCurrency(tdsReceivable)} sub="Tax deducted by customers (Form 16A/26AS)" color="text-[#386F9E]" />
-              <KpiCard label="TDS Payable (Liability)" value={formatCurrency(tdsPayable)} sub="Deducted on vendor expenses (Form 26Q)" color="text-[#B27A17]" />
+              <KpiCard
+                label={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0 ? "TDS Payable (Settled)" : "TDS Payable (Liability)"}
+                value={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0 ? "₹0.00 (Nil)" : formatCurrency(outstandingTdsPayable)}
+                sub={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0 ? "Deposited via Challan ITNS 281" : "Deducted on vendor expenses (Form 26Q)"}
+                color={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0 ? "text-[#177B55]" : outstandingTdsPayable > 0 ? "text-[#B94B4B]" : "text-[#177B55]"}
+              />
               <KpiCard
                 label="Net TDS Position"
-                value={tdsReceivable >= tdsPayable ? `${formatCurrency(tdsReceivable - tdsPayable)} Net Credit` : `${formatCurrency(tdsPayable - tdsReceivable)} Net Payable`}
-                color={tdsReceivable >= tdsPayable ? "text-[#177B55]" : "text-[#B94B4B]"}
+                value={tdsReceivable >= outstandingTdsPayable ? `${formatCurrency(tdsReceivable - outstandingTdsPayable)} Net Credit` : `${formatCurrency(outstandingTdsPayable - tdsReceivable)} Net Payable`}
+                color={tdsReceivable >= outstandingTdsPayable ? "text-[#177B55]" : "text-[#B94B4B]"}
               />
             </div>
 
@@ -1496,18 +1695,47 @@ export function FinancialReportsClient({
                       <span className="text-[#B27A17]">{formatCurrency(data.total)}</span>
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left min-w-[600px]">
-                        <TableHead cols={["Payee / Vendor", "PAN", "Expense No.", "Gross Amount", "TDS Deducted"]} />
+                      <table className="w-full text-left min-w-[700px]">
+                        <TableHead cols={["Payee / Vendor", "PAN", "Expense No.", "Gross Amount", "TDS Deducted", "Deposit Status", "Action"]} />
                         <tbody className="divide-y divide-[#E9EEE9]">
-                          {data.entries.map((exp: any) => (
-                            <tr key={exp.id} className="hover:bg-[#F9FAF8]">
-                              <td className="py-3 px-3 font-bold text-[#17211B]">{exp.vendor?.name || exp.notes || "Vendor"}</td>
-                              <td className="py-3 px-3 font-mono text-[#68756C]">{exp.vendor?.pan || "—"}</td>
-                              <td className="py-3 px-3 text-[#68756C]">{exp.expenseNumber || "—"}</td>
-                              <td className="py-3 px-3 text-right tabular-nums">{formatCurrency(Number(exp.grossAmount || exp.netAmount || 0))}</td>
-                              <td className="py-3 px-3 text-right tabular-nums font-bold text-[#B27A17]">{formatCurrency(Number(exp.tdsAmount || 0))}</td>
-                            </tr>
-                          ))}
+                          {data.entries.map((exp: any) => {
+                            const isPaid = isExpenseTdsPaid(exp);
+                            return (
+                              <tr key={exp.id} className="hover:bg-[#F9FAF8]">
+                                <td className="py-3 px-3 font-bold text-[#17211B]">{exp.vendor?.name || exp.notes || "Vendor"}</td>
+                                <td className="py-3 px-3 font-mono text-[#68756C]">{exp.vendor?.pan || "—"}</td>
+                                <td className="py-3 px-3 text-[#68756C]">{exp.expenseNumber || "—"}</td>
+                                <td className="py-3 px-3 text-right tabular-nums">{formatCurrency(Number(exp.grossAmount || exp.netAmount || 0))}</td>
+                                <td className="py-3 px-3 text-right tabular-nums font-bold text-[#B27A17]">{formatCurrency(Number(exp.tdsAmount || 0))}</td>
+                                <td className="py-3 px-3">
+                                  {isPaid ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#E5F3EC] text-[#0B5F46] border border-emerald-200">
+                                      <span>✓</span> PAID (ITNS 281)
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FFF3D8] text-[#B27A17] border border-amber-200">
+                                      <span>⚠️</span> PENDING
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-3 text-right">
+                                  {isPaid ? (
+                                    <span className="text-[10px] text-[#68756C] font-mono">
+                                      {exp.tdsChallanNumber || "Settled"}
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenTdsModal(exp)}
+                                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#177B55] text-white hover:bg-[#126344] transition-all shadow-2xs cursor-pointer"
+                                    >
+                                      Pay TDS
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -1956,6 +2184,147 @@ export function FinancialReportsClient({
                 className="px-5 py-2 text-xs font-extrabold rounded-xl bg-[#177B55] text-white hover:bg-[#126344] transition-all cursor-pointer shadow-sm disabled:opacity-50 flex items-center gap-1.5"
               >
                 {isFilingPending ? "Recording Filing..." : "✓ Confirm Filing & Pay from Bank"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* TDS Challan ITNS 281 Payment Modal */}
+      {isTdsModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#D9E3DC] space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex justify-between items-start border-b border-[#D9E3DC] pb-3">
+              <div>
+                <span className="text-[10px] font-bold text-[#177B55] uppercase tracking-widest block">
+                  INCOME TAX DEPT • CHALLAN ITNS 281
+                </span>
+                <h3 className="text-lg font-black text-[#17211B] mt-0.5">Deposit TDS &amp; Settle Statutory Liability</h3>
+                <p className="text-xs text-[#68756C] mt-0.5">
+                  Record official bank challan payment for vendor tax deducted at source under Chapter XVII-B.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsTdsModalOpen(false);
+                  setSelectedExpenseForTds(null);
+                }}
+                className="text-[#68756C] hover:text-[#17211B] text-xl font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              <div className="bg-[#F6FAF7] border border-[#D9E3DC] rounded-xl p-3.5 space-y-1.5">
+                <div className="flex justify-between text-[#68756C]">
+                  <span>Scope of Deposit:</span>
+                  <span className="font-bold text-[#17211B]">
+                    {selectedExpenseForTds
+                      ? `Expense: ${selectedExpenseForTds.expenseNumber || "Selected"} (${selectedExpenseForTds.vendor?.name || "Vendor"})`
+                      : `All Pending Form 26Q TDS Deductions (${fy})`}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[#68756C]">
+                  <span>Statutory Section:</span>
+                  <span className="font-bold text-[#17211B]">
+                    {selectedExpenseForTds?.tdsSection || "194J / 194C (Vendor TDS)"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm font-extrabold pt-2 border-t border-[#D9E3DC]">
+                  <span className="text-[#17211B]">Amount to Disburse from Bank:</span>
+                  <span className="text-[#177B55] tabular-nums">
+                    {formatCurrency(selectedExpenseForTds ? Number(selectedExpenseForTds.tdsAmount || 0) : outstandingTdsPayable)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#17211B] mb-1">
+                    Deposit Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={tdsDepositDate}
+                    onChange={(e) => setTdsDepositDate(e.target.value)}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#17211B] mb-1">
+                    7-Digit BSR Code <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={7}
+                    value={tdsBsrCode}
+                    onChange={(e) => setTdsBsrCode(e.target.value)}
+                    placeholder="e.g. 0510001"
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs font-mono bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#17211B] mb-1">
+                    5-Digit Challan Serial No. <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={5}
+                    value={tdsChallanSerial}
+                    onChange={(e) => setTdsChallanSerial(e.target.value)}
+                    placeholder="e.g. 00124"
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs font-mono bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#17211B] mb-1">
+                    Challan / CIN Reference
+                  </label>
+                  <input
+                    type="text"
+                    value={tdsChallanNumber}
+                    onChange={(e) => setTdsChallanNumber(e.target.value)}
+                    placeholder={`ITNS281/${tdsBsrCode}/${tdsChallanSerial}`}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs font-mono bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-[11px] text-emerald-800 space-y-1">
+                <p className="font-bold flex items-center gap-1.5">
+                  <span>ℹ️</span> Double-Entry Statutory Impact:
+                </p>
+                <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
+                  <li>Statutory <strong>TDS Payable</strong> liability on the Balance Sheet will decrease to <strong>₹0.00</strong>.</li>
+                  <li><strong>{formatCurrency(selectedExpenseForTds ? Number(selectedExpenseForTds.tdsAmount || 0) : outstandingTdsPayable)}</strong> will be deducted from Cash &amp; Bank balance as Challan ITNS 281 disbursement.</li>
+                  <li>The Balance Sheet will remain 100% in equilibrium (₹0.00 variance).</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-3 border-t border-[#D9E3DC]">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsTdsModalOpen(false);
+                  setSelectedExpenseForTds(null);
+                }}
+                disabled={isTdsPending}
+                className="px-4 py-2 text-xs font-semibold rounded-xl border border-[#D9E3DC] text-[#68756C] hover:bg-gray-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRecordTdsDeposit}
+                disabled={isTdsPending}
+                className="px-5 py-2 text-xs font-extrabold rounded-xl bg-[#177B55] text-white hover:bg-[#126344] transition-all cursor-pointer shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {isTdsPending ? "Recording Deposit..." : "✓ Confirm Deposit & Pay from Bank"}
               </button>
             </div>
           </div>
