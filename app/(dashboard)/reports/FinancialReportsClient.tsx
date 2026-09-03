@@ -1010,8 +1010,8 @@ export function FinancialReportsClient({
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 font-sans">
-      {/* Top Header & Toolbar */}
-      <div className="bg-white border border-[#E2E8E4] rounded-2xl p-5 shadow-2xs space-y-4">
+      {/* Top Header & Toolbar (Hidden when printing) */}
+      <div className="bg-white border border-[#E2E8E4] rounded-2xl p-5 shadow-2xs space-y-4 print:hidden">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-[#EEF2EF] pb-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#111827] tracking-tight">
@@ -1126,7 +1126,7 @@ export function FinancialReportsClient({
       </div>
 
       {/* Main Card */}
-      <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 md:p-8 space-y-6">
+      <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 md:p-8 space-y-6 print:p-0 print:border-none print:shadow-none">
         {/* ================================================================= */}
         {/* TAB 1: PROFIT & LOSS — Schedule III (Part II) */}
         {/* ================================================================= */}
@@ -1135,24 +1135,24 @@ export function FinancialReportsClient({
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-black text-[#111827]">Statement of Profit &amp; Loss</h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0]">
+                  <h3 className="text-xl font-extrabold text-[#111827]">Statement of Profit &amp; Loss</h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-[#F0FDF4] text-[#166534] border border-[#BBF7D0] print:hidden">
                     Schedule III • Part II
                   </span>
                 </div>
-                <p className="text-xs text-[#6B7280] mt-0.5">
+                <p className="text-xs sm:text-sm text-[#475569] font-medium mt-1">
                   Statement of Comprehensive Income for the financial year ended 31st March ({fy}).
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 print:hidden">
                 <span className="text-[11px] font-bold text-[#4B5750] bg-[#F8FAF8] border border-[#DCE4DE] px-3 py-1.5 rounded-xl">
                   Reporting Currency: INR (₹) • Accrual Basis
                 </span>
               </div>
             </div>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* KPI Cards (Hidden when printing) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:hidden">
               <KpiCard label="Revenue from Operations" value={formatCurrency(totalRevenue)} color="text-[#166534]" sub={`${validInvoices.length} Invoices Billed`} icon="📈" />
               <KpiCard label="Operating Expenses" value={formatCurrency(totalOperatingExpenses)} color="text-[#B45309]" sub={`${validExpenses.length} Expense Disbursements`} icon="💳" />
               <KpiCard
