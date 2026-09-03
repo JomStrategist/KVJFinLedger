@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 
 export function BankTransfersClient({
   initialTransfers = [],
+  bankAccounts = [],
 }: {
   initialTransfers: any[];
+  bankAccounts?: any[];
 }) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -115,6 +117,7 @@ export function BankTransfersClient({
       {isModalOpen && (
         <BankTransferModal
           transfer={selectedTransfer}
+          bankAccounts={bankAccounts}
           onClose={() => setIsModalOpen(false)}
           onSuccess={() => router.refresh()}
         />

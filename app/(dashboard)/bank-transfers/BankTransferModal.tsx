@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import { createBankTransferAction, updateBankTransferAction } from "./actions";
 
 export function BankTransferModal({
   transfer,
+  bankAccounts = [],
   onClose,
   onSuccess,
 }: {
   transfer?: any;
+  bankAccounts?: any[];
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -17,16 +19,63 @@ export function BankTransferModal({
 
   const isEdit = Boolean(transfer?.id);
 
+  // Dynamic account list from Bank Accounts Master (Settings) + Cash in Hand
+  const accountOptions = useMemo(() => {
+    const list: string[] = [];
+
+    if (bankAccounts && bankAccounts.length > 0) {
+      bankAccounts
+        .filter((acc) => acc.isActive !== false)
+        .forEach((acc) => {
+          const formatted = acc.bankName
+            ? `${acc.bankName} (${acc.accountName || acc.accountNumber || "Current"})`
+            : acc.accountName || acc.accountNumber || "Bank Account";
+          if (!list.includes(formatted)) {
+            list.push(formatted);
+          }
+        });
+    }
+
+    // Default fallback if no active bank accounts found in Master
+    if (list.length === 0) {
+      list.push("Federal Bank (KVJ Analytics)");
+    }
+
+    // Always include Cash in Hand
+    if (!list.includes("Cash in Hand")) {
+      list.push("Cash in Hand");
+    }
+
+    return list;
+  }, [bankAccounts]);
+
   const [date, setDate] = useState(
     transfer?.date
       ? new Date(transfer.date).toISOString().split("T")[0]
-      : "2026-08-31"
+      : new Date().toISOString().split("T")[0]
   );
-  const [fromAccount, setFromAccount] = useState(transfer?.fromAccount || "HDFC Current");
-  const [toAccount, setToAccount] = useState(transfer?.toAccount || "ICICI Current");
+  const [fromAccount, setFromAccount] = useState(
+    transfer?.fromAccount && accountOptions.includes(transfer.fromAccount)
+      ? transfer.fromAccount
+      : accountOptions[0] || "Federal Bank (KVJ Analytics)"
+  );
+  const [toAccount, setToAccount] = useState(
+    transfer?.toAccount && accountOptions.includes(transfer.toAccount)
+      ? transfer.toAccount
+      : accountOptions[1] || accountOptions[0] || "Cash in Hand"
+  );
   const [amount, setAmount] = useState<string>(transfer?.amount ? String(transfer.amount) : "50000");
   const [reference, setReference] = useState(transfer?.reference || "");
   const [description, setDescription] = useState(transfer?.description || "");
+
+  useEffect(() => {
+    if (!transfer?.fromAccount && accountOptions.length > 0 && !accountOptions.includes(fromAccount)) {
+      setFromAccount(accountOptions[0]);
+    }
+    if (!transfer?.toAccount && accountOptions.length > 0 && !accountOptions.includes(toAccount)) {
+      setToAccount(accountOptions[1] || accountOptions[0]);
+    }
+  }, [accountOptions, transfer]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,11 +155,11 @@ export function BankTransferModal({
                 onChange={(e) => setFromAccount(e.target.value)}
                 className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
               >
-                <option value="HDFC Current">HDFC Current</option>
-                <option value="ICICI Current">ICICI Current</option>
-                <option value="SBI Current">SBI Current</option>
-                <option value="Axis Current">Axis Current</option>
-                <option value="Cash in Hand">Cash in Hand</option>
+                {accountOptions.map((opt) => (
+                  <option key={`from-${opt}`} value={opt}>
+                    {opt}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -123,11 +172,11 @@ export function BankTransferModal({
                 onChange={(e) => setToAccount(e.target.value)}
                 className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
               >
-                <option value="ICICI Current">ICICI Current</option>
-                <option value="HDFC Current">HDFC Current</option>
-                <option value="SBI Current">SBI Current</option>
-                <option value="Axis Current">Axis Current</option>
-                <option value="Cash in Hand">Cash in Hand</option>
+                {accountOptions.map((opt) => (
+                  <option key={`to-${opt}`} value={opt}>
+                    {opt}
+                  </option>
+                ))}
               </select>
             </div>
 
