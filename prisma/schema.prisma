@@ -625,3 +625,29 @@ model OpeningBalance {
 
   @@unique([financialYear, position])
 }
+
+model GstFiling {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  financialYear   String
+  returnType      String    @default("GSTR-3B") // GSTR-3B, GSTR-1, GSTR-9
+  period          String?   @default("Annual")
+  filingDate      DateTime  @default(now())
+  arn             String?   // Application Reference Number (e.g. AA3204260012345)
+  challanNumber   String?   // CPIN / CIN / Bank Challan Reference
+
+  taxableTurnover Float     @default(0)
+  totalOutputGST  Float     @default(0)
+  totalITC        Float     @default(0)
+  netTaxPaid      Float     @default(0)
+
+  status          String    @default("FILED") // FILED, PENDING
+  paymentMode     String    @default("BANK")
+  bankAccount     String?
+  notes           String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([financialYear, returnType])
+}
+

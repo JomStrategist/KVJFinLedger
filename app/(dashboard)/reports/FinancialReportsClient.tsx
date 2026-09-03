@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { formatCurrency } from "@/lib/utils/currency";
+import { recordGstFilingAction, deleteGstFilingAction } from "./gst-actions";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY HELPERS & INDIAN TAX LAWS CONSTANTS
@@ -191,14 +192,24 @@ export function FinancialReportsClient({
   invoices = [],
   expenses = [],
   openingBalances = [],
+  gstFilings = [],
 }: {
   invoices?: any[];
   expenses?: any[];
   openingBalances?: any[];
+  gstFilings?: any[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("pnl");
   const [fy, setFy] = useState("FY 2026–27");
   const [depMethod, setDepMethod] = useState<"WDV" | "SLM">("WDV");
+
+  // GST Filing State
+  const [allFilings, setAllFilings] = useState<any[]>(gstFilings);
+  const [isFilingModalOpen, setIsFilingModalOpen] = useState(false);
+  const [filingDate, setFilingDate] = useState(new Date().toISOString().split("T")[0]);
+  const [filingArn, setFilingArn] = useState("");
+  const [filingChallan, setFilingChallan] = useState("");
+  const [isFilingPending, startFilingTransition] = useTransition();
 
   // Filter range by financial year
   const { start: fyStart, end: fyEnd } = useMemo(() => getFyDateRange(fy), [fy]);
@@ -394,6 +405,15 @@ export function FinancialReportsClient({
   const netIGST = Math.max(0, outputIGST - inputIGST);
   const netGSTPayable = netCGST + netSGST + netIGST;
   const excessITC = Math.max(0, totalInputGST - totalOutputGST);
+
+  // ── GST FILING STATUS & SETTLEMENT ─────────────────────────────────────────
+  const currentGstFiling = useMemo(
+    () => allFilings.find((f: any) => f.financialYear === fy && f.returnType === "GSTR-3B" && f.status === "FILED"),
+    [allFilings, fy]
+  );
+  const isGstFiled = Boolean(currentGstFiling);
+  const gstChallanPaid = isGstFiled ? Number(currentGstFiling?.netTaxPaid ?? netGSTPayable) : 0;
+  const effectiveGSTPayable = isGstFiled ? Math.max(0, netGSTPayable - gstChallanPaid) : netGSTPayable;
 
   // Dynamic Tax Slab Matrix (automatically derives all rates applied in this FY)
   const dynamicTaxSlabs = useMemo(() => {
@@ -612,15 +632,15 @@ export function FinancialReportsClient({
   const otherOpeningLiabilitiesTotal = useMemo(() => otherOpeningLiabilities.reduce((s, ob) => s + Number(ob.amount || 0), 0), [otherOpeningLiabilities]);
 
   // Closing Cash & Bank Balance:
-  // Opening Bank + Inflows from Customer Receipts - Outflows for Expense Disbursements
-  const closingBankCashBalance = openingBankCash + actualCustomerCollections - actualExpenseDisbursements;
+  // Opening Bank + Inflows from Customer Receipts - Outflows for Expense Disbursements - GST Paid via Bank Challan
+  const closingBankCashBalance = openingBankCash + actualCustomerCollections - actualExpenseDisbursements - gstChallanPaid;
 
   // Shareholders' Funds: Capital + Reserves & Surplus (Net Profit for period)
   const reservesAndSurplus = pbt;
   const totalShareholdersEquity = openingCapital + reservesAndSurplus;
 
   // Total Liabilities:
-  const totalCurrentLiabilities = totalVendorPayables + totalEmployeePayables + netGSTPayable + tdsPayable;
+  const totalCurrentLiabilities = totalVendorPayables + totalEmployeePayables + effectiveGSTPayable + tdsPayable;
   const totalEquityAndLiabilities = totalShareholdersEquity + otherOpeningLiabilitiesTotal + totalCurrentLiabilities;
 
   // Total Assets:
@@ -644,6 +664,50 @@ export function FinancialReportsClient({
   const cfFromInvesting = -totalCapex;
   const cfFromFinancing = openingCapital - totalFinanceExp;
   const netCashMovement = cfFromOperating + cfFromInvesting + cfFromFinancing;
+
+  // ── GST FILING HANDLERS ──────────────────────────────────────────────────
+  const handleMarkGstFiled = () => {
+    startFilingTransition(async () => {
+      const payload = {
+        financialYear: fy,
+        returnType: "GSTR-3B",
+        period: "Annual",
+        filingDate,
+        arn: filingArn.trim() || `AA${fy.replace(/[^0-9]/g, "").slice(0, 4)}0${Math.floor(10000000 + Math.random() * 90000000)}`,
+        challanNumber: filingChallan.trim() || `CIN/HDFC/${Date.now().toString().slice(-8)}`,
+        taxableTurnover: totalRevenue,
+        totalOutputGST,
+        totalITC: totalInputGST,
+        netTaxPaid: netGSTPayable,
+        status: "FILED",
+        paymentMode: "BANK",
+        notes: `GSTR-3B filed for ${fy} and net tax ${formatCurrency(netGSTPayable)} settled via Bank Challan.`,
+      };
+
+      const res = await recordGstFilingAction(payload);
+      if (res.success && res.data) {
+        setAllFilings((prev) => {
+          const filtered = prev.filter((f) => !(f.financialYear === fy && f.returnType === "GSTR-3B"));
+          return [...filtered, res.data];
+        });
+        setIsFilingModalOpen(false);
+      } else {
+        alert(res.error || "Failed to mark GST as filed");
+      }
+    });
+  };
+
+  const handleReopenGstFiling = (id: string) => {
+    if (!confirm("Are you sure you want to mark GSTR-3B as unfiled? The GST liability will be restored on the Balance Sheet.")) return;
+    startFilingTransition(async () => {
+      const res = await deleteGstFilingAction(id);
+      if (res.success) {
+        setAllFilings((prev) => prev.filter((f) => f.id !== id));
+      } else {
+        alert(res.error || "Failed to reopen GST filing");
+      }
+    });
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -917,7 +981,14 @@ export function FinancialReportsClient({
                   <div className="divide-y divide-[#F0F4F1] pl-2">
                     <Row label="Trade Payables (Sundry Creditors)" amount={totalVendorPayables} indent note="Nil — Settled via Bank on Purchase" />
                     <Row label="Employee Payables (Reimbursements)" amount={totalEmployeePayables} indent note="Nil — Settled via Bank on Purchase" />
-                    <Row label="Statutory GST Payable (Net of ITC)" amount={netGSTPayable} indent note={netGSTPayable > 0 ? "Payable" : "Covered by ITC"} red={netGSTPayable > 0} />
+                    <Row
+                      label="Statutory GST Payable (Net of ITC)"
+                      amount={effectiveGSTPayable}
+                      indent
+                      note={isGstFiled ? `Nil — GSTR-3B Filed & Paid (${currentGstFiling?.arn || "Challan Paid"})` : effectiveGSTPayable > 0 ? "Pending Return Filing" : "Covered by ITC"}
+                      red={!isGstFiled && effectiveGSTPayable > 0}
+                      green={isGstFiled}
+                    />
                     <Row label="TDS Payable (To be deposited)" amount={tdsPayable} indent note={tdsPayable > 0 ? "Form 26Q" : "Nil"} red={tdsPayable > 0} />
                   </div>
                   <div className="flex justify-between py-1.5 font-bold text-[#17211B] border-t border-[#D9E3DC] mt-1 pl-2">
@@ -966,7 +1037,7 @@ export function FinancialReportsClient({
                     <Row
                       label="Cash &amp; Bank Balances"
                       amount={closingBankCashBalance}
-                      note={`(Opening: ${formatCurrency(openingBankCash)} + Rec: ${formatCurrency(actualCustomerCollections)} - Disb: ${formatCurrency(actualExpenseDisbursements)})`}
+                      note={`(Opening: ${formatCurrency(openingBankCash)} + Rec: ${formatCurrency(actualCustomerCollections)} - Disb: ${formatCurrency(actualExpenseDisbursements)}${gstChallanPaid > 0 ? ` - GST Paid: ${formatCurrency(gstChallanPaid)}` : ""})`}
                       indent
                       green={closingBankCashBalance > 0}
                     />
@@ -1154,15 +1225,85 @@ export function FinancialReportsClient({
               </span>
             </div>
 
+            {/* GSTR-3B Statutory Filing & Settlement Compliance Panel */}
+            <div className={`border rounded-2xl p-5 shadow-2xs transition-all ${isGstFiled ? "bg-[#F0FDF4] border-[#BBF7D0]" : "bg-[#FFFBEB] border-[#FDE68A]"}`}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-black tracking-wide uppercase border ${isGstFiled ? "bg-[#DCFCE7] text-[#166534] border-[#86EFAC]" : "bg-[#FEF3C7] text-[#92400E] border-[#FCD34D]"}`}>
+                      {isGstFiled ? "✓ GSTR-3B Return Filed & Settled" : "⚠️ GSTR-3B Return Pending Filing"}
+                    </span>
+                    <span className="text-xs font-bold text-[#68756C]">• {fy}</span>
+                  </div>
+                  <h4 className="text-base font-extrabold text-[#17211B] mt-1">
+                    {isGstFiled
+                      ? `Statutory Tax Discharged via Electronic Cash Ledger`
+                      : `Net Output GST Liability to be Paid: ${formatCurrency(netGSTPayable)}`}
+                  </h4>
+                  <p className="text-xs text-[#68756C]">
+                    {isGstFiled
+                      ? `Filed on ${fmtDate(currentGstFiling?.filingDate)} | ARN: ${currentGstFiling?.arn || "N/A"} | Challan: ${currentGstFiling?.challanNumber || "Bank Settlement"}`
+                      : "Output liability after Section 49(5) ITC set-off must be deposited via PMT-06 challan and filed in Form GSTR-3B."}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2.5 shrink-0">
+                  {isGstFiled ? (
+                    <button
+                      type="button"
+                      onClick={() => handleReopenGstFiling(currentGstFiling.id)}
+                      disabled={isFilingPending}
+                      className="px-3.5 py-2 text-xs font-bold rounded-xl border border-[#D9E3DC] bg-white text-[#B94B4B] hover:bg-red-50 hover:border-red-200 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                    >
+                      {isFilingPending ? "Reopening..." : "Reopen / Unfile"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilingArn(`AA${fy.replace(/[^0-9]/g, "").slice(0, 4)}0${Math.floor(10000000 + Math.random() * 90000000)}`);
+                        setFilingChallan(`CIN/GST/${Date.now().toString().slice(-8)}`);
+                        setIsFilingModalOpen(true);
+                      }}
+                      className="px-4 py-2.5 text-xs font-extrabold rounded-xl bg-[#177B55] text-white hover:bg-[#126344] transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span>✓</span> Mark GSTR-3B as Filed &amp; Paid
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isGstFiled && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-3.5 border-t border-[#BBF7D0]/60 text-xs">
+                  <div>
+                    <span className="text-[#68756C] block text-[10px] uppercase font-bold tracking-wider">Filing Date</span>
+                    <span className="font-extrabold text-[#17211B]">{fmtDate(currentGstFiling?.filingDate)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#68756C] block text-[10px] uppercase font-bold tracking-wider">Ack Ref / ARN</span>
+                    <span className="font-mono font-bold text-[#177B55]">{currentGstFiling?.arn}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#68756C] block text-[10px] uppercase font-bold tracking-wider">Challan / Ref</span>
+                    <span className="font-mono font-medium text-[#17211B]">{currentGstFiling?.challanNumber || "Net Banking"}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#68756C] block text-[10px] uppercase font-bold tracking-wider">Challan Paid from Bank</span>
+                    <span className="font-extrabold text-[#177B55] tabular-nums">{formatCurrency(gstChallanPaid)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* KPI Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <KpiCard label="Output GST (Sales)" value={formatCurrency(totalOutputGST)} color="text-[#B27A17]" sub={`${validInvoices.length} invoices`} />
               <KpiCard label="Input Tax Credit (ITC)" value={formatCurrency(totalInputGST)} color="text-[#177B55]" sub={`${validExpenses.length} purchases`} />
               <KpiCard
-                label="Net GST Payable"
-                value={formatCurrency(netGSTPayable)}
-                color={netGSTPayable > 0 ? "text-[#B94B4B]" : "text-[#177B55]"}
-                sub={netGSTPayable <= 0 ? "Credit balance" : "Payable via Electronic Cash Ledger"}
+                label={isGstFiled ? "Net GST (Discharged)" : "Net GST Payable"}
+                value={isGstFiled ? "₹0.00 (Settled)" : formatCurrency(netGSTPayable)}
+                color={isGstFiled ? "text-[#177B55]" : netGSTPayable > 0 ? "text-[#B94B4B]" : "text-[#177B55]"}
+                sub={isGstFiled ? "Discharged via Bank Challan" : netGSTPayable <= 0 ? "Credit balance" : "Payable via Electronic Cash Ledger"}
               />
               <KpiCard label="B2B / B2C Turnover" value={pct(b2bTaxable, totalRevenue)} sub={`B2C: ${pct(b2cTaxable, totalRevenue)}`} />
             </div>
@@ -1706,6 +1847,120 @@ export function FinancialReportsClient({
           </div>
         )}
       </div>
+      {/* GSTR-3B Filing Modal */}
+      {isFilingModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-[#D9E3DC] space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex justify-between items-start border-b border-[#D9E3DC] pb-3">
+              <div>
+                <span className="text-[10px] font-bold text-[#177B55] uppercase tracking-widest block">
+                  STATUTORY COMPLIANCE • FORM GSTR-3B
+                </span>
+                <h3 className="text-lg font-black text-[#17211B] mt-0.5">Mark GST Return as Filed &amp; Paid</h3>
+                <p className="text-xs text-[#68756C] mt-0.5">
+                  Record official filing acknowledgment and disburse net tax payment from Bank.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFilingModalOpen(false)}
+                className="text-[#68756C] hover:text-[#17211B] text-xl font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              <div className="bg-[#F6FAF7] border border-[#D9E3DC] rounded-xl p-3.5 space-y-1.5">
+                <div className="flex justify-between text-[#68756C]">
+                  <span>Financial Year:</span>
+                  <span className="font-bold text-[#17211B]">{fy}</span>
+                </div>
+                <div className="flex justify-between text-[#68756C]">
+                  <span>Total Output GST:</span>
+                  <span className="font-bold text-[#17211B]">{formatCurrency(totalOutputGST)}</span>
+                </div>
+                <div className="flex justify-between text-[#68756C]">
+                  <span>Input Tax Credit (ITC Set-off):</span>
+                  <span className="font-bold text-[#177B55]">({formatCurrency(totalInputGST)})</span>
+                </div>
+                <div className="flex justify-between text-sm font-extrabold pt-2 border-t border-[#D9E3DC]">
+                  <span className="text-[#17211B]">Net Tax to Pay from Bank:</span>
+                  <span className="text-[#177B55] tabular-nums">{formatCurrency(netGSTPayable)}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#17211B] mb-1">
+                  Filing Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={filingDate}
+                  onChange={(e) => setFilingDate(e.target.value)}
+                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#17211B] mb-1">
+                  ARN (Application Reference Number) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={filingArn}
+                  onChange={(e) => setFilingArn(e.target.value)}
+                  placeholder="e.g. AA3204260012345"
+                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs font-mono bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#17211B] mb-1">
+                  Challan / Payment Reference (CIN / CPIN)
+                </label>
+                <input
+                  type="text"
+                  value={filingChallan}
+                  onChange={(e) => setFilingChallan(e.target.value)}
+                  placeholder="e.g. CIN/HDFC/2026/001"
+                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs font-mono bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-[11px] text-emerald-800 space-y-1">
+                <p className="font-bold flex items-center gap-1.5">
+                  <span>ℹ️</span> Double-Entry Statutory Impact:
+                </p>
+                <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
+                  <li>Statutory GST Payable on the Balance Sheet will be cleared to <strong>₹0.00</strong>.</li>
+                  <li><strong>{formatCurrency(netGSTPayable)}</strong> will be deducted from Cash &amp; Bank balance as GST challan disbursement.</li>
+                  <li>The Balance Sheet will remain 100% in equilibrium (₹0.00 variance).</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-3 border-t border-[#D9E3DC]">
+              <button
+                type="button"
+                onClick={() => setIsFilingModalOpen(false)}
+                disabled={isFilingPending}
+                className="px-4 py-2 text-xs font-semibold rounded-xl border border-[#D9E3DC] text-[#68756C] hover:bg-gray-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleMarkGstFiled}
+                disabled={isFilingPending}
+                className="px-5 py-2 text-xs font-extrabold rounded-xl bg-[#177B55] text-white hover:bg-[#126344] transition-all cursor-pointer shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {isFilingPending ? "Recording Filing..." : "✓ Confirm Filing & Pay from Bank"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
