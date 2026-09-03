@@ -6,7 +6,7 @@ import { authConfig } from "./auth.config";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "ATG7kBWRrKlZnzMiJ8wYXjFt5O2eQc3p",
   providers: [
     Credentials({
       credentials: {
