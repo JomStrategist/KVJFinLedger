@@ -334,23 +334,30 @@ function KpiCard({
   icon?: string;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-2xs hover:shadow-md transition-all relative overflow-hidden group">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-          {label}
-        </span>
-        {icon && <span className="text-lg opacity-75 group-hover:scale-110 transition-transform">{icon}</span>}
-      </div>
-      <div className={`text-2xl font-extrabold tracking-tight mt-2 tabular-nums font-sans ${color || "text-slate-900"}`}>
-        {value}
+    <div className="bg-white border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 shadow-2xs hover:shadow-md transition-all relative overflow-hidden group flex flex-col justify-between min-w-0">
+      <div>
+        <div className="flex items-center justify-between gap-1.5 min-w-0">
+          <span className="text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider block truncate min-w-0">
+            {label}
+          </span>
+          {icon && <span className="text-base sm:text-lg opacity-75 group-hover:scale-110 transition-transform shrink-0">{icon}</span>}
+        </div>
+        <div
+          className={`text-lg sm:text-xl xl:text-2xl font-extrabold tracking-tight mt-1.5 tabular-nums font-sans truncate ${
+            color || "text-slate-900"
+          }`}
+          title={value}
+        >
+          {value}
+        </div>
       </div>
       {sub && (
-        <div className="text-xs text-slate-500 font-semibold mt-1 flex items-center gap-1.5">
+        <div className="text-[11px] sm:text-xs text-slate-500 font-medium mt-1.5 truncate">
           {sub}
         </div>
       )}
       {badge && (
-        <span className="mt-2.5 inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+        <span className="mt-2 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0">
           {badge}
         </span>
       )}
