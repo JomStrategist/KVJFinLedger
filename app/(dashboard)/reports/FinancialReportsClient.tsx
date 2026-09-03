@@ -281,17 +281,24 @@ function GrandTotalRow({
   amount: number;
   highlight?: "emerald" | "slate" | "amber";
 }) {
-  const bg =
+  const containerStyle =
     highlight === "emerald"
-      ? "bg-emerald-50/90 border-t-2 border-b-4 border-double border-emerald-700 text-emerald-900"
+      ? "bg-emerald-50/90 border border-emerald-300/80 text-emerald-950 shadow-2xs"
       : highlight === "amber"
-      ? "bg-amber-50/90 border-t-2 border-b-4 border-double border-amber-700 text-amber-900"
-      : "bg-slate-50 border-t-2 border-b-4 border-double border-slate-800 text-slate-900";
+      ? "bg-amber-50/90 border border-amber-300/80 text-amber-950 shadow-2xs"
+      : "bg-slate-100/90 border border-slate-300/80 text-slate-900 shadow-2xs";
+
+  const numberStyle =
+    highlight === "emerald"
+      ? "border-emerald-700 text-emerald-800"
+      : highlight === "amber"
+      ? "border-amber-700 text-amber-800"
+      : "border-slate-800 text-slate-900";
 
   return (
-    <div className={`py-3.5 px-4.5 flex justify-between items-center text-sm font-extrabold rounded-xl ${bg} shadow-xs my-2.5`}>
-      <span className="tracking-wider uppercase text-xs sm:text-sm font-extrabold">{label}</span>
-      <span className="tabular-nums font-mono text-base sm:text-lg font-bold">
+    <div className={`py-3.5 px-4 sm:px-5 flex justify-between items-center text-xs sm:text-sm font-extrabold rounded-xl ${containerStyle} my-2.5`}>
+      <span className="tracking-wider uppercase font-extrabold pr-2">{label}</span>
+      <span className={`tabular-nums font-mono text-sm sm:text-base font-extrabold border-b-2 border-t border-slate-300/60 pt-0.5 pb-0.5 ${numberStyle}`}>
         {amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)}
       </span>
     </div>
