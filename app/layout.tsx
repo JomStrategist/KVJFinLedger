@@ -16,8 +16,16 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KVJ Analytics - Financial Management System",
-  description: "Financial Management System for Indian IT Services and Training Businesses",
+  title: "FinLedger — Financial Management ERP",
+  description: "Comprehensive Financial Management System for Business Accounting, Invoicing, Tax & Financial Reporting",
+  icons: {
+    icon: [
+      { url: "/finledger-icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" },
+    ],
+    shortcut: "/finledger-icon.svg",
+    apple: "/finledger-icon.svg",
+  },
 };
 
 export default function RootLayout({
