@@ -33,6 +33,7 @@ export interface AppSettings {
   currentFinancialYear: string;
   financialYearStartMonth: string;
   financialYearEndMonth: string;
+  incomeTaxRates: Record<string, number>;
 
   // 5. BUSINESS PREFERENCES
   defaultCountry: string;
@@ -78,6 +79,11 @@ export const defaultSettings: AppSettings = {
   currentFinancialYear: 'FY 2025-26',
   financialYearStartMonth: 'April',
   financialYearEndMonth: 'March',
+  incomeTaxRates: {
+    'FY 2026–27': 25,
+    'FY 2025–26': 25,
+    'FY 2024–25': 25,
+  },
 
   defaultCountry: 'India',
   defaultState: '',

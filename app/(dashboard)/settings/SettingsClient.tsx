@@ -270,6 +270,54 @@ export function SettingsClient() {
                 />
               </div>
             </div>
+
+            {/* Income Tax Rate % Master per Financial Year */}
+            <div className="pt-4 border-t border-[#D9E3DC] space-y-3">
+              <div>
+                <h4 className="text-sm font-extrabold text-[#17211B]">Financial Year Income Tax Rates (Corporate Tax Master)</h4>
+                <p className="text-xs text-[#68756C] mt-0.5">
+                  Set the applicable Income Tax rate (%) for each financial year to compute P&amp;L Tax Expense &amp; Net Profit After Tax (PAT).
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[#F8FAF8] p-4 rounded-xl border border-[#E2E8E4]">
+                {["FY 2026–27", "FY 2025–26", "FY 2024–25"].map((fyKey) => {
+                  const currentRates = currentValues.incomeTaxRates || {
+                    "FY 2026–27": 25,
+                    "FY 2025–26": 25,
+                    "FY 2024–25": 25,
+                  };
+                  const rateVal = currentRates[fyKey] ?? 25;
+                  return (
+                    <div key={fyKey}>
+                      <label className="block text-xs font-bold text-[#374151] mb-1.5">
+                        {fyKey} Tax Rate (%)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          value={rateVal}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            const updatedRates = { ...currentRates, [fyKey]: val };
+                            setFormValues((prev) => ({
+                              ...prev,
+                              incomeTaxRates: updatedRates,
+                            }));
+                            setMessage(null);
+                          }}
+                          className="w-full h-[40px] border border-[#D9E3DC] rounded-xl pl-3.5 pr-8 text-xs bg-white font-mono font-bold text-[#166534] focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                        />
+                        <span className="absolute right-3 top-2.5 text-xs font-black text-slate-400">%</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 

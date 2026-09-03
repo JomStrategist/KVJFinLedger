@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useTransition } from "react";
 import { formatCurrency } from "@/lib/utils/currency";
+import { useSettings } from "@/hooks/useSettings";
 import { recordGstFilingAction, deleteGstFilingAction } from "./gst-actions";
 import { recordTdsDepositAction, markExpenseTdsPaidAction, deleteTdsDepositAction } from "./tds-actions";
 
@@ -409,10 +410,19 @@ export function FinancialReportsClient({
   gstFilings?: any[];
   tdsDeposits?: any[];
 }) {
+  const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState<Tab>("pnl");
   const [fy, setFy] = useState("FY 2026–27");
   const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null);
   const [depMethod, setDepMethod] = useState<"WDV" | "SLM">("WDV");
+
+  // Income Tax Rate (%) per Financial Year
+  const [overrideTaxRates, setOverrideTaxRates] = useState<Record<string, number>>({});
+
+  const effectiveTaxRate = useMemo(() => {
+    if (overrideTaxRates[fy] !== undefined) return overrideTaxRates[fy];
+    return settings?.incomeTaxRates?.[fy] ?? 25;
+  }, [overrideTaxRates, settings?.incomeTaxRates, fy]);
 
   // GST Filing State
   const [allFilings, setAllFilings] = useState<any[]>(gstFilings);
@@ -596,8 +606,10 @@ export function FinancialReportsClient({
   // ── 5. P&L SUMMARY (Schedule III Part II) ─────────────────────────────────
   const totalOperatingExpenses = totalEmployeeExp + totalFinanceExp + totalCurrentYearDep + totalOtherOpex;
   const pbt = totalRevenue - totalOperatingExpenses;
+  const taxExpense = pbt > 0 ? Math.round(pbt * (effectiveTaxRate / 100) * 100) / 100 : 0;
+  const pat = pbt - taxExpense;
   const grossMargin = totalRevenue > 0 ? ((totalRevenue - totalOtherOpex) / totalRevenue) * 100 : 0;
-  const netMargin = totalRevenue > 0 ? (pbt / totalRevenue) * 100 : 0;
+  const netMargin = totalRevenue > 0 ? (pat / totalRevenue) * 100 : 0;
 
   // ── 6. DYNAMIC TAX SLABS & STATUTORY GST COMPUTATION ───────────────────────
   const outputCGST = useMemo(() => validInvoices.reduce((s, inv) => s + Number(inv.totalCGST ?? 0), 0), [validInvoices]);
@@ -881,12 +893,13 @@ export function FinancialReportsClient({
   // Opening Bank + Inflows from Customer Receipts - Outflows for Expense Disbursements - GST Paid via Bank Challan - TDS Paid via Bank Challan
   const closingBankCashBalance = openingBankCash + actualCustomerCollections - actualExpenseDisbursements - gstChallanPaid - tdsPaidViaBank;
 
-  // Shareholders' Funds: Capital + Reserves & Surplus (Net Profit for period)
-  const reservesAndSurplus = pbt;
+  // Shareholders' Funds: Capital + Reserves & Surplus (Net Profit After Tax for period)
+  const reservesAndSurplus = pat;
   const totalShareholdersEquity = openingCapital + reservesAndSurplus;
 
-  // Total Liabilities:
-  const totalCurrentLiabilities = totalVendorPayables + totalEmployeePayables + effectiveGSTPayable + outstandingTdsPayable;
+  // Total Current Liabilities: Vendors + Employees + GST + TDS + Income Tax Provision
+  const incomeTaxProvision = taxExpense;
+  const totalCurrentLiabilities = totalVendorPayables + totalEmployeePayables + effectiveGSTPayable + outstandingTdsPayable + incomeTaxProvision;
   const totalEquityAndLiabilities = totalShareholdersEquity + otherOpeningLiabilitiesTotal + totalCurrentLiabilities;
 
   // Total Assets:
@@ -1055,8 +1068,8 @@ export function FinancialReportsClient({
       rows.push(["Total Operating Expenses (II)", "", totalOperatingExpenses]);
       rows.push([]);
       rows.push(["III. PROFIT BEFORE EXCEPTIONAL ITEMS & TAX (I - II)", "", pbt]);
-      rows.push(["IV. Tax Expense / Provisions", "", 0]);
-      rows.push(["V. NET PROFIT TRANSFERRED TO RESERVES & SURPLUS (PAT)", "", pbt]);
+      rows.push([`IV. Tax Expense / Provisions (${effectiveTaxRate}% Tax Rate)`, "", taxExpense]);
+      rows.push(["V. NET PROFIT TRANSFERRED TO RESERVES & SURPLUS (PAT)", "", pat]);
     } else if (activeTab === "bs") {
       rows.push(["Particulars (Schedule III Part I)", "Amount (INR)"]);
       rows.push(["PART I - EQUITY AND LIABILITIES", ""]);
@@ -1068,6 +1081,7 @@ export function FinancialReportsClient({
       rows.push(["II. NON-CURRENT LIABILITIES", 0]);
       rows.push(["III. CURRENT LIABILITIES", ""]);
       rows.push(["  Trade Payables (Sundry Creditors)", totalVendorPayables]);
+      rows.push([`  Provision for Income Tax (${effectiveTaxRate}%)`, taxExpense]);
       rows.push(["TOTAL CURRENT LIABILITIES", totalCurrentLiabilities]);
       rows.push(["TOTAL EQUITY & LIABILITIES", totalEquityAndLiabilities]);
       rows.push([]);
@@ -1218,6 +1232,24 @@ export function FinancialReportsClient({
                 <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
               </svg>
             </div>
+          </div>
+
+          {/* Tax Rate % Master Pill */}
+          <div className="flex items-center bg-[#F4F7F4] border border-[#D9E3DC] rounded-xl px-2.5 h-[38px] gap-1.5 shadow-2xs">
+            <span className="text-[11px] font-bold text-[#475569]">Tax Rate:</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.5"
+              value={effectiveTaxRate}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value) || 0;
+                setOverrideTaxRates((prev) => ({ ...prev, [fy]: val }));
+              }}
+              className="w-12 h-[26px] bg-white border border-[#CBD5E1] rounded-lg px-1 text-center text-xs font-black text-[#166534] focus:outline-none focus:ring-1 focus:ring-[#166534]"
+            />
+            <span className="text-xs font-bold text-[#475569]">%</span>
           </div>
 
           {/* Period / Full Year Dropdown */}
@@ -1461,13 +1493,13 @@ export function FinancialReportsClient({
                     red={pbt < 0}
                   />
                   <div className="flex justify-between py-2 px-3 text-xs text-[#6B7280] italic">
-                    <span>IV. Tax Expense / Provisions (Advance Tax &amp; Self-Assessment)</span>
-                    <span className="font-mono font-medium">₹0.00</span>
+                    <span>IV. Tax Expense / Provisions ({effectiveTaxRate}% Corporate Tax Rate)</span>
+                    <span className="font-mono font-medium">{formatCurrency(taxExpense)}</span>
                   </div>
                   <GrandTotalRow
                     label="V. NET PROFIT TRANSFERRED TO RESERVES & SURPLUS (PAT)"
-                    amount={pbt}
-                    highlight={pbt >= 0 ? "emerald" : "amber"}
+                    amount={pat}
+                    highlight={pat >= 0 ? "emerald" : "amber"}
                   />
                 </div>
               </div>
@@ -1545,6 +1577,12 @@ export function FinancialReportsClient({
                         label="Trade Payables (Sundry Creditors)"
                         amount={totalVendorPayables}
                         indent={1}
+                      />
+                      <LedgerRow
+                        label={`Provision for Income Tax (${effectiveTaxRate}% Tax Rate)`}
+                        amount={incomeTaxProvision}
+                        indent={1}
+                        red={incomeTaxProvision > 0}
                       />
                       <SubtotalRow
                         label="Total Current Liabilities"
