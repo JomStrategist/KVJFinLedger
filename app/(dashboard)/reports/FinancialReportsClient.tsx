@@ -211,7 +211,7 @@ export function FinancialReportsClient({
 
   const validInvoices = useMemo(
     () => invoices.filter((inv) => {
-      if (["CANCELLED", "DRAFT"].includes(inv.status ?? "")) return false;
+      if (["CANCELLED"].includes(inv.status ?? "")) return false;
       const invDate = new Date(inv.invoiceDate || inv.createdAt);
       return invDate >= fyStart && invDate <= fyEnd;
     }),
@@ -220,7 +220,7 @@ export function FinancialReportsClient({
 
   const validExpenses = useMemo(
     () => expenses.filter((exp) => {
-      if (["CANCELLED", "REJECTED", "DRAFT"].includes(exp.status ?? "")) return false;
+      if (["CANCELLED", "REJECTED"].includes(exp.status ?? "")) return false;
       const expDate = new Date(exp.expenseDate || exp.createdAt);
       return expDate >= fyStart && expDate <= fyEnd;
     }),

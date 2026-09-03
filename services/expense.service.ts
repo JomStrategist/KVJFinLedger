@@ -123,7 +123,7 @@ export class ExpenseService {
           categoryId: data.categoryId || null,
           paidBy: data.paidBy || "COMPANY",
           employeeId: data.paidBy === "EMPLOYEE" ? data.employeeId || null : null,
-          status: "DRAFT",
+          status: data.status || "APPROVED",
           paymentStatus: data.paymentStatus || (data.paidBy === "EMPLOYEE" ? "UNPAID" : "PAID"),
 
           subtotal: Number(data.subtotal ?? data.taxableAmount ?? 0),
