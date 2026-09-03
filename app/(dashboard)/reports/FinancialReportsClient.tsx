@@ -146,6 +146,8 @@ function LedgerRow({
   green = false,
   red = false,
   isHeader = false,
+  children,
+  defaultExpanded = false,
 }: {
   code?: string;
   label: string;
@@ -156,8 +158,13 @@ function LedgerRow({
   green?: boolean;
   red?: boolean;
   isHeader?: boolean;
+  children?: React.ReactNode;
+  defaultExpanded?: boolean;
 }) {
-  const indentClass = indent === 1 ? "pl-4 sm:pl-6" : indent === 2 ? "pl-7 sm:pl-10" : "";
+  const [isOpen, setIsOpen] = useState(defaultExpanded);
+  const hasChildren = Boolean(children);
+
+  const indentClass = indent === 1 ? "pl-2.5 sm:pl-4" : indent === 2 ? "pl-5 sm:pl-8" : "";
   const textColor = green ? "text-[#166534]" : red ? "text-[#B94B4B]" : bold ? "text-[#111827]" : "text-[#1F2937]";
 
   if (isHeader) {
@@ -169,22 +176,68 @@ function LedgerRow({
   }
 
   return (
-    <div className={`flex items-center justify-between py-2.5 px-3 text-xs hover:bg-[#F9FAF9] transition-colors border-b border-[#EEF2EF] ${indentClass}`}>
-      <div className="flex items-baseline gap-2 flex-1 pr-3 min-w-0">
-        {code && <span className="font-mono text-[10px] text-[#78887D] font-bold shrink-0">{code}</span>}
-        <span className={`truncate ${bold ? "font-bold text-[#111827]" : "text-[#374151] font-medium"}`}>
-          {label}
-        </span>
-        {note && (
-          <span className="text-[10px] text-[#6B7280] font-normal truncate shrink-0">
-            • {note}
+    <div className="border-b border-[#EEF2EF]">
+      <div
+        onClick={() => hasChildren && setIsOpen(!isOpen)}
+        className={`flex items-center justify-between py-2.5 px-3 text-xs hover:bg-[#F9FAF9] transition-colors ${indentClass} ${
+          hasChildren ? "cursor-pointer select-none" : ""
+        }`}
+      >
+        <div className="flex items-center gap-2 flex-1 pr-3 min-w-0">
+          {/* Left-side Expandable Chevron Dropdown Toggle */}
+          {hasChildren ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(!isOpen);
+              }}
+              className="p-1 -ml-1 rounded-md text-[#6B7280] hover:text-[#177B55] hover:bg-emerald-50 transition-all shrink-0 cursor-pointer"
+              title={isOpen ? "Collapse breakdown details" : "Expand breakdown details"}
+            >
+              <svg
+                className={`w-3.5 h-3.5 transform transition-transform duration-150 ${isOpen ? "rotate-90 text-[#177B55]" : ""}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          ) : (
+            <div className="w-3.5 shrink-0" />
+          )}
+
+          {code && <span className="font-mono text-[10px] text-[#78887D] font-bold shrink-0">{code}</span>}
+          <span className={`truncate ${bold ? "font-bold text-[#111827]" : "text-[#374151] font-medium"}`}>
+            {label}
           </span>
-        )}
+          {note && (
+            <span className="text-[10px] text-[#6B7280] font-normal truncate shrink-0">
+              • {note}
+            </span>
+          )}
+          {hasChildren && (
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-[#E5F3EC] text-[#0B5F46] border border-[#BCE3D0] shrink-0">
+              {isOpen ? "Hide" : "Details"}
+            </span>
+          )}
+        </div>
+
+        <div className="border-b border-dotted border-[#CBD5E1] flex-1 mx-2 hidden sm:block opacity-50" />
+
+        <div className={`tabular-nums font-mono text-right shrink-0 min-w-[120px] ${bold ? "font-black text-sm" : "font-semibold"} ${textColor}`}>
+          {amount !== undefined && amount !== null ? (amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)) : "—"}
+        </div>
       </div>
-      <div className="border-b border-dotted border-[#CBD5E1] flex-1 mx-2 hidden sm:block opacity-50" />
-      <div className={`tabular-nums font-mono text-right shrink-0 min-w-[120px] ${bold ? "font-black text-sm" : "font-semibold"} ${textColor}`}>
-        {amount !== undefined && amount !== null ? (amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)) : "—"}
-      </div>
+
+      {/* Expandable Dropdown Breakdown Container */}
+      {hasChildren && isOpen && (
+        <div className="ml-4 sm:ml-8 my-2 mr-3 p-3.5 bg-[#FAFBF9] border-l-2 border-[#177B55] rounded-r-xl shadow-2xs space-y-2 animate-in fade-in zoom-in-95 duration-150">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -1332,7 +1385,31 @@ export function FinancialReportsClient({
                         }
                         red={!isGstFiled && effectiveGSTPayable > 0}
                         green={isGstFiled}
-                      />
+                      >
+                        <div className="space-y-1.5 text-[11px]">
+                          <div className="font-extrabold uppercase text-[10px] text-[#17211B] border-b border-[#E2E8E4] pb-1 flex justify-between">
+                            <span>📑 Statutory GST Liability Breakdown</span>
+                            <span>{isGstFiled ? "✓ REMITTED" : "⚠️ PENDING"}</span>
+                          </div>
+                          <div className="flex justify-between text-[#374151]">
+                            <span>Outward Tax Collected from Sales (Output Tax):</span>
+                            <span className="font-mono font-semibold">{formatCurrency(totalOutputGST)}</span>
+                          </div>
+                          <div className="flex justify-between text-[#166534]">
+                            <span>(-) Input Tax Credit (ITC) on Purchases:</span>
+                            <span className="font-mono font-semibold">-{formatCurrency(totalInputGST)}</span>
+                          </div>
+                          <div className="flex justify-between pt-1 border-t border-[#E2E8E4] font-bold">
+                            <span>Net GST Payable Before Filing:</span>
+                            <span className="font-mono">{formatCurrency(netGSTPayable)}</span>
+                          </div>
+                          {isGstFiled && (
+                            <div className="bg-emerald-50 border border-emerald-200 rounded p-2 text-[10px] text-emerald-800 font-semibold">
+                              ✓ Remitted to Govt via GSTR-3B. ARN: {currentGstFiling?.arn || "CPIN Remitted"}.
+                            </div>
+                          )}
+                        </div>
+                      </LedgerRow>
                       <LedgerRow
                         label="TDS Payable (Statutory Withholding)"
                         amount={outstandingTdsPayable}
@@ -1346,7 +1423,26 @@ export function FinancialReportsClient({
                         }
                         red={outstandingTdsPayable > 0}
                         green={outstandingTdsPayable === 0 && totalTdsDeductedOnExpenses > 0}
-                      />
+                      >
+                        <div className="space-y-1.5 text-[11px]">
+                          <div className="font-extrabold uppercase text-[10px] text-[#17211B] border-b border-[#E2E8E4] pb-1 flex justify-between">
+                            <span>🏛️ TDS Withholding &amp; Form 26Q Deposit Details</span>
+                            <span>{outstandingTdsPayable > 0 ? "⚠️ PENDING" : "✓ PAID"}</span>
+                          </div>
+                          <div className="flex justify-between text-[#374151]">
+                            <span>Total TDS Deducted on Vendor Expenses:</span>
+                            <span className="font-mono font-semibold">{formatCurrency(totalTdsDeductedOnExpenses)}</span>
+                          </div>
+                          <div className="flex justify-between text-[#166534]">
+                            <span>(-) Deposited to Govt via ITNS 281 Challans:</span>
+                            <span className="font-mono font-semibold">-{formatCurrency(tdsPaidViaBank)}</span>
+                          </div>
+                          <div className="flex justify-between pt-1 border-t border-[#E2E8E4] font-bold text-[#B94B4B]">
+                            <span>Net Outstanding TDS Payable:</span>
+                            <span className="font-mono font-black">{formatCurrency(outstandingTdsPayable)}</span>
+                          </div>
+                        </div>
+                      </LedgerRow>
                       <SubtotalRow
                         label="Total Current Liabilities"
                         amount={totalCurrentLiabilities}
@@ -1382,7 +1478,24 @@ export function FinancialReportsClient({
                         label="Property, Plant &amp; Equipment (Gross Block)"
                         amount={totalGrossBlock}
                         indent={1}
-                      />
+                        note={depSchedule.length > 0 ? `${depSchedule.length} capital assets` : undefined}
+                      >
+                        <div className="space-y-1.5 text-[11px]">
+                          <div className="font-extrabold uppercase text-[10px] text-[#17211B] border-b border-[#E2E8E4] pb-1">
+                            🏢 Fixed Asset Schedule Breakdown
+                          </div>
+                          {depSchedule.length === 0 ? (
+                            <p className="text-[#68756C] italic">No capital assets recorded.</p>
+                          ) : (
+                            depSchedule.map((asset) => (
+                              <div key={asset.id} className="flex justify-between items-center text-[#374151]">
+                                <span>{asset.name} ({asset.category})</span>
+                                <span className="font-mono font-semibold">{formatCurrency(asset.grossCost)}</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </LedgerRow>
                       <LedgerRow
                         label={`Less: Accumulated Depreciation (${depMethod})`}
                         amount={totalAccDep > 0 ? -totalAccDep : 0}
@@ -1405,14 +1518,94 @@ export function FinancialReportsClient({
                         amount={closingBankCashBalance}
                         indent={1}
                         green={closingBankCashBalance > 0}
-                        note={`Opening ${formatCurrency(openingBankCash)} + Receipts ${formatCurrency(actualCustomerCollections)} - Outflows ${formatCurrency(actualExpenseDisbursements + gstChallanPaid + tdsPaidViaBank)}`}
-                      />
+                      >
+                        <div className="space-y-1.5 text-[11px]">
+                          <div className="font-extrabold uppercase text-[10px] text-[#17211B] border-b border-[#E2E8E4] pb-1">
+                            💵 Bank &amp; Cash Flow Reconciliation
+                          </div>
+                          <div className="flex justify-between text-[#374151]">
+                            <span>Opening Bank &amp; Cash Balance:</span>
+                            <span className="font-mono font-semibold">{formatCurrency(openingBankCash)}</span>
+                          </div>
+                          <div className="flex justify-between text-[#166534]">
+                            <span>(+) Customer Collections Received into Bank:</span>
+                            <span className="font-mono font-bold">+{formatCurrency(actualCustomerCollections)}</span>
+                          </div>
+                          <div className="flex justify-between text-[#B94B4B]">
+                            <span>(-) Operating Expense Outflows Deducted from Bank:</span>
+                            <span className="font-mono font-bold">-{formatCurrency(actualExpenseDisbursements)}</span>
+                          </div>
+                          {gstChallanPaid > 0 && (
+                            <div className="flex justify-between text-[#B94B4B]">
+                              <span>(-) GST Remitted to Government via GSTR-3B:</span>
+                              <span className="font-mono font-bold">-{formatCurrency(gstChallanPaid)}</span>
+                            </div>
+                          )}
+                          {tdsPaidViaBank > 0 && (
+                            <div className="flex justify-between text-[#B94B4B]">
+                              <span>(-) TDS Deposited via ITNS 281 Challan:</span>
+                              <span className="font-mono font-bold">-{formatCurrency(tdsPaidViaBank)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between pt-1 border-t border-[#E2E8E4] font-bold text-[#111827]">
+                            <span>Net Closing Cash &amp; Bank Balance:</span>
+                            <span className="font-mono font-black text-[#166534]">{formatCurrency(closingBankCashBalance)}</span>
+                          </div>
+                        </div>
+                      </LedgerRow>
                       <LedgerRow
                         label="Trade Receivables (Sundry Debtors)"
                         amount={totalReceivables}
                         indent={1}
+                        bold
                         note={receivablesWithAge.length > 0 ? `${receivablesWithAge.length} customer invoices` : "All settled"}
-                      />
+                      >
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between items-center border-b border-[#E2E8E4] pb-1.5">
+                            <span className="font-extrabold text-[11px] uppercase tracking-wider text-[#17211B] flex items-center gap-1.5">
+                              <span>👥</span> Outstanding Customer Debtors (Who owe payments)
+                            </span>
+                            <span className="text-[10px] text-[#68756C] font-semibold">
+                              {receivablesWithAge.length} Pending Invoice{receivablesWithAge.length !== 1 ? "s" : ""}
+                            </span>
+                          </div>
+                          {receivablesWithAge.length === 0 ? (
+                            <p className="text-[#68756C] italic py-1">No outstanding customer debtors. All invoices fully paid.</p>
+                          ) : (
+                            <div className="divide-y divide-[#EBF0EC] space-y-1.5 pt-1">
+                              {receivablesWithAge.map((inv) => {
+                                const custName = inv.customerNameSnapshot || inv.customer?.tradeName || inv.customer?.legalName || inv.businessNameSnapshot || "Customer";
+                                return (
+                                  <div key={inv.id} className="pt-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-[#17211B]">{custName}</span>
+                                        <span className="font-mono text-[#177B55] font-semibold">{inv.invoiceNumber}</span>
+                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                          inv.bucket === "0–30" ? "bg-emerald-50 text-emerald-800 border border-emerald-200" :
+                                          inv.bucket === "31–60" ? "bg-blue-50 text-blue-800 border border-blue-200" :
+                                          inv.bucket === "61–90" ? "bg-amber-50 text-amber-800 border border-amber-200" :
+                                          "bg-red-50 text-red-800 border border-red-200"
+                                        }`}>
+                                          {inv.daysOld} days ({inv.bucket})
+                                        </span>
+                                      </div>
+                                      <div className="text-[10px] text-[#68756C] mt-0.5">
+                                        Billed: {formatCurrency(inv.invoiceGross)} • Received: {formatCurrency(inv.totalPaidAmount)}
+                                      </div>
+                                    </div>
+                                    <div className="text-right sm:shrink-0">
+                                      <span className="font-mono font-bold text-[#B45309]">
+                                        Due: {formatCurrency(inv.outstanding)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </LedgerRow>
                       <LedgerRow
                         label="TDS Receivable (Advance Tax Asset)"
                         amount={tdsReceivable}
