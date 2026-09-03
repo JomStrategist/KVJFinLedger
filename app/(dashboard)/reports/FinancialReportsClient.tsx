@@ -1307,7 +1307,7 @@ export function FinancialReportsClient({
           <div className="space-y-6 text-xs">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-3">
               <div>
-                <h3 className="text-xl font-extrabold text-[#111827]">Balance Sheet (Statement of Financial Position)</h3>
+                <h3 className="text-xl font-extrabold text-[#111827]">Balance Sheet</h3>
                 <p className="text-xs sm:text-sm text-[#475569] font-medium mt-1">
                   Statement of Assets, Equity and Liabilities as at 31st March ({fy}).
                 </p>
