@@ -281,24 +281,24 @@ function GrandTotalRow({
   amount: number;
   highlight?: "emerald" | "slate" | "amber";
 }) {
-  const containerStyle =
+  const bg =
     highlight === "emerald"
-      ? "bg-emerald-50/90 border border-emerald-300/80 text-emerald-950 shadow-2xs"
+      ? "bg-[#F0FDF4] border-t-2 border-[#166534] text-[#166534]"
       : highlight === "amber"
-      ? "bg-amber-50/90 border border-amber-300/80 text-amber-950 shadow-2xs"
-      : "bg-slate-100/90 border border-slate-300/80 text-slate-900 shadow-2xs";
+      ? "bg-[#FFFBEB] border-t-2 border-[#B45309] text-[#92400E]"
+      : "bg-[#F8FAF8] border-t-2 border-[#111827] text-[#111827]";
 
-  const numberStyle =
+  const fontColor =
     highlight === "emerald"
-      ? "border-emerald-700 text-emerald-800"
+      ? "text-[#166534]"
       : highlight === "amber"
-      ? "border-amber-700 text-amber-800"
-      : "border-slate-800 text-slate-900";
+      ? "text-[#B45309]"
+      : "text-[#111827]";
 
   return (
-    <div className={`py-3.5 px-4 sm:px-5 flex justify-between items-center text-xs sm:text-sm font-extrabold rounded-xl ${containerStyle} my-2.5`}>
-      <span className="tracking-wider uppercase font-extrabold pr-2">{label}</span>
-      <span className={`tabular-nums font-mono text-sm sm:text-base font-extrabold border-b-2 border-t border-slate-300/60 pt-0.5 pb-0.5 ${numberStyle}`}>
+    <div className={`py-3.5 px-4 sm:px-5 flex justify-between items-center text-xs sm:text-sm font-extrabold ${bg} my-3 rounded-xl border border-[#DCE4DE]`}>
+      <span className="tracking-wider uppercase font-black text-xs sm:text-sm">{label}</span>
+      <span className={`tabular-nums font-mono text-sm sm:text-base font-black ${fontColor} border-b-2 border-current pb-0.5`}>
         {amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)}
       </span>
     </div>
