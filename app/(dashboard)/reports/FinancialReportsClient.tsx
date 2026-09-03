@@ -397,6 +397,7 @@ export function FinancialReportsClient({
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("pnl");
   const [fy, setFy] = useState("FY 2026–27");
+  const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null);
   const [depMethod, setDepMethod] = useState<"WDV" | "SLM">("WDV");
 
   // GST Filing State
@@ -1007,33 +1008,27 @@ export function FinancialReportsClient({
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Top Header & Toolbar */}
-      <div className="bg-white border border-[#E2E8E4] rounded-2xl p-5 shadow-sm space-y-4">
+      <div className="bg-white border border-[#E2E8E4] rounded-2xl p-5 shadow-2xs space-y-4">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-[#EEF2EF] pb-4">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-800 border border-emerald-300">
-                ICAI &amp; Schedule III Compliant
-              </span>
-              <span className="text-xs text-[#6B7280] font-medium">• Corporate ERP Financial Reporting</span>
-            </div>
-            <h1 className="text-2xl font-black text-[#111827] tracking-tight mt-1">
-              Financial Statements &amp; Statutory Reports
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#111827] tracking-tight">
+              Financial Statements &amp; Reports
             </h1>
-            <p className="text-xs text-[#6B7280] mt-0.5">
-              Comprehensive double-entry general ledger statements, statutory taxation, and cash movement schedules.
+            <p className="text-xs sm:text-sm text-[#6B7280] font-normal mt-1 leading-normal">
+              Detailed accounting-style statements generated from invoices, expenses, assets, liabilities, tax balances and opening balances.
             </p>
           </div>
 
-          {/* Controls: FY Dropdown, Depreciation Method, Print */}
+          {/* Controls: FY Dropdown, Period Dropdown, Dep Method, Export */}
           <div className="flex flex-wrap items-center gap-2.5">
             {/* FY Dropdown */}
             <div className="relative">
               <select
                 value={fy}
                 onChange={(e) => setFy(e.target.value)}
-                className="h-[38px] pl-3.5 pr-8 py-1.5 bg-white border border-[#D9E3DC] rounded-xl text-xs font-extrabold text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#177B55] shadow-2xs cursor-pointer appearance-none"
+                className="h-[38px] pl-3.5 pr-8 py-1.5 bg-white border border-[#D9E3DC] rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#177B55] shadow-2xs cursor-pointer appearance-none"
               >
                 {FY_OPTIONS.map((year) => (
                   <option key={year} value={year}>
@@ -1048,6 +1043,27 @@ export function FinancialReportsClient({
               </div>
             </div>
 
+            {/* Period / Full Year Dropdown */}
+            <div className="relative">
+              <select
+                value={selectedQuarter || "ALL"}
+                onChange={(e) => setSelectedQuarter(e.target.value === "ALL" ? null : e.target.value)}
+                className="h-[38px] pl-3.5 pr-8 py-1.5 bg-white border border-[#D9E3DC] rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#177B55] shadow-2xs cursor-pointer appearance-none"
+              >
+                <option value="ALL">Full Year</option>
+                <option value="Q1">Q1 (Apr–Jun)</option>
+                <option value="Q2">Q2 (Jul–Sep)</option>
+                <option value="Q3">Q3 (Oct–Dec)</option>
+                <option value="Q4">Q4 (Jan–Mar)</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-[#6B7280]">
+                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Depreciation Method Pill */}
             <div className="flex items-center bg-[#F3F4F6] rounded-xl p-1 border border-[#E5E7EB]">
               <span className="text-[10px] font-bold text-[#6B7280] px-2">Dep:</span>
               <button
@@ -1072,12 +1088,13 @@ export function FinancialReportsClient({
               </button>
             </div>
 
+            {/* Export Button */}
             <button
               type="button"
               onClick={() => window.print()}
-              className="px-3.5 py-2 text-xs font-bold rounded-xl border border-[#D1D5DB] bg-white text-[#374151] hover:bg-[#F9FAFB] shadow-2xs cursor-pointer flex items-center gap-1.5 transition-colors"
+              className="h-[38px] px-4 text-xs font-bold rounded-xl border border-[#D9E3DC] bg-white text-[#166534] hover:bg-[#F0FDF4] shadow-2xs cursor-pointer flex items-center gap-1.5 transition-colors"
             >
-              <span>🖨️</span> Print / PDF
+              Export
             </button>
           </div>
         </div>
@@ -1646,6 +1663,11 @@ export function FinancialReportsClient({
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Accounting Control Banner (as shown in user screenshot) */}
+            <div className="p-3.5 px-4 bg-[#FAFBF9] border border-[#E2E8E4] rounded-xl text-xs text-[#475569] font-medium">
+              <strong className="text-[#1E293B]">Accounting control:</strong> Total Assets must equal Total Equity &amp; Liabilities.
             </div>
 
             {/* Reconciliation Audit Trail Box */}
