@@ -1806,28 +1806,6 @@ export function FinancialReportsClient({
                 </div>
               </div>
             )}
-
-            {/* Accounting Control Banner (as shown in user screenshot) */}
-            <div className="p-3.5 px-4 bg-[#FAFBF9] border border-[#E2E8E4] rounded-xl text-xs text-[#475569] font-medium">
-              <strong className="text-[#1E293B]">Accounting control:</strong> Total Assets must equal Total Equity &amp; Liabilities.
-            </div>
-
-            {/* Reconciliation Audit Trail Box */}
-            <div className="p-4 sm:p-5 bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl shadow-2xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">⚖️</span>
-                  <strong className="text-[#166534] text-sm">Double-Entry Accounting Verification (ICAI Standard)</strong>
-                </div>
-                <p className="text-xs text-[#14532D]">
-                  Total Assets ({formatCurrency(totalAssets)}) = Total Shareholders&apos; Funds ({formatCurrency(totalShareholdersEquity)}) + Total Liabilities ({formatCurrency(totalCurrentLiabilities + otherOpeningLiabilitiesTotal)}).
-                </p>
-              </div>
-              <div className="shrink-0 flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-[#86EFAC] shadow-xs">
-                <span className="text-[11px] font-bold text-[#6B7280]">Variance:</span>
-                <span className="font-mono text-sm font-black text-[#166534]">₹0.00</span>
-              </div>
-            </div>
           </div>
         )}
 
