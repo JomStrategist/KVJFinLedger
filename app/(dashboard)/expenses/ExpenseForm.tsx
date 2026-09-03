@@ -43,8 +43,15 @@ export function ExpenseForm({
   // Additional Settings State
   const [isAdditionalSettingsOpen, setIsAdditionalSettingsOpen] = useState(false);
   const [itcEligibility, setItcEligibility] = useState<string>("ELIGIBLE");
-  const [isCapitalAsset, setIsCapitalAsset] = useState<boolean>(false);
-  const [assetCategory, setAssetCategory] = useState<string>("OFFICE_EQUIPMENT");
+  const [isCapitalAsset, setIsCapitalAsset] = useState<boolean>(
+    Boolean(initialData?.isAsset)
+  );
+  const [assetCategory, setAssetCategory] = useState<string>(
+    initialData?.assetType || "COMPUTERS_IT"
+  );
+  const [depreciationRate, setDepreciationRate] = useState<number>(
+    Number(initialData?.depreciationRate) > 0 ? Number(initialData.depreciationRate) : 40
+  );
 
   // Notes
   const [notes, setNotes] = useState(initialData?.notes || "");
@@ -220,6 +227,9 @@ export function ExpenseForm({
       tdsAmount: Number(calc.tdsAmount ?? 0),
       grossAmount: Number(calc.grossAmount ?? 0),
       netAmount: Number(calc.netAmount ?? 0),
+      isAsset: isCapitalAsset,
+      assetType: isCapitalAsset ? assetCategory : null,
+      depreciationRate: isCapitalAsset ? Number(depreciationRate || 0) : 0,
 
       items: items.map((item, i) => ({
         productId: item.productId || null,
@@ -241,6 +251,8 @@ export function ExpenseForm({
         totalGST: calc.calculatedItems[i].totalGST,
         tdsRate: Number(item.tdsRate) || 0,
         tdsAmount: calc.calculatedItems[i].tdsAmount || 0,
+        isAsset: isCapitalAsset,
+        depreciationRate: isCapitalAsset ? Number(depreciationRate || 0) : 0,
         totalAmount: calc.calculatedItems[i].totalAmount
       }))
     };
@@ -638,16 +650,54 @@ export function ExpenseForm({
                 </label>
               </div>
               {isCapitalAsset && (
-                <select
-                  value={assetCategory}
-                  onChange={(e) => setAssetCategory(e.target.value)}
-                  className="w-full border border-theme-border rounded-lg px-3 py-1.5 text-xs bg-theme-surface focus:ring-2 focus:ring-theme-primary mt-2"
-                >
-                  <option value="OFFICE_EQUIPMENT">Office Equipment</option>
-                  <option value="COMPUTERS_IT">Computers & IT Hardware</option>
-                  <option value="FURNITURE_FIXTURES">Furniture & Fixtures</option>
-                  <option value="VEHICLES">Vehicles</option>
-                </select>
+                <div className="space-y-2 mt-2 bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-200">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-emerald-900 mb-1">
+                      Asset Class / IT Act Category
+                    </label>
+                    <select
+                      value={assetCategory}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAssetCategory(val);
+                        if (val === "COMPUTERS_IT") setDepreciationRate(40);
+                        else if (val === "VEHICLES" || val === "OFFICE_EQUIPMENT") setDepreciationRate(15);
+                        else if (val === "FURNITURE_FIXTURES") setDepreciationRate(10);
+                        else if (val === "BUILDINGS") setDepreciationRate(10);
+                      }}
+                      className="w-full border border-emerald-300 rounded-lg px-2.5 py-1.5 text-xs bg-white text-theme-text focus:ring-2 focus:ring-emerald-500 font-medium"
+                    >
+                      <option value="COMPUTERS_IT">💻 Computers &amp; IT Equipment (40% IT Act)</option>
+                      <option value="OFFICE_EQUIPMENT">📱 Office Equipment (15% IT Act)</option>
+                      <option value="VEHICLES">🚗 Motor Vehicles / Plant (15% IT Act)</option>
+                      <option value="FURNITURE_FIXTURES">🪑 Furniture &amp; Fixtures (10% IT Act)</option>
+                      <option value="BUILDINGS">🏢 Buildings &amp; Premises (10% IT Act)</option>
+                      <option value="CUSTOM">⚙️ Other / Custom Asset</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-emerald-900 mb-1">
+                      Depreciation Rate (%) <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={depreciationRate}
+                        onChange={(e) => setDepreciationRate(Math.max(0, Number(e.target.value)))}
+                        placeholder="e.g. 40"
+                        className="w-full border border-emerald-300 rounded-lg px-2.5 py-1.5 pr-7 text-xs font-bold bg-white text-theme-text focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-extrabold text-emerald-700">%</span>
+                    </div>
+                    <p className="text-[10px] text-emerald-700 mt-0.5">
+                      Applied to Fixed Asset WDV schedule &amp; P&amp;L Depreciation.
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
 

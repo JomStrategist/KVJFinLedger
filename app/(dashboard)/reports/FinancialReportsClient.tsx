@@ -287,6 +287,7 @@ export function FinancialReportsClient({
 
   // ── 3. EXPENSES & CAPEX ────────────────────────────────────────────────────
   const isAssetExpense = (exp: any) => {
+    if (exp.isAsset || exp.expenseTreatment === "Fixed Asset") return true;
     const ft = (exp.category?.financialType ?? "").toUpperCase();
     const cat = (exp.category?.name ?? "").toLowerCase();
     return ft === "ASSET" || /asset|equipment|furniture|computer|vehicle|machinery|laptop|server/i.test(cat);
@@ -325,11 +326,13 @@ export function FinancialReportsClient({
   // ── 4. DEPRECIATION SCHEDULE ──────────────────────────────────────────────
   const depSchedule = useMemo(() =>
     assetExpenses.map((exp) => {
-      const cost = Number(exp.netAmount ?? 0);
-      const catName = exp.category?.name ?? exp.notes ?? "Fixed Asset";
+      const cost = getExpenseOperatingCost(exp);
+      const catName = exp.assetType ?? exp.category?.name ?? exp.notes ?? "Fixed Asset";
       const purchaseDate = new Date(exp.expenseDate ?? TODAY);
       const yearsHeld = Math.max(0.5, (TODAY.getTime() - purchaseDate.getTime()) / (365.25 * 86_400_000));
-      const rate = depMethod === "WDV" ? getWdvRate(catName) : getSlmRate(catName);
+      const customRate = Number(exp.depreciationRate || 0);
+      const defaultRate = depMethod === "WDV" ? getWdvRate(catName) : getSlmRate(catName);
+      const rate = customRate > 0 ? customRate / 100 : defaultRate;
       const accDep = depMethod === "WDV"
         ? cost * (1 - Math.pow(1 - rate, yearsHeld))
         : Math.min(cost, cost * rate * yearsHeld);
@@ -344,7 +347,7 @@ export function FinancialReportsClient({
         category: catName,
         purchaseDate: exp.expenseDate,
         grossCost: cost,
-        ratePct: `${Math.round(rate * 100)}%`,
+        ratePct: `${(rate * 100).toFixed(rate * 100 % 1 === 0 ? 0 : 2)}%`,
         accDep: Math.round(accDep),
         currentYearDep: Math.round(currentYearDep),
         closingWdv: Math.round(closingWdv),

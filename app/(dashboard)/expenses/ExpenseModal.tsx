@@ -102,7 +102,15 @@ export function ExpenseModal({
 
   // Section 3: Accounting Treatment
   const [isGstEligible, setIsGstEligible] = useState(expense?.isGstEligible ?? true);
-  const [expenseTreatment, setExpenseTreatment] = useState(expense?.expenseTreatment || "Operating Expense");
+  const [expenseTreatment, setExpenseTreatment] = useState(
+    expense?.isAsset || expense?.expenseTreatment === "Fixed Asset" ? "Fixed Asset" : "Operating Expense"
+  );
+  const [assetType, setAssetType] = useState<string>(
+    expense?.assetType || "Computers & IT Equipment (40%)"
+  );
+  const [depreciationRate, setDepreciationRate] = useState<number>(
+    Number(expense?.depreciationRate) > 0 ? Number(expense.depreciationRate) : 40
+  );
   const [isTdsApplicable, setIsTdsApplicable] = useState(Boolean(Number(expense?.tdsRate) > 0 || expense?.isTdsApplicable));
   const [globalTdsRate, setGlobalTdsRate] = useState<number>(Number(expense?.tdsRate) || 2);
 
@@ -188,6 +196,10 @@ export function ExpenseModal({
       paymentStatus: "PAID",
       isGstEligible,
       isTdsApplicable,
+      expenseTreatment,
+      isAsset: expenseTreatment === "Fixed Asset",
+      assetType: expenseTreatment === "Fixed Asset" ? assetType : null,
+      depreciationRate: expenseTreatment === "Fixed Asset" ? Number(depreciationRate || 0) : 0,
       items: items.map((i) => ({
         categoryId: i.categoryId,
         description: i.item,
@@ -204,6 +216,8 @@ export function ExpenseModal({
         igstAmount: 0,
         totalGST: (i.quantity * i.rate * i.gstRate) / 100,
         totalAmount: i.amount,
+        isAsset: expenseTreatment === "Fixed Asset",
+        depreciationRate: expenseTreatment === "Fixed Asset" ? Number(depreciationRate || 0) : 0,
       })),
     };
 
@@ -536,6 +550,74 @@ export function ExpenseModal({
                   />
                 </div>
               </div>
+
+              {/* Fixed Asset Depreciation Panel */}
+              {expenseTreatment === "Fixed Asset" && (
+                <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-4 mt-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🏢</span>
+                      <div>
+                        <p className="text-xs font-bold text-[#166534]">Fixed Asset Capitalization &amp; Depreciation</p>
+                        <p className="text-[10px] text-[#15803D]">
+                          Capitalized under Non-Current Assets (PPE) &amp; depreciated under Indian IT Act / Companies Act Schedule II
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[#DCFCE7] text-[#166534] border border-[#86EFAC]">
+                      CAPEX (Fixed Asset)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#166534] mb-1">
+                        Asset Class / IT Act Category
+                      </label>
+                      <select
+                        value={assetType}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setAssetType(val);
+                          if (val.includes("40%")) setDepreciationRate(40);
+                          else if (val.includes("15%")) setDepreciationRate(15);
+                          else if (val.includes("10%")) setDepreciationRate(10);
+                        }}
+                        className="w-full h-[38px] border border-[#86EFAC] rounded-xl px-3 text-xs bg-white text-[#17211B] font-medium focus:outline-none focus:ring-2 focus:ring-[#166534]"
+                      >
+                        <option value="Computers & IT Equipment (40%)">💻 Computers, Laptops &amp; IT Equipment (40% IT Act)</option>
+                        <option value="Plant & Machinery / Motor Vehicles (15%)">🚗 Plant &amp; Machinery / Vehicles (15% IT Act)</option>
+                        <option value="Office Equipment & Electronics (15%)">📱 Office Equipment &amp; Electronics (15% IT Act)</option>
+                        <option value="Furniture & Fixtures (10%)">🪑 Furniture &amp; Fixtures (10% IT Act)</option>
+                        <option value="Buildings & Premises (10%)">🏢 Buildings &amp; Civil Structures (10% IT Act)</option>
+                        <option value="Custom Asset Rate">⚙️ Custom Asset / Other Rate</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#166534] mb-1">
+                        Depreciation Rate (%) <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          value={depreciationRate}
+                          onChange={(e) => setDepreciationRate(Math.max(0, Number(e.target.value)))}
+                          placeholder="e.g. 40"
+                          className="w-full h-[38px] border border-[#86EFAC] rounded-xl px-3 pr-8 text-xs font-bold bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#166534]"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-extrabold text-[#15803D]">%</span>
+                      </div>
+                      <p className="text-[10px] text-[#15803D] mt-1">
+                        Standard WDV / SLM annual rate applied in Financial Reports.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Calculations Summary */}

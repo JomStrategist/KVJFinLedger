@@ -140,6 +140,9 @@ export class ExpenseService {
 
           grossAmount: Number(data.grossAmount ?? data.taxableAmount ?? 0),
           netAmount: Number(data.netAmount ?? data.grossAmount ?? 0),
+          isAsset: Boolean(data.isAsset || data.expenseTreatment === "Fixed Asset"),
+          assetType: data.assetType || null,
+          depreciationRate: Number(data.depreciationRate || 0),
           notes: data.notes,
 
           items: {
@@ -163,6 +166,8 @@ export class ExpenseService {
               totalGST: item.totalGST || 0,
               tdsRate: item.tdsRate || 0,
               tdsAmount: item.tdsAmount || 0,
+              isAsset: Boolean(item.isAsset ?? data.isAsset ?? (data.expenseTreatment === "Fixed Asset")),
+              depreciationRate: Number(item.depreciationRate ?? data.depreciationRate ?? 0),
               totalAmount: item.totalAmount
             }))
           }
@@ -207,6 +212,9 @@ export class ExpenseService {
 
           grossAmount: Number(data.grossAmount ?? data.taxableAmount ?? 0),
           netAmount: Number(data.netAmount ?? data.grossAmount ?? 0),
+          isAsset: Boolean(data.isAsset || data.expenseTreatment === "Fixed Asset"),
+          assetType: data.assetType || null,
+          depreciationRate: Number(data.depreciationRate || 0),
           notes: data.notes,
 
           items: {
@@ -230,6 +238,8 @@ export class ExpenseService {
               totalGST: item.totalGST || 0,
               tdsRate: item.tdsRate || 0,
               tdsAmount: item.tdsAmount || 0,
+              isAsset: Boolean(item.isAsset ?? data.isAsset ?? (data.expenseTreatment === "Fixed Asset")),
+              depreciationRate: Number(item.depreciationRate ?? data.depreciationRate ?? 0),
               totalAmount: item.totalAmount
             }))
           }

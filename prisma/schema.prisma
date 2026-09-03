@@ -495,6 +495,10 @@ model Expense {
   grossAmount       Float
   netAmount         Float
 
+  isAsset           Boolean       @default(false)
+  assetType         String?
+  depreciationRate  Float?        @default(0)
+
   notes             String?
 
   cancellationReason String?
@@ -552,6 +556,9 @@ model ExpenseItem {
 
   tdsRate         Float    @default(0)
   tdsAmount       Float    @default(0)
+
+  isAsset         Boolean  @default(false)
+  depreciationRate Float?  @default(0)
 
   totalAmount     Float
 }
