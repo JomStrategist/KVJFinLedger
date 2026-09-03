@@ -2749,6 +2749,30 @@ export function FinancialReportsClient({
             </div>
           </div>
         )}
+
+        {/* Print-Only Signature Block */}
+        <div className="hidden print:block break-inside-avoid print-avoid-break mt-12 pt-6 border-t-2 border-slate-900">
+          <div className="flex justify-between items-end text-xs text-slate-900 font-sans">
+            <div>
+              <p className="font-extrabold text-sm text-slate-900">For KVJ ANALYTICS</p>
+              <p className="text-[11px] font-semibold text-slate-600 mt-0.5">Corporate Financial Reporting Division</p>
+              <div className="h-12"></div>
+              <p className="font-extrabold border-t border-slate-900 pt-1 text-slate-900">Authorized Signatory</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] text-slate-600 font-mono font-medium">Date of Issue: {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+              <p className="text-[11px] text-slate-600 font-mono font-medium mt-0.5">Place: Chennai, India</p>
+              <div className="h-8"></div>
+              <p className="font-extrabold border-t border-slate-900 pt-1 text-slate-900">Partner / Chartered Accountant</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Print-Only Running Footer */}
+        <div className="hidden print:flex fixed bottom-0 left-0 right-0 justify-between items-center text-[9px] text-slate-500 border-t border-slate-300 pt-1 px-4 font-mono bg-white">
+          <span>KVJ ANALYTICS • Statutory Financial Statements ({fy})</span>
+          <span>Statutory Copy • Confidential</span>
+        </div>
       </div>
       {/* GSTR-3B Filing Modal */}
       {isFilingModalOpen && (

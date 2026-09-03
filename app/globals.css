@@ -52,15 +52,13 @@ input[type="number"] {
   /* Reset layout & scroll containers for clean document printing */
   html,
   body,
-  main,
-  div {
+  main {
     overflow: visible !important;
     height: auto !important;
     max-height: none !important;
-    background: transparent !important;
-    box-shadow: none !important;
+    background: white !important;
   }
-  
+
   body {
     margin: 0 !important;
     padding: 0 !important;
@@ -70,19 +68,25 @@ input[type="number"] {
     print-color-adjust: exact !important;
   }
 
-  /* Page setup for clean A4 printing */
+  /* Page setup for clean A4 printing with statutory margins */
   @page {
     size: A4 portrait;
-    margin: 6mm 8mm;
+    margin: 12mm 10mm 15mm 10mm;
   }
 
   /* Prevent awkward page break splits */
   .printable-card,
   table,
   tr,
+  .print-avoid-break,
   .break-inside-avoid {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  .print-page-break {
+    break-before: page !important;
+    page-break-before: always !important;
   }
 }
 
