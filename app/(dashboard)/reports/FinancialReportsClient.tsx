@@ -612,15 +612,18 @@ export function FinancialReportsClient({
   const netMargin = totalRevenue > 0 ? (pat / totalRevenue) * 100 : 0;
 
   // ── 6. DYNAMIC TAX SLABS & STATUTORY GST COMPUTATION ───────────────────────
-  const outputCGST = useMemo(() => Math.round(validInvoices.reduce((s, inv) => s + Number(inv.totalCGST ?? 0), 0) * 100) / 100, [validInvoices]);
-  const outputSGST = useMemo(() => Math.round(validInvoices.reduce((s, inv) => s + Number(inv.totalSGST ?? 0), 0) * 100) / 100, [validInvoices]);
+  // Under Section 170 of CGST Act, Total Output GST is derived directly from valid sales invoices
+  const totalOutputGST = useMemo(() => Math.round(validInvoices.reduce((s, inv) => s + getInvoiceTax(inv).totalGst, 0) * 100) / 100, [validInvoices]);
   const outputIGST = useMemo(() => Math.round(validInvoices.reduce((s, inv) => s + Number(inv.totalIGST ?? 0), 0) * 100) / 100, [validInvoices]);
-  const totalOutputGST = Math.round((outputCGST + outputSGST + outputIGST) * 100) / 100;
+  const outputIntraGST = Math.max(0, Math.round((totalOutputGST - outputIGST) * 100) / 100);
+  const outputCGST = Math.round((outputIntraGST / 2) * 100) / 100;
+  const outputSGST = Math.round((outputIntraGST - outputCGST) * 100) / 100;
 
-  const inputCGST = useMemo(() => Math.round(validExpenses.reduce((s, e) => s + Number(e.inputCGST ?? 0), 0) * 100) / 100, [validExpenses]);
-  const inputSGST = useMemo(() => Math.round(validExpenses.reduce((s, e) => s + Number(e.inputSGST ?? 0), 0) * 100) / 100, [validExpenses]);
+  const totalInputGST = useMemo(() => Math.round(validExpenses.reduce((s, e) => s + getExpenseTax(e).totalGst, 0) * 100) / 100, [validExpenses]);
   const inputIGST = useMemo(() => Math.round(validExpenses.reduce((s, e) => s + Number(e.inputIGST ?? 0), 0) * 100) / 100, [validExpenses]);
-  const totalInputGST = Math.round((inputCGST + inputSGST + inputIGST) * 100) / 100;
+  const inputIntraGST = Math.max(0, Math.round((totalInputGST - inputIGST) * 100) / 100);
+  const inputCGST = Math.round((inputIntraGST / 2) * 100) / 100;
+  const inputSGST = Math.round((inputIntraGST - inputCGST) * 100) / 100;
 
   // Sequential GST ITC set-off as per Section 49(5) of CGST Act
   let remainingITC_IGST = inputIGST;
@@ -637,8 +640,8 @@ export function FinancialReportsClient({
     remainingITC_IGST -= off;
   }
   const netIGST = Math.max(0, outputIGST - inputIGST);
-  const netGSTPayable = Math.round((netCGST + netSGST + netIGST) * 100) / 100;
-  const excessITC = Math.max(0, totalInputGST - totalOutputGST);
+  const netGSTPayable = Math.max(0, Math.round((totalOutputGST - totalInputGST) * 100) / 100);
+  const excessITC = Math.max(0, Math.round((totalInputGST - totalOutputGST) * 100) / 100);
 
   // ── GST FILING STATUS & SETTLEMENT ─────────────────────────────────────────
   const currentGstFiling = useMemo(
