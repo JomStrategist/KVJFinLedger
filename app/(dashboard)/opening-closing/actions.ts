@@ -24,10 +24,17 @@ export async function deleteOpeningBalanceAction(id: string) {
   }
 }
 
-export async function getCategoriesAction() {
+// Only Balance Sheet categories are valid for opening balances.
+// P&L types (INCOME, EXPENSE) are period-specific and never carry forward.
+const BALANCE_SHEET_TYPES = ["ASSET", "LIABILITY", "EQUITY"];
+
+export async function getBalanceSheetCategoriesAction() {
   try {
-    const cats = await ExpenseCategoryService.getExpenseCategories({ isActive: true });
-    return { success: true, data: cats };
+    const allCats = await ExpenseCategoryService.getExpenseCategories({ isActive: true });
+    const bsCats = (allCats as any[]).filter((c) =>
+      BALANCE_SHEET_TYPES.includes((c.financialType || "").toUpperCase())
+    );
+    return { success: true, data: bsCats };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to fetch categories." };
   }

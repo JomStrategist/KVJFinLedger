@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
 import { createCategoryForOpeningAction } from "./actions";
-import { getFinancialTypesAction } from "@/app/(dashboard)/masters/actions";
 
-const DEFAULT_FINANCIAL_TYPES = [
-  { code: "EXPENSE", name: "Expense" },
-  { code: "INCOME", name: "Income" },
-  { code: "ASSET", name: "Asset" },
-  { code: "LIABILITY", name: "Liability" },
-  { code: "EQUITY", name: "Equity" },
+
+// Only Balance Sheet financial types are valid for opening balances.
+// Income & Expense are P&L items that reset each FY — never carried forward.
+const BALANCE_SHEET_FINANCIAL_TYPES = [
+  { code: "ASSET",     name: "Asset",     hint: "e.g. Fixed Assets, Cash & Bank, Trade Receivables" },
+  { code: "LIABILITY", name: "Liability", hint: "e.g. Trade Payables, Borrowings, Statutory Liabilities" },
+  { code: "EQUITY",   name: "Equity",   hint: "e.g. Capital, Retained Earnings, Reserves" },
 ];
 
 const DEFAULT_STATEMENT_GROUPS_MAP: Record<string, string[]> = {
@@ -37,22 +37,12 @@ export function AddCategoryModal({ onClose, onSuccess }: AddCategoryModalProps) 
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const [financialTypes, setFinancialTypes] = useState(DEFAULT_FINANCIAL_TYPES);
-  const [financialType, setFinancialType] = useState("EXPENSE");
+  const [financialType, setFinancialType] = useState("ASSET");
   const [categoryName, setCategoryName] = useState("");
-  const [statementGroup, setStatementGroup] = useState(DEFAULT_STATEMENT_GROUPS_MAP["EXPENSE"][0]);
-  const [accountNature, setAccountNature] = useState(DEFAULT_ACCOUNT_NATURES_MAP["EXPENSE"][0]);
+  const [statementGroup, setStatementGroup] = useState(DEFAULT_STATEMENT_GROUPS_MAP["ASSET"][0]);
+  const [accountNature, setAccountNature] = useState(DEFAULT_ACCOUNT_NATURES_MAP["ASSET"][0]);
 
-  useEffect(() => {
-    getFinancialTypesAction().then((res) => {
-      if (res.success && res.data && res.data.length > 0) {
-        setFinancialTypes(res.data);
-      }
-    });
-  }, []);
-
-  const groupsForType = DEFAULT_STATEMENT_GROUPS_MAP[financialType] || [];
-  const naturesForType = DEFAULT_ACCOUNT_NATURES_MAP[financialType] || [];
+  const selectedTypeObj = BALANCE_SHEET_FINANCIAL_TYPES.find((t) => t.code === financialType);
 
   const handleFinancialTypeChange = (newType: string) => {
     setFinancialType(newType);
@@ -60,10 +50,9 @@ export function AddCategoryModal({ onClose, onSuccess }: AddCategoryModalProps) 
     setAccountNature((DEFAULT_ACCOUNT_NATURES_MAP[newType] || [])[0] || "");
   };
 
-  const derivedStatement =
-    financialType === "INCOME" || financialType === "EXPENSE" ? "Profit & Loss" : "Balance Sheet";
+  const derivedStatement = "Balance Sheet"; // all BS types
   const derivedNormalBalance =
-    financialType === "ASSET" || financialType === "EXPENSE" ? "Debit" : "Credit";
+    financialType === "ASSET" ? "Debit" : "Credit"; // Liability & Equity = Credit
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,8 +82,10 @@ export function AddCategoryModal({ onClose, onSuccess }: AddCategoryModalProps) 
         {/* Header */}
         <div className="px-6 py-4 border-b border-[#D9E3DC] flex justify-between items-center bg-[#F6FAF7]">
           <div>
-            <h2 className="text-lg font-bold text-[#17211B]">Add New Category</h2>
-            <p className="text-xs text-[#68756C] mt-0.5">Create a category to use as a balance component</p>
+            <h2 className="text-lg font-bold text-[#17211B]">Add Balance Sheet Category</h2>
+            <p className="text-xs text-[#68756C] mt-0.5">
+              Opening balances only apply to Balance Sheet items — Assets, Liabilities &amp; Equity.
+            </p>
           </div>
           <button
             type="button"
@@ -129,22 +120,30 @@ export function AddCategoryModal({ onClose, onSuccess }: AddCategoryModalProps) 
             />
           </div>
 
-          {/* Financial Type */}
+          {/* Financial Type — Balance Sheet only */}
           <div>
             <label className="block text-xs font-semibold text-[#68756C] mb-1">
               Financial Type *
             </label>
-            <select
-              value={financialType}
-              onChange={(e) => handleFinancialTypeChange(e.target.value)}
-              className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] font-semibold text-[#177B55]"
-            >
-              {financialTypes.map((ft) => (
-                <option key={ft.code} value={ft.code}>
+            <div className="grid grid-cols-3 gap-2">
+              {BALANCE_SHEET_FINANCIAL_TYPES.map((ft) => (
+                <button
+                  key={ft.code}
+                  type="button"
+                  onClick={() => handleFinancialTypeChange(ft.code)}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all ${
+                    financialType === ft.code
+                      ? "bg-[#1b5e4b] text-white border-[#1b5e4b] shadow-sm"
+                      : "border-[#D9E3DC] text-[#68756C] hover:border-[#177B55] hover:text-[#177B55]"
+                  }`}
+                >
                   {ft.name}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
+            {selectedTypeObj && (
+              <p className="text-[10px] text-[#9aaa9e] mt-1.5">{selectedTypeObj.hint}</p>
+            )}
           </div>
 
           {/* Accounting derived info bar */}
@@ -160,7 +159,7 @@ export function AddCategoryModal({ onClose, onSuccess }: AddCategoryModalProps) 
           </div>
 
           {/* Statement Group */}
-          {groupsForType.length > 0 && (
+          {(DEFAULT_STATEMENT_GROUPS_MAP[financialType] || []).length > 0 && (
             <div>
               <label className="block text-xs font-semibold text-[#68756C] mb-1">Statement Group</label>
               <select
@@ -168,7 +167,7 @@ export function AddCategoryModal({ onClose, onSuccess }: AddCategoryModalProps) 
                 onChange={(e) => setStatementGroup(e.target.value)}
                 className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
               >
-                {groupsForType.map((g) => (
+                {(DEFAULT_STATEMENT_GROUPS_MAP[financialType] || []).map((g) => (
                   <option key={g} value={g}>{g}</option>
                 ))}
               </select>
@@ -176,7 +175,7 @@ export function AddCategoryModal({ onClose, onSuccess }: AddCategoryModalProps) 
           )}
 
           {/* Account Nature */}
-          {naturesForType.length > 0 && (
+          {(DEFAULT_ACCOUNT_NATURES_MAP[financialType] || []).length > 0 && (
             <div>
               <label className="block text-xs font-semibold text-[#68756C] mb-1">Account Nature</label>
               <select
@@ -184,7 +183,7 @@ export function AddCategoryModal({ onClose, onSuccess }: AddCategoryModalProps) 
                 onChange={(e) => setAccountNature(e.target.value)}
                 className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
               >
-                {naturesForType.map((n) => (
+                {(DEFAULT_ACCOUNT_NATURES_MAP[financialType] || []).map((n) => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>

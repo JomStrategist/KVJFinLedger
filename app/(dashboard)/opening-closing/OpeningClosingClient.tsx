@@ -20,12 +20,20 @@ interface Category {
 
 const FY_OPTIONS = ["FY 2026–27", "FY 2025–26", "FY 2024–25"];
 
-// Map financial type → Asset | Liability for the balance type auto-fill
+// CA principle: only Balance Sheet items appear in an opening balance.
+// INCOME & EXPENSE are P&L items that reset each FY and must never carry forward.
+const BS_GROUPS: { type: string; label: string }[] = [
+  { type: "ASSET",     label: "Assets" },
+  { type: "LIABILITY", label: "Liabilities" },
+  { type: "EQUITY",   label: "Equity" },
+];
+
 function deriveType(financialType: string): "Asset" | "Liability" {
   const t = (financialType || "").toUpperCase();
   if (t === "ASSET") return "Asset";
+  // Equity is treated as Liability (credit-side) for net-worth calculation
   if (t === "LIABILITY" || t === "EQUITY") return "Liability";
-  return "Asset"; // default
+  return "Asset";
 }
 
 export function OpeningClosingClient({
@@ -40,7 +48,7 @@ export function OpeningClosingClient({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  // Category list — starts with server-fetched list, can grow if user creates one
+  // Only Balance Sheet categories (pre-filtered server-side)
   const [categories, setCategories] = useState<Category[]>(
     initialCategories.map((c) => ({ id: c.id, name: c.name, financialType: c.financialType || "ASSET" }))
   );
@@ -48,7 +56,6 @@ export function OpeningClosingClient({
   // Form State
   const [financialYear, setFinancialYear] = useState("FY 2026–27");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
-  const [customPosition, setCustomPosition] = useState(""); // fallback if no category matches
   const [newAmount, setNewAmount] = useState("");
   const [newType, setNewType] = useState<"Asset" | "Liability">("Asset");
 
@@ -78,21 +85,19 @@ export function OpeningClosingClient({
 
   const handleAddOpeningBalance = (e: React.FormEvent) => {
     e.preventDefault();
-    const positionName = selectedCategoryId ? selectedCategoryName : customPosition.trim();
-    if (!positionName || !newAmount) return;
+    if (!selectedCategoryId || !newAmount) return;
 
     setError(null);
     startTransition(async () => {
       const res = await saveOpeningBalanceAction({
         financialYear,
-        position: positionName,
+        position: selectedCategoryName,
         amount: parseFloat(newAmount) || 0,
         type: newType,
       });
 
       if (res.success) {
         setSelectedCategoryId("");
-        setCustomPosition("");
         setNewAmount("");
         setIsModalOpen(false);
       } else {
@@ -127,7 +132,7 @@ export function OpeningClosingClient({
   const currentClosing = fyOpening;
   const nextFyOpening = currentClosing;
 
-  const isPositionSelected = Boolean(selectedCategoryId) || Boolean(customPosition.trim());
+  const isPositionSelected = Boolean(selectedCategoryId);
 
   return (
     <div className="space-y-6">
@@ -248,73 +253,77 @@ export function OpeningClosingClient({
                 </select>
               </div>
 
-              {/* Position / Component — Dropdown */}
+              {/* Balance Sheet Position — grouped by Asset / Liability / Equity */}
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-semibold text-[#68756C]">
-                    Position / Component Name *
-                  </label>
+                  <div>
+                    <label className="text-xs font-semibold text-[#68756C]">
+                      Balance Sheet Position *
+                    </label>
+                    <p className="text-[10px] text-[#9aaa9e] mt-0.5">
+                      Only Balance Sheet items (Assets · Liabilities · Equity) carry forward as opening balances.
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setIsCategoryModalOpen(true)}
-                    className="text-[#177B55] text-[10px] font-bold hover:underline flex items-center gap-0.5"
+                    className="text-[#177B55] text-[10px] font-bold hover:underline flex items-center gap-0.5 shrink-0 ml-3"
                   >
-                    + Add New Category
+                    + New
                   </button>
                 </div>
 
-                {categories.length > 0 ? (
-                  <div className="space-y-2">
-                    <select
-                      value={selectedCategoryId}
-                      onChange={(e) => handleCategorySelect(e.target.value)}
-                      className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                <select
+                  required
+                  value={selectedCategoryId}
+                  onChange={(e) => handleCategorySelect(e.target.value)}
+                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="">— Select balance sheet item —</option>
+                  {BS_GROUPS.map(({ type, label }) => {
+                    const group = categories.filter(
+                      (c) => (c.financialType || "").toUpperCase() === type
+                    );
+                    if (group.length === 0) return null;
+                    return (
+                      <optgroup key={type} label={`── ${label} ──`}>
+                        {group.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
+                </select>
+
+                {/* Show selected pill + auto-filled type badge */}
+                {selectedCategoryId && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="px-3 py-1 bg-[#EBF3ED] rounded-lg text-xs font-semibold text-[#177B55]">
+                      {selectedCategoryName}
+                    </span>
+                    <span className={`px-2 py-1 rounded-lg text-[10px] font-bold ${
+                      newType === "Asset"
+                        ? "bg-blue-50 text-blue-700"
+                        : "bg-orange-50 text-orange-700"
+                    }`}>
+                      {newType}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategoryId("")}
+                      className="text-[#68756C] hover:text-red-500 text-xs font-bold ml-auto"
                     >
-                      <option value="">— Select a category —</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
-
-                    {/* Fallback: type a custom name if not in the list */}
-                    {!selectedCategoryId && (
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Or type a custom name…"
-                          value={customPosition}
-                          onChange={(e) => setCustomPosition(e.target.value)}
-                          className="w-full h-[38px] border border-dashed border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] placeholder:text-[#B0BDB4]"
-                        />
-                      </div>
-                    )}
-
-                    {/* Pill showing selected category */}
-                    {selectedCategoryId && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#EBF3ED] rounded-lg text-xs font-semibold text-[#177B55] w-fit">
-                        <span>{selectedCategoryName}</span>
-                        <button
-                          type="button"
-                          onClick={() => { setSelectedCategoryId(""); setCustomPosition(""); }}
-                          className="text-[#177B55] hover:text-[#0f5c40] ml-1 font-bold"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    )}
+                      ✕ Clear
+                    </button>
                   </div>
-                ) : (
-                  /* No categories at all — plain text input */
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Fixed Assets"
-                    value={customPosition}
-                    onChange={(e) => setCustomPosition(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  />
+                )}
+
+                {categories.length === 0 && (
+                  <p className="text-[10px] text-amber-600 mt-1.5 font-medium">
+                    No Balance Sheet categories found. Click &quot;+ New&quot; to create one.
+                  </p>
                 )}
               </div>
 
