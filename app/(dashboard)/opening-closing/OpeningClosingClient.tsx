@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { formatCurrency } from "@/lib/utils/currency";
 import { saveOpeningBalanceAction, deleteOpeningBalanceAction } from "./actions";
+import { AddCategoryModal } from "./AddCategoryModal";
 
 interface OpeningItem {
   id: string;
@@ -11,18 +12,43 @@ interface OpeningItem {
   type: "Asset" | "Liability";
 }
 
+interface Category {
+  id: string;
+  name: string;
+  financialType: string;
+}
+
+const FY_OPTIONS = ["FY 2026–27", "FY 2025–26", "FY 2024–25"];
+
+// Map financial type → Asset | Liability for the balance type auto-fill
+function deriveType(financialType: string): "Asset" | "Liability" {
+  const t = (financialType || "").toUpperCase();
+  if (t === "ASSET") return "Asset";
+  if (t === "LIABILITY" || t === "EQUITY") return "Liability";
+  return "Asset"; // default
+}
+
 export function OpeningClosingClient({
   initialBalances = [],
+  categories: initialCategories = [],
 }: {
   initialBalances?: any[];
+  categories?: any[];
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  // Category list — starts with server-fetched list, can grow if user creates one
+  const [categories, setCategories] = useState<Category[]>(
+    initialCategories.map((c) => ({ id: c.id, name: c.name, financialType: c.financialType || "ASSET" }))
+  );
+
   // Form State
   const [financialYear, setFinancialYear] = useState("FY 2026–27");
-  const [newPosition, setNewPosition] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [customPosition, setCustomPosition] = useState(""); // fallback if no category matches
   const [newAmount, setNewAmount] = useState("");
   const [newType, setNewType] = useState<"Asset" | "Liability">("Asset");
 
@@ -33,21 +59,40 @@ export function OpeningClosingClient({
     type: (b.type as "Asset" | "Liability") || "Asset",
   }));
 
+  // When a category is chosen from dropdown auto-set the balance type
+  const handleCategorySelect = (catId: string) => {
+    setSelectedCategoryId(catId);
+    if (catId === "__new__") {
+      setIsCategoryModalOpen(true);
+      setSelectedCategoryId(""); // reset while modal is open
+      return;
+    }
+    const cat = categories.find((c) => c.id === catId);
+    if (cat) {
+      setNewType(deriveType(cat.financialType));
+    }
+  };
+
+  const selectedCategoryName =
+    categories.find((c) => c.id === selectedCategoryId)?.name || "";
+
   const handleAddOpeningBalance = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPosition || !newAmount) return;
+    const positionName = selectedCategoryId ? selectedCategoryName : customPosition.trim();
+    if (!positionName || !newAmount) return;
 
     setError(null);
     startTransition(async () => {
       const res = await saveOpeningBalanceAction({
         financialYear,
-        position: newPosition,
+        position: positionName,
         amount: parseFloat(newAmount) || 0,
         type: newType,
       });
 
       if (res.success) {
-        setNewPosition("");
+        setSelectedCategoryId("");
+        setCustomPosition("");
         setNewAmount("");
         setIsModalOpen(false);
       } else {
@@ -62,7 +107,14 @@ export function OpeningClosingClient({
     });
   };
 
-  // Dynamic KPI Calculations from recorded items
+  const handleCategoryCreated = (newCat: { id: string; name: string; financialType: string }) => {
+    setCategories((prev) => [...prev, newCat]);
+    setSelectedCategoryId(newCat.id);
+    setNewType(deriveType(newCat.financialType));
+    setIsCategoryModalOpen(false);
+  };
+
+  // KPI Calculations
   const totalAssets = formattedInitialBalances
     .filter((item) => item.type === "Asset")
     .reduce((sum, item) => sum + item.amount, 0);
@@ -75,9 +127,11 @@ export function OpeningClosingClient({
   const currentClosing = fyOpening;
   const nextFyOpening = currentClosing;
 
+  const isPositionSelected = Boolean(selectedCategoryId) || Boolean(customPosition.trim());
+
   return (
     <div className="space-y-6">
-      {/* 1. Header Section */}
+      {/* 1. Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Opening / Closing</h1>
@@ -94,42 +148,28 @@ export function OpeningClosingClient({
         </button>
       </div>
 
-      {/* 2. KPI Summary Cards (Top Row - 3 Columns) */}
+      {/* 2. KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Card 1: FY Opening */}
         <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 flex flex-col justify-between">
           <span className="text-xs font-semibold text-[#68756C]">{financialYear} Opening</span>
-          <strong className="text-2xl font-bold text-[#17211B] mt-2 block">
-            {formatCurrency(fyOpening)}
-          </strong>
+          <strong className="text-2xl font-bold text-[#17211B] mt-2 block">{formatCurrency(fyOpening)}</strong>
         </div>
-
-        {/* Card 2: Current Closing */}
         <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 flex flex-col justify-between">
           <span className="text-xs font-semibold text-[#68756C]">Current Closing</span>
-          <strong className="text-2xl font-bold text-[#136f58] mt-2 block">
-            {formatCurrency(currentClosing)}
-          </strong>
+          <strong className="text-2xl font-bold text-[#136f58] mt-2 block">{formatCurrency(currentClosing)}</strong>
         </div>
-
-        {/* Card 3: Next FY Opening */}
         <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 flex flex-col justify-between">
           <span className="text-xs font-semibold text-[#68756C]">Next FY Opening</span>
-          <strong className="text-2xl font-bold text-[#136f58] mt-2 block">
-            {formatCurrency(nextFyOpening)}
-          </strong>
+          <strong className="text-2xl font-bold text-[#136f58] mt-2 block">{formatCurrency(nextFyOpening)}</strong>
         </div>
       </div>
 
-      {/* 3. Opening Balance Components Data Card */}
+      {/* 3. Balance Components Table */}
       <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 md:p-8 space-y-4">
         <div>
           <h2 className="text-xl font-bold text-[#17211B]">Opening Balance Components</h2>
-          <p className="text-xs text-[#68756C] mt-0.5">
-            Previous year closing becomes current year opening.
-          </p>
+          <p className="text-xs text-[#68756C] mt-0.5">Previous year closing becomes current year opening.</p>
         </div>
-
         <div className="overflow-x-auto pt-2">
           <table className="w-full text-left border-collapse min-w-[650px]">
             <thead>
@@ -150,15 +190,9 @@ export function OpeningClosingClient({
               ) : (
                 formattedInitialBalances.map((item) => (
                   <tr key={item.id} className="hover:bg-[#F9FAF8] transition-colors">
-                    <td className="py-4 px-3 font-semibold text-[#17211B]">
-                      {item.position}
-                    </td>
-                    <td className="py-4 px-4 text-right font-medium text-[#17211B]">
-                      {formatCurrency(item.amount)}
-                    </td>
-                    <td className="py-4 px-4 text-[#17211B] font-medium">
-                      {item.type}
-                    </td>
+                    <td className="py-4 px-3 font-semibold text-[#17211B]">{item.position}</td>
+                    <td className="py-4 px-4 text-right font-medium text-[#17211B]">{formatCurrency(item.amount)}</td>
+                    <td className="py-4 px-4 text-[#17211B] font-medium">{item.type}</td>
                     <td className="py-4 px-2 text-right">
                       <button
                         type="button"
@@ -177,15 +211,16 @@ export function OpeningClosingClient({
         </div>
       </div>
 
-      {/* Add Opening Balance Modal */}
+      {/* ── Add Opening Balance Modal ── */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-[#D9E3DC] overflow-hidden flex flex-col">
+            {/* Modal Header */}
             <div className="px-6 py-4 border-b border-[#D9E3DC] flex justify-between items-center bg-white">
               <h2 className="text-xl font-bold text-[#17211B]">Add Opening Balance</h2>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => { setIsModalOpen(false); setError(null); }}
                 className="text-[#68756C] hover:text-[#17211B] p-2 rounded-lg hover:bg-[#F4F7F3] transition-colors"
               >
                 ✕
@@ -199,39 +234,93 @@ export function OpeningClosingClient({
                 </div>
               )}
 
+              {/* Financial Year */}
               <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                  Financial Year
-                </label>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1">Financial Year</label>
                 <select
                   value={financialYear}
                   onChange={(e) => setFinancialYear(e.target.value)}
                   className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                 >
-                  <option value="FY 2026–27">FY 2026–27</option>
-                  <option value="FY 2025–26">FY 2025–26</option>
-                  <option value="FY 2024–25">FY 2024–25</option>
+                  {FY_OPTIONS.map((fy) => (
+                    <option key={fy} value={fy}>{fy}</option>
+                  ))}
                 </select>
               </div>
 
+              {/* Position / Component — Dropdown */}
               <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                  Position / Component Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Fixed Assets"
-                  value={newPosition}
-                  onChange={(e) => setNewPosition(e.target.value)}
-                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                />
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-semibold text-[#68756C]">
+                    Position / Component Name *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryModalOpen(true)}
+                    className="text-[#177B55] text-[10px] font-bold hover:underline flex items-center gap-0.5"
+                  >
+                    + Add New Category
+                  </button>
+                </div>
+
+                {categories.length > 0 ? (
+                  <div className="space-y-2">
+                    <select
+                      value={selectedCategoryId}
+                      onChange={(e) => handleCategorySelect(e.target.value)}
+                      className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    >
+                      <option value="">— Select a category —</option>
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Fallback: type a custom name if not in the list */}
+                    {!selectedCategoryId && (
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Or type a custom name…"
+                          value={customPosition}
+                          onChange={(e) => setCustomPosition(e.target.value)}
+                          className="w-full h-[38px] border border-dashed border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] placeholder:text-[#B0BDB4]"
+                        />
+                      </div>
+                    )}
+
+                    {/* Pill showing selected category */}
+                    {selectedCategoryId && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#EBF3ED] rounded-lg text-xs font-semibold text-[#177B55] w-fit">
+                        <span>{selectedCategoryName}</span>
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedCategoryId(""); setCustomPosition(""); }}
+                          className="text-[#177B55] hover:text-[#0f5c40] ml-1 font-bold"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* No categories at all — plain text input */
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Fixed Assets"
+                    value={customPosition}
+                    onChange={(e) => setCustomPosition(e.target.value)}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  />
+                )}
               </div>
 
+              {/* Opening Amount */}
               <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                  Opening Amount (₹) *
-                </label>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1">Opening Amount (₹) *</label>
                 <input
                   type="number"
                   required
@@ -243,10 +332,9 @@ export function OpeningClosingClient({
                 />
               </div>
 
+              {/* Type */}
               <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                  Type
-                </label>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1">Type</label>
                 <select
                   value={newType}
                   onChange={(e) => setNewType(e.target.value as any)}
@@ -257,25 +345,34 @@ export function OpeningClosingClient({
                 </select>
               </div>
 
+              {/* Footer */}
               <div className="pt-4 border-t border-[#D9E3DC] flex justify-end items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => { setIsModalOpen(false); setError(null); }}
                   className="px-4 py-2 border border-[#D9E3DC] rounded-xl text-xs font-bold hover:bg-[#F4F7F3] text-[#17211B] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isPending}
+                  disabled={isPending || !isPositionSelected}
                   className="px-6 py-2 bg-[#1b5e4b] hover:bg-[#136f58] text-white rounded-xl text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
                 >
-                  {isPending ? "Saving..." : "Save"}
+                  {isPending ? "Saving…" : "Save"}
                 </button>
               </div>
             </form>
           </div>
         </div>
+      )}
+
+      {/* ── Add Category Modal (layered above the balance modal) ── */}
+      {isCategoryModalOpen && (
+        <AddCategoryModal
+          onClose={() => setIsCategoryModalOpen(false)}
+          onSuccess={handleCategoryCreated}
+        />
       )}
     </div>
   );
