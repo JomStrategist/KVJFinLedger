@@ -484,7 +484,7 @@ export function FinancialReportsClient({
     const { totalGst } = getInvoiceTax(inv);
     // Double-Entry Statutory Principle (AS 9 / Schedule III):
     // Sales Revenue (Taxable Turnover) = Gross Invoice Receivable - Output GST
-    return Math.max(0, gross - totalGst);
+    return Math.round(Math.max(0, gross - totalGst) * 100) / 100;
   };
 
   const getExpenseTax = (exp: any) => {
@@ -499,13 +499,13 @@ export function FinancialReportsClient({
     const gross = Number(exp.grossAmount || exp.netAmount || 0);
     const { totalGst } = getExpenseTax(exp);
     // When Input Tax Credit (ITC) is claimed, the GST portion offsets tax liability and is not an operating expense
-    return Math.max(0, gross - totalGst);
+    return Math.round(Math.max(0, gross - totalGst) * 100) / 100;
   };
 
   // ── 2. REVENUE TRANSACTIONS ───────────────────────────────────────────────
   // Under Indian Accounting Standards, Revenue is Taxable Amount (excluding GST)
   const totalRevenue = useMemo(
-    () => validInvoices.reduce((s, inv) => s + getInvoiceRevenue(inv), 0),
+    () => Math.round(validInvoices.reduce((s, inv) => s + getInvoiceRevenue(inv), 0) * 100) / 100,
     [validInvoices]
   );
 
@@ -552,10 +552,10 @@ export function FinancialReportsClient({
     [revenueExpenses, employeeExpenses, financeExpenses]
   );
 
-  const totalEmployeeExp = useMemo(() => employeeExpenses.reduce((s, e) => s + getExpenseOperatingCost(e), 0), [employeeExpenses]);
-  const totalFinanceExp = useMemo(() => financeExpenses.reduce((s, e) => s + getExpenseOperatingCost(e), 0), [financeExpenses]);
-  const totalCapex = useMemo(() => assetExpenses.reduce((s, e) => s + getExpenseOperatingCost(e), 0), [assetExpenses]);
-  const totalOtherOpex = useMemo(() => otherOpex.reduce((s, e) => s + getExpenseOperatingCost(e), 0), [otherOpex]);
+  const totalEmployeeExp = useMemo(() => Math.round(employeeExpenses.reduce((s, e) => s + getExpenseOperatingCost(e), 0) * 100) / 100, [employeeExpenses]);
+  const totalFinanceExp = useMemo(() => Math.round(financeExpenses.reduce((s, e) => s + getExpenseOperatingCost(e), 0) * 100) / 100, [financeExpenses]);
+  const totalCapex = useMemo(() => Math.round(assetExpenses.reduce((s, e) => s + getExpenseOperatingCost(e), 0) * 100) / 100, [assetExpenses]);
+  const totalOtherOpex = useMemo(() => Math.round(otherOpex.reduce((s, e) => s + getExpenseOperatingCost(e), 0) * 100) / 100, [otherOpex]);
 
   const otherOpexByCategory = useMemo(() => {
     const map: Record<string, number> = {};
@@ -604,10 +604,10 @@ export function FinancialReportsClient({
   const totalNetBlock = useMemo(() => depSchedule.reduce((s, d) => s + d.closingWdv, 0), [depSchedule]);
 
   // ── 5. P&L SUMMARY (Schedule III Part II) ─────────────────────────────────
-  const totalOperatingExpenses = totalEmployeeExp + totalFinanceExp + totalCurrentYearDep + totalOtherOpex;
-  const pbt = totalRevenue - totalOperatingExpenses;
+  const totalOperatingExpenses = Math.round((totalEmployeeExp + totalFinanceExp + totalCurrentYearDep + totalOtherOpex) * 100) / 100;
+  const pbt = Math.round((totalRevenue - totalOperatingExpenses) * 100) / 100;
   const taxExpense = pbt > 0 ? Math.round(pbt * (effectiveTaxRate / 100) * 100) / 100 : 0;
-  const pat = pbt - taxExpense;
+  const pat = Math.round((pbt - taxExpense) * 100) / 100;
   const grossMargin = totalRevenue > 0 ? ((totalRevenue - totalOtherOpex) / totalRevenue) * 100 : 0;
   const netMargin = totalRevenue > 0 ? (pat / totalRevenue) * 100 : 0;
 
@@ -886,29 +886,29 @@ export function FinancialReportsClient({
     };
   }, [fyOpeningBalances]);
 
-  const otherOpeningAssetsTotal = useMemo(() => otherOpeningAssets.reduce((s, ob) => s + Number(ob.amount || 0), 0), [otherOpeningAssets]);
-  const otherOpeningLiabilitiesTotal = useMemo(() => otherOpeningLiabilities.reduce((s, ob) => s + Number(ob.amount || 0), 0), [otherOpeningLiabilities]);
+  const otherOpeningAssetsTotal = useMemo(() => Math.round(otherOpeningAssets.reduce((s, ob) => s + Number(ob.amount || 0), 0) * 100) / 100, [otherOpeningAssets]);
+  const otherOpeningLiabilitiesTotal = useMemo(() => Math.round(otherOpeningLiabilities.reduce((s, ob) => s + Number(ob.amount || 0), 0) * 100) / 100, [otherOpeningLiabilities]);
 
   // Closing Cash & Bank Balance:
   // Opening Bank + Inflows from Customer Receipts - Outflows for Expense Disbursements - GST Paid via Bank Challan - TDS Paid via Bank Challan
-  const closingBankCashBalance = openingBankCash + actualCustomerCollections - actualExpenseDisbursements - gstChallanPaid - tdsPaidViaBank;
+  const closingBankCashBalance = Math.round((openingBankCash + actualCustomerCollections - actualExpenseDisbursements - gstChallanPaid - tdsPaidViaBank) * 100) / 100;
 
   // Shareholders' Funds: Capital + Reserves & Surplus (Net Profit After Tax for period)
   const reservesAndSurplus = pat;
-  const totalShareholdersEquity = openingCapital + reservesAndSurplus;
+  const totalShareholdersEquity = Math.round((openingCapital + reservesAndSurplus) * 100) / 100;
 
   // Total Current Liabilities: Vendors + Employees + GST + TDS + Income Tax Provision
   const incomeTaxProvision = taxExpense;
-  const totalCurrentLiabilities = totalVendorPayables + totalEmployeePayables + effectiveGSTPayable + outstandingTdsPayable + incomeTaxProvision;
-  const totalEquityAndLiabilities = totalShareholdersEquity + otherOpeningLiabilitiesTotal + totalCurrentLiabilities;
+  const totalCurrentLiabilities = Math.round((totalVendorPayables + totalEmployeePayables + effectiveGSTPayable + outstandingTdsPayable + incomeTaxProvision) * 100) / 100;
+  const totalEquityAndLiabilities = Math.round((totalShareholdersEquity + otherOpeningLiabilitiesTotal + totalCurrentLiabilities) * 100) / 100;
 
   // Total Assets:
-  const totalCurrentAssets = closingBankCashBalance + totalReceivables + tdsReceivable + excessITC + otherOpeningAssetsTotal;
-  const totalAssets = totalCurrentAssets + totalNetBlock;
+  const totalCurrentAssets = Math.round((closingBankCashBalance + totalReceivables + tdsReceivable + excessITC + otherOpeningAssetsTotal) * 100) / 100;
+  const totalAssets = Math.round((totalCurrentAssets + totalNetBlock) * 100) / 100;
 
   // Balance Check (Rounded to 2 decimal places to eliminate IEEE floating point discrepancies)
   const bsDiff = Math.round((totalAssets - totalEquityAndLiabilities) * 100) / 100;
-  const isBalanced = Math.abs(bsDiff) <= 0.50; // Under Indian ICAI guidance, 50 paise tolerance for rounding
+  const isBalanced = Math.abs(bsDiff) <= 0.001; // Under Indian ICAI guidance, 50 paise tolerance for rounding
 
   // ── 11. CASH FLOW STATEMENT (AS 3 Indirect Method) ─────────────────────────
   const cfOperating_pbt = pbt;
