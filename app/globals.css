@@ -86,12 +86,12 @@ input[type="number"] {
     padding: 0.25rem !important;
   }
 
-  .py-3, .py-3.5, .py-4, .pb-4 {
+  .py-3, .py-3\.5, .py-4, .pb-4 {
     padding-top: 0.15rem !important;
     padding-bottom: 0.15rem !important;
   }
 
-  .my-2.5, .my-3, .mt-4, .mt-6, .mt-12 {
+  .my-2\.5, .my-3, .mt-4, .mt-6, .mt-12 {
     margin-top: 0.2rem !important;
     margin-bottom: 0.2rem !important;
   }
