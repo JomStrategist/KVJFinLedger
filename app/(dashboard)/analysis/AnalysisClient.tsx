@@ -53,7 +53,9 @@ export default function AnalysisClient({
     Object.entries(updated).forEach(([k, v]) => {
       if (v) query.set(k, v);
     });
-    router.push(`/analysis?${query.toString()}`);
+    const queryString = query.toString();
+    const newUrl = queryString ? `/analysis?${queryString}` : "/analysis";
+    window.history.replaceState(null, "", newUrl);
   };
 
   const handleClearFilters = () => {
@@ -72,7 +74,7 @@ export default function AnalysisClient({
       paymentStatus: "",
     };
     setFilters(reset);
-    router.push("/analysis");
+    window.history.replaceState(null, "", "/analysis");
   };
 
   const formatCurrency = (amount: number) => {

@@ -26,6 +26,8 @@ export default function LedgerClient({
   const [fromDate, setFromDate] = useState(initialFromDate);
   const [toDate, setToDate] = useState(initialToDate);
 
+  const [isPending, startTransition] = React.useTransition();
+
   const handleAccountChange = (newAccId: string) => {
     setAccountId(newAccId);
     navigate(newAccId, fromDate, toDate);
@@ -41,7 +43,9 @@ export default function LedgerClient({
     if (accId) query.set("accountId", accId);
     if (from) query.set("fromDate", from);
     if (to) query.set("toDate", to);
-    router.push(`/ledgers?${query.toString()}`);
+    startTransition(() => {
+      router.push(`/ledgers?${query.toString()}`);
+    });
   };
 
   const handlePrint = () => {

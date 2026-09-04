@@ -182,14 +182,25 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
       {/* Brand & Collapse Header */}
       <div className={`flex items-center pt-5 pb-4 border-b border-white/10 ${isCollapsed ? "flex-col gap-3 px-2 justify-center" : "justify-between px-4"}`}>
         {!isCollapsed ? (
-          <div className="flex items-center transition-opacity duration-300">
-            <div className="h-11 bg-white/95 backdrop-blur-md rounded-xl px-3 py-1.5 flex items-center justify-center shadow-lg border border-white/30">
-              <img src="/finledger-logo.png" alt="FinLedger Financial Management" className="h-full w-auto object-contain max-w-[170px]" />
+          <div className="flex items-center gap-3 px-1 transition-opacity duration-300">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 p-0.5 shadow-md shadow-emerald-500/20 flex items-center justify-center shrink-0">
+              <div className="h-full w-full bg-[#052722] rounded-[10px] p-1 flex items-center justify-center">
+                <img src="/finledger-icon.png" alt="FinLedger" className="h-full w-full object-contain" />
+              </div>
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-base font-black tracking-tight text-white flex items-center gap-1.5">
+                FinLedger
+                <span className="text-[9px] font-extrabold bg-emerald-500/25 text-emerald-300 border border-emerald-400/30 px-1.5 py-0.5 rounded-md uppercase tracking-wider">ERP</span>
+              </span>
+              <span className="text-[10px] font-semibold text-emerald-200/60 truncate">Financial Management</span>
             </div>
           </div>
         ) : (
-          <div className="h-10 w-10 rounded-xl bg-white/95 backdrop-blur-md p-1 flex items-center justify-center shadow-lg shrink-0 border border-white/30 mb-1">
-            <img src="/finledger-icon.png" alt="FinLedger" className="h-full w-full object-contain" />
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 p-0.5 shadow-md shadow-emerald-500/20 flex items-center justify-center shrink-0 mb-1">
+            <div className="h-full w-full bg-[#052722] rounded-[10px] p-1 flex items-center justify-center">
+              <img src="/finledger-icon.png" alt="FinLedger" className="h-full w-full object-contain" />
+            </div>
           </div>
         )}
 

@@ -19,10 +19,11 @@ export default async function DashboardLayout({
   const role = (session?.user as any)?.role || "USER";
 
   return (
-    <div className="flex h-screen bg-theme-bg text-theme-text">
+    <div className="flex h-screen bg-theme-bg text-theme-text overflow-hidden">
       <Sidebar userRole={role} user={session?.user} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <main className="flex-1 overflow-y-auto bg-theme-bg">
+        <Header user={session?.user} />
+        <main className="flex-1 overflow-y-auto bg-[#F8FAFC] p-6">
           {children}
         </main>
       </div>
