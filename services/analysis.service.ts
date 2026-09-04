@@ -171,16 +171,57 @@ export class AnalysisService {
     const [invoices, expenses, bankTransfers, openingBalances] = await Promise.all([
       prisma.taxInvoice.findMany({
         where: invoiceWhere,
-        include: { customer: true, payments: true, items: { include: { incomeCategory: true } } }
+        select: {
+          id: true,
+          status: true,
+          invoiceDate: true,
+          netAmount: true,
+          taxableAmount: true,
+          totalCGST: true,
+          totalSGST: true,
+          totalIGST: true,
+          totalGST: true,
+          tdsAmount: true,
+          customerNameSnapshot: true,
+          customer: { select: { id: true, legalName: true } },
+          payments: { select: { paymentAmount: true, paymentDate: true } },
+          items: {
+            select: {
+              categoryNameSnapshot: true,
+              taxableAmount: true,
+              totalAmount: true,
+              incomeCategory: { select: { name: true } }
+            }
+          }
+        }
       }),
       prisma.expense.findMany({
         where: expenseWhere,
-        include: { vendor: true, category: true, items: { include: { category: true } } }
+        select: {
+          id: true,
+          status: true,
+          expenseDate: true,
+          netAmount: true,
+          taxableAmount: true,
+          inputCGST: true,
+          inputSGST: true,
+          inputIGST: true,
+          totalInputGST: true,
+          tdsAmount: true,
+          paymentStatus: true,
+          isAsset: true,
+          vendor: { select: { id: true, name: true, businessName: true } },
+          category: { select: { id: true, name: true, statementGroup: true } },
+          items: { select: { category: { select: { name: true } } } }
+        }
       }),
       prisma.bankTransfer.findMany({
-        where: { date: { gte: dates.fromDate, lte: dates.toDate } }
+        where: { date: { gte: dates.fromDate, lte: dates.toDate } },
+        select: { id: true, date: true, amount: true }
       }),
-      prisma.openingBalance.findMany()
+      prisma.openingBalance.findMany({
+        select: { id: true, position: true, amount: true }
+      })
     ]);
 
     // Financial Metrics Calculation
@@ -338,8 +379,10 @@ export class AnalysisService {
    */
   static async getFullAnalysis(filters: AnalysisFilters) {
     const dates = this.getPeriodDates(filters);
-    const currentData = await this.getPeriodData(dates.current, filters);
-    const compData = dates.comparison ? await this.getPeriodData(dates.comparison, filters) : null;
+    const [currentData, compData] = await Promise.all([
+      this.getPeriodData(dates.current, filters),
+      dates.comparison ? this.getPeriodData(dates.comparison, filters) : Promise.resolve(null)
+    ]);
 
     // 1. Overview KPI Variances
     const kpiVariances = {

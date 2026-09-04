@@ -64,19 +64,73 @@ export class DashboardService {
       const [txnsRes, invoicesRes, expensesRes, activeProformasRes] = await Promise.allSettled([
         prisma.financialTransaction.findMany({
           where: txnWhere,
+          select: {
+            id: true,
+            type: true,
+            transactionDate: true,
+            netAmount: true,
+            paymentStatus: true
+          },
           orderBy: { transactionDate: "asc" }
         }),
         prisma.taxInvoice.findMany({
           where: invoiceWhere,
-          include: { customer: true, payments: true, items: { include: { incomeCategory: true } } }
+          select: {
+            id: true,
+            status: true,
+            invoiceDate: true,
+            createdAt: true,
+            netAmount: true,
+            grossAmount: true,
+            subtotal: true,
+            totalGST: true,
+            tdsAmount: true,
+            customerNameSnapshot: true,
+            customer: { select: { id: true, legalName: true } },
+            payments: { select: { paymentAmount: true, tdsAmount: true } },
+            items: {
+              select: {
+                categoryNameSnapshot: true,
+                statementGroupSnapshot: true,
+                taxableAmount: true,
+                totalAmount: true,
+                incomeCategory: { select: { name: true, statementGroup: true } }
+              }
+            }
+          }
         }),
         prisma.expense.findMany({
           where: expenseWhere,
-          include: { category: true, vendor: true, items: { include: { category: true } } },
+          select: {
+            id: true,
+            status: true,
+            expenseDate: true,
+            createdAt: true,
+            netAmount: true,
+            paymentStatus: true,
+            totalInputGST: true,
+            tdsAmount: true,
+            vendor: { select: { id: true, name: true } },
+            category: { select: { id: true, name: true } },
+            items: {
+              select: {
+                taxableAmount: true,
+                totalAmount: true,
+                totalGST: true,
+                category: { select: { name: true } }
+              }
+            }
+          },
           orderBy: { netAmount: "desc" }
         }),
         prisma.proformaInvoice.findMany({
           where: proformaWhere,
+          select: {
+            id: true,
+            totalAmount: true,
+            netAmount: true,
+            grossAmount: true
+          }
         })
       ]);
 

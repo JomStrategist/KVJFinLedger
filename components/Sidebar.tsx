@@ -124,18 +124,26 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
   const [isPending, startTransition] = React.useTransition();
   const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
 
+  useEffect(() => {
+    setOptimisticHref(null);
+  }, [pathname]);
+
   const toggleSidebar = () => {
     const newState = !isCollapsed;
     setIsCollapsed(newState);
     localStorage.setItem("sidebarCollapsed", String(newState));
   };
 
-  const handleLinkClick = (href: string) => {
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (pathname === href) return;
     setOptimisticHref(href);
+    startTransition(() => {
+      router.push(href);
+    });
   };
 
   const isItemActive = (href: string) => {
-    const currentHref = isPending && optimisticHref ? optimisticHref : pathname;
+    const currentHref = (isPending || optimisticHref) && optimisticHref ? optimisticHref : pathname;
     if (href === "/dashboard") return currentHref === "/dashboard";
     if (href === "/invoices") return currentHref.startsWith("/invoices") || currentHref.startsWith("/proforma-invoices");
     if (href === "/finance") return currentHref.startsWith("/finance") || currentHref.startsWith("/revenue") || currentHref.startsWith("/ledger");
@@ -210,7 +218,8 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
               <li key={item.name} className="relative group">
                 <Link
                   href={item.href}
-                  onClick={() => handleLinkClick(item.href)}
+                  prefetch={true}
+                  onClick={(e) => handleLinkClick(e, item.href)}
                   className={`flex items-center rounded-lg text-sm transition-all duration-150 ${
                     isCollapsed ? "justify-center p-3" : "px-3 py-2.5"
                   } ${
