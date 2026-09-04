@@ -475,36 +475,291 @@ export default function AnalysisClient({
         </div>
       )}
 
-      {/* SECTION C: BALANCE SHEET */}
+      {/* SECTION C: BALANCE SHEET ANALYSIS WORKSTATION */}
       {activeTab === "balance_sheet" && (
-        <div className="space-y-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 className="text-lg font-bold text-slate-900">Balance Sheet Analytical View</h2>
-            <div className={`px-3 py-1 rounded-full text-xs font-bold ${balanceCheck.isBalanced ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>
-              {balanceCheck.isBalanced ? "✓ Balance Sheet Balanced" : `⚠ Discrepancy: ${formatCurrency(balanceCheck.difference)}`}
+        <div className="space-y-8">
+          {/* Header Card & Verification Status */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-extrabold text-slate-900">Comprehensive Balance Sheet Analytical Workstation</h2>
+                <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                  CA Audit Grade
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Unified Vertical Analysis (% of Base), Horizontal Comparative Analysis (Absolute & % Change), Solvency & Liquidity Ratios, and Working Capital Metrics.
+              </p>
+            </div>
+
+            <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border font-bold text-xs ${
+              balanceCheck.isBalanced ? "bg-emerald-50 border-emerald-300 text-emerald-900" : "bg-rose-50 border-rose-300 text-rose-900"
+            }`}>
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-base ${
+                balanceCheck.isBalanced ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+              }`}>
+                {balanceCheck.isBalanced ? "✓" : "⚠"}
+              </div>
+              <div>
+                <div className="font-extrabold text-sm">{balanceCheck.isBalanced ? "Balance Sheet Fully Balanced" : "Discrepancy Detected"}</div>
+                <div className="text-[11px] font-semibold opacity-80">
+                  {balanceCheck.isBalanced
+                    ? `Total Assets (${formatCurrency(currentData.totalAssets)}) = Liabilities + Equity (${formatCurrency(currentData.totalLiabilities + currentData.totalEquity)})`
+                    : `Difference: ${formatCurrency(balanceCheck.difference)}`}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Assets */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider bg-slate-100 p-2.5 rounded-lg">Assets</h3>
-              <div className="divide-y divide-slate-100 text-sm">
-                <div className="flex justify-between py-2"><span className="text-slate-600">Fixed Assets (Net Block)</span><span className="font-mono font-semibold">{formatCurrency(currentData.fixedAssetsNetBlock)}</span></div>
-                <div className="flex justify-between py-2"><span className="text-slate-600">Cash & Bank Balances</span><span className="font-mono font-semibold text-emerald-700">{formatCurrency(currentData.cashBankBalance)}</span></div>
-                <div className="flex justify-between py-2"><span className="text-slate-600">Trade Receivables (Debtors)</span><span className="font-mono font-semibold text-amber-700">{formatCurrency(currentData.outstandingReceivables)}</span></div>
-                <div className="flex justify-between py-2 font-bold bg-slate-50 px-2 rounded"><span className="text-slate-800">Total Assets</span><span className="font-mono text-emerald-700">{formatCurrency(currentData.totalAssets)}</span></div>
+          {/* Balance Sheet Specific Ratio Analytics Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Current Ratio */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1.5">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Current Ratio (Liquidity)</div>
+              <div className="text-2xl font-extrabold text-emerald-700">
+                {ratios.currentRatio !== null ? `${ratios.currentRatio.toFixed(2)} x` : "N/A"}
+              </div>
+              <div className="text-xs text-slate-500 flex justify-between">
+                <span>Benchmark: 1.5x - 2.0x</span>
+                <span className="font-semibold text-slate-700">
+                  {ratios.currentRatio && ratios.currentRatio >= 1.5 ? "✓ Healthy" : "⚠ Monitor"}
+                </span>
               </div>
             </div>
 
-            {/* Liabilities & Equity */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider bg-slate-100 p-2.5 rounded-lg">Liabilities & Equity</h3>
-              <div className="divide-y divide-slate-100 text-sm">
-                <div className="flex justify-between py-2"><span className="text-slate-600">Trade Payables (Creditors)</span><span className="font-mono font-semibold">{formatCurrency(currentData.outstandingPayables)}</span></div>
-                <div className="flex justify-between py-2"><span className="text-slate-600">Statutory Tax Payable (GST/TDS)</span><span className="font-mono font-semibold">{formatCurrency(currentData.netGstLiability + currentData.tdsPayable)}</span></div>
-                <div className="flex justify-between py-2"><span className="text-slate-600">Owner Capital & Retained Equity</span><span className="font-mono font-semibold text-emerald-700">{formatCurrency(currentData.totalEquity)}</span></div>
-                <div className="flex justify-between py-2 font-bold bg-slate-50 px-2 rounded"><span className="text-slate-800">Total Liabilities + Equity</span><span className="font-mono text-slate-900">{formatCurrency(currentData.totalLiabilities + currentData.totalEquity)}</span></div>
+            {/* Quick Ratio */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1.5">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quick Ratio (Acid Test)</div>
+              <div className="text-2xl font-extrabold text-emerald-700">
+                {ratios.quickRatio !== null ? `${ratios.quickRatio.toFixed(2)} x` : "N/A"}
+              </div>
+              <div className="text-xs text-slate-500 flex justify-between">
+                <span>Benchmark: ≥ 1.0x</span>
+                <span className="font-semibold text-slate-700">
+                  {ratios.quickRatio && ratios.quickRatio >= 1.0 ? "✓ Strong" : "⚠ Tight"}
+                </span>
+              </div>
+            </div>
+
+            {/* Debt-to-Equity */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1.5">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Debt-to-Equity (Solvency)</div>
+              <div className="text-2xl font-extrabold text-slate-900">
+                {ratios.debtToEquity !== null ? `${ratios.debtToEquity.toFixed(2)} x` : "N/A"}
+              </div>
+              <div className="text-xs text-slate-500 flex justify-between">
+                <span>Liabilities / Equity</span>
+                <span className="font-semibold text-emerald-700">
+                  {ratios.debtToEquity && ratios.debtToEquity <= 1.5 ? "✓ Low Risk" : "⚠ High Debt"}
+                </span>
+              </div>
+            </div>
+
+            {/* Net Working Capital */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1.5">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Net Working Capital</div>
+              <div className="text-2xl font-extrabold text-slate-900">
+                {formatCurrency(currentData.totalCurrentAssets - currentData.totalCurrentLiabilities)}
+              </div>
+              <div className="text-xs text-slate-500 flex justify-between">
+                <span>Current Assets – Liabilities</span>
+                <span className="font-semibold text-emerald-700">
+                  {currentData.totalCurrentAssets - currentData.totalCurrentLiabilities >= 0 ? "✓ Positive" : "⚠ Deficit"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Detailed Comparative Balance Sheet (Combined Vertical & Horizontal Analysis Table) */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900">Comparative Balance Sheet Statement</h3>
+                <p className="text-xs text-slate-500">Horizontal Analysis (Current vs Comp) & Vertical Analysis (% of Total Assets or Liabilities)</p>
+              </div>
+              <div className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
+                Showing Vertical % and Horizontal Absolute (₹) & % Change
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-y border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3">Balance Sheet Line Item</th>
+                    <th className="px-4 py-3 text-right">Current Period (₹)</th>
+                    <th className="px-4 py-3 text-right bg-emerald-50/50 text-emerald-900">Vertical %</th>
+                    <th className="px-4 py-3 text-right">Comparison Period (₹)</th>
+                    <th className="px-4 py-3 text-right">Absolute Change (₹)</th>
+                    <th className="px-4 py-3 text-right">Change %</th>
+                    <th className="px-4 py-3 text-center">Movement</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {[
+                    // ASSETS
+                    { type: "HEADER", label: "I. ASSETS" },
+                    { type: "SUBHEADER", label: "A. Non-Current Assets" },
+                    { label: "Fixed Assets (Gross Block)", current: currentData.fixedAssetsGross, comp: compData?.fixedAssetsGross || 0, verticalPct: (currentData.fixedAssetsGross / (currentData.totalAssets || 1)) * 100, higherIsBetter: true },
+                    { label: "Less: Accumulated Depreciation", current: currentData.accumulatedDepreciation, comp: compData?.accumulatedDepreciation || 0, verticalPct: (currentData.accumulatedDepreciation / (currentData.totalAssets || 1)) * 100, higherIsBetter: false },
+                    { label: "Fixed Assets (Net Book Value)", current: currentData.fixedAssetsNetBlock, comp: compData?.fixedAssetsNetBlock || 0, verticalPct: (currentData.fixedAssetsNetBlock / (currentData.totalAssets || 1)) * 100, isBold: true, higherIsBetter: true },
+
+                    { type: "SUBHEADER", label: "B. Current Assets" },
+                    { label: "Cash & Bank Balances", current: currentData.cashBankBalance, comp: compData?.cashBankBalance || 0, verticalPct: (currentData.cashBankBalance / (currentData.totalAssets || 1)) * 100, higherIsBetter: true },
+                    { label: "Trade Receivables (Sundry Debtors)", current: currentData.outstandingReceivables, comp: compData?.outstandingReceivables || 0, verticalPct: (currentData.outstandingReceivables / (currentData.totalAssets || 1)) * 100, higherIsBetter: false },
+                    { label: "GST Input Tax Credit (ITC Available)", current: Math.max(0, currentData.totalInputGST - currentData.totalOutputGST), comp: compData ? Math.max(0, compData.totalInputGST - compData.totalOutputGST) : 0, verticalPct: (Math.max(0, currentData.totalInputGST - currentData.totalOutputGST) / (currentData.totalAssets || 1)) * 100, higherIsBetter: true },
+                    { label: "Total Current Assets", current: currentData.totalCurrentAssets, comp: compData?.totalCurrentAssets || 0, verticalPct: (currentData.totalCurrentAssets / (currentData.totalAssets || 1)) * 100, isBold: true, isSectionTotal: true, higherIsBetter: true },
+
+                    { label: "TOTAL ASSETS", current: currentData.totalAssets, comp: compData?.totalAssets || 0, verticalPct: 100, isGrandTotal: true, higherIsBetter: true },
+
+                    // LIABILITIES & EQUITY
+                    { type: "HEADER", label: "II. LIABILITIES & EQUITY" },
+                    { type: "SUBHEADER", label: "A. Current Liabilities" },
+                    { label: "Trade Payables (Sundry Creditors)", current: currentData.outstandingPayables, comp: compData?.outstandingPayables || 0, verticalPct: (currentData.outstandingPayables / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100, higherIsBetter: false },
+                    { label: "Net GST Payable to Government", current: currentData.netGstLiability, comp: compData?.netGstLiability || 0, verticalPct: (currentData.netGstLiability / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100, higherIsBetter: false },
+                    { label: "TDS Payable", current: currentData.tdsPayable, comp: compData?.tdsPayable || 0, verticalPct: (currentData.tdsPayable / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100, higherIsBetter: false },
+                    { label: "Total Current Liabilities", current: currentData.totalCurrentLiabilities, comp: compData?.totalCurrentLiabilities || 0, verticalPct: (currentData.totalCurrentLiabilities / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100, isBold: true, isSectionTotal: true, higherIsBetter: false },
+                    { label: "TOTAL LIABILITIES", current: currentData.totalLiabilities, comp: compData?.totalLiabilities || 0, verticalPct: (currentData.totalLiabilities / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100, isBold: true, higherIsBetter: false },
+
+                    { type: "SUBHEADER", label: "B. Shareholders' Capital & Equity" },
+                    { label: "Owner Capital Account", current: currentData.capitalEquity, comp: compData?.capitalEquity || 0, verticalPct: (currentData.capitalEquity / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100, higherIsBetter: true },
+                    { label: "Retained Earnings & Accumulated Surplus", current: currentData.retainedEarnings, comp: compData?.retainedEarnings || 0, verticalPct: (currentData.retainedEarnings / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100, higherIsBetter: true },
+                    { label: "TOTAL EQUITY", current: currentData.totalEquity, comp: compData?.totalEquity || 0, verticalPct: (currentData.totalEquity / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100, isBold: true, isSectionTotal: true, higherIsBetter: true },
+
+                    { label: "TOTAL LIABILITIES + EQUITY", current: currentData.totalLiabilities + currentData.totalEquity, comp: (compData?.totalLiabilities || 0) + (compData?.totalEquity || 0), verticalPct: 100, isGrandTotal: true, higherIsBetter: true },
+                  ].map((row: any, idx: number) => {
+                    if (row.type === "HEADER") {
+                      return (
+                        <tr key={idx} className="bg-slate-900 text-white font-extrabold uppercase tracking-wider text-xs">
+                          <td colSpan={7} className="px-4 py-2.5">{row.label}</td>
+                        </tr>
+                      );
+                    }
+                    if (row.type === "SUBHEADER") {
+                      return (
+                        <tr key={idx} className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                          <td colSpan={7} className="px-4 py-2">{row.label}</td>
+                        </tr>
+                      );
+                    }
+
+                    const absChange = row.current - (row.comp || 0);
+                    const pctChange = row.comp && row.comp !== 0 ? (absChange / Math.abs(row.comp)) * 100 : null;
+                    const isFavourable = row.higherIsBetter ? absChange >= 0 : absChange <= 0;
+
+                    let rowStyle = "hover:bg-slate-50";
+                    if (row.isGrandTotal) rowStyle = "bg-emerald-50/80 font-extrabold border-y-2 border-emerald-600 text-slate-900 text-xs";
+                    else if (row.isSectionTotal) rowStyle = "bg-slate-50 font-bold text-slate-900";
+                    else if (row.isBold) rowStyle = "font-semibold text-slate-900";
+
+                    return (
+                      <tr key={idx} className={rowStyle}>
+                        <td className={`px-4 py-2.5 ${row.isGrandTotal ? "text-slate-900 text-xs font-bold" : "text-slate-700"}`}>
+                          {row.label}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-mono font-bold">{formatCurrency(row.current)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono font-bold text-emerald-700 bg-emerald-50/30">
+                          {row.verticalPct !== undefined ? `${row.verticalPct.toFixed(1)}%` : "—"}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-mono text-slate-500">{formatCurrency(row.comp)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono font-semibold">{formatCurrency(absChange)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono">
+                          {pctChange !== null ? `${pctChange >= 0 ? "+" : ""}${pctChange.toFixed(2)}%` : "N/A"}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-sans font-bold ${
+                            isFavourable ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                          }`}>
+                            {isFavourable ? "FAVOURABLE" : "UNFAVOURABLE"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Visual Asset & Liability Composition Progress Bars */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            {/* Asset Distribution */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                Asset Structure Breakdown (% of Total Assets)
+              </h3>
+              
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                    <span>Cash & Bank Balances</span>
+                    <span className="font-mono">{formatCurrency(currentData.cashBankBalance)} ({((currentData.cashBankBalance / (currentData.totalAssets || 1)) * 100).toFixed(1)}%)</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-emerald-600 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, (currentData.cashBankBalance / (currentData.totalAssets || 1)) * 100))}%` }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                    <span>Fixed Assets (Net Block)</span>
+                    <span className="font-mono">{formatCurrency(currentData.fixedAssetsNetBlock)} ({((currentData.fixedAssetsNetBlock / (currentData.totalAssets || 1)) * 100).toFixed(1)}%)</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-blue-600 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, (currentData.fixedAssetsNetBlock / (currentData.totalAssets || 1)) * 100))}%` }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                    <span>Trade Receivables (Debtors)</span>
+                    <span className="font-mono">{formatCurrency(currentData.outstandingReceivables)} ({((currentData.outstandingReceivables / (currentData.totalAssets || 1)) * 100).toFixed(1)}%)</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-amber-500 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, (currentData.outstandingReceivables / (currentData.totalAssets || 1)) * 100))}%` }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Capital & Liabilities Structure */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+                Capital & Liabilities Breakdown (% of Total Capital)
+              </h3>
+
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                    <span>Shareholders' Capital & Retained Equity</span>
+                    <span className="font-mono">{formatCurrency(currentData.totalEquity)} ({((currentData.totalEquity / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100).toFixed(1)}%)</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-purple-600 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, (currentData.totalEquity / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100))}%` }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                    <span>Trade Payables (Creditors)</span>
+                    <span className="font-mono">{formatCurrency(currentData.outstandingPayables)} ({((currentData.outstandingPayables / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100).toFixed(1)}%)</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-rose-500 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, (currentData.outstandingPayables / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100))}%` }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
+                    <span>Statutory Tax Liabilities (GST/TDS)</span>
+                    <span className="font-mono">{formatCurrency(currentData.netGstLiability + currentData.tdsPayable)} ({(((currentData.netGstLiability + currentData.tdsPayable) / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100).toFixed(1)}%)</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-amber-600 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, ((currentData.netGstLiability + currentData.tdsPayable) / ((currentData.totalLiabilities + currentData.totalEquity) || 1)) * 100))}%` }}></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
