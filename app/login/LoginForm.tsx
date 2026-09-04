@@ -16,7 +16,7 @@ export default function LoginForm() {
         {/* Header */}
         <div className="text-center flex flex-col items-center">
           <img
-            src="/finledger-logo.svg"
+            src="/finledger-logo.png"
             alt="FinLedger Financial Management"
             className="h-16 w-auto object-contain mb-2"
           />
