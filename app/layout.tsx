@@ -21,10 +21,27 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/finledger-icon.png", type: "image/png" },
-      { url: "/favicon.ico" },
     ],
     shortcut: "/finledger-icon.png",
     apple: "/finledger-icon.png",
+  },
+  openGraph: {
+    title: "FinLedger — Financial Management ERP",
+    description: "Comprehensive Financial Management System for Business Accounting, Invoicing, Tax & Financial Reporting",
+    images: [
+      {
+        url: "/finledger-icon.png",
+        width: 512,
+        height: 512,
+        alt: "FinLedger Logo Icon",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "FinLedger — Financial Management ERP",
+    description: "Comprehensive Financial Management System for Business Accounting, Invoicing, Tax & Financial Reporting",
+    images: ["/finledger-icon.png"],
   },
 };
 

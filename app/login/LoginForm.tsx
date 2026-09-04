@@ -13,16 +13,21 @@ export default function LoginForm() {
   return (
     <div className="flex h-screen w-full items-center justify-center bg-theme-surface-hover p-4">
       <div className="w-full max-w-md space-y-6 rounded-2xl bg-theme-surface p-8 shadow-xl border border-theme-border">
-        {/* Header */}
         <div className="text-center flex flex-col items-center">
-          <img
-            src="/finledger-logo.png"
-            alt="FinLedger Financial Management"
-            className="h-16 w-auto object-contain mb-2"
-          />
-          <p className="text-xs text-theme-text-muted font-medium tracking-wide">
-            Financial Management System
-          </p>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-0.5 shadow-lg shadow-emerald-500/20 flex items-center justify-center">
+              <div className="h-full w-full bg-[#052722] rounded-[14px] p-1.5 flex items-center justify-center">
+                <img src="/finledger-icon.png" alt="FinLedger" className="h-full w-full object-contain" />
+              </div>
+            </div>
+            <div className="text-left">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+                FinLedger
+                <span className="text-[10px] font-extrabold bg-emerald-500/15 text-emerald-800 border border-emerald-500/30 px-2 py-0.5 rounded-md uppercase tracking-wider">ERP</span>
+              </h1>
+              <p className="text-xs text-slate-500 font-medium">Financial Management System</p>
+            </div>
+          </div>
         </div>
 
         {/* Unified Login Form */}
