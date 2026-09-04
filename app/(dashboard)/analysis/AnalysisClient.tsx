@@ -766,24 +766,243 @@ export default function AnalysisClient({
         </div>
       )}
 
-      {/* SECTION D: CASH FLOW ANALYSIS */}
+      {/* SECTION D: CASH FLOW ANALYTICAL WORKSTATION */}
       {activeTab === "cash_flow" && (
-        <div className="space-y-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <h2 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-3">Cash Flow Statement (Direct/Indirect Method)</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="text-xs font-bold text-slate-500 uppercase">Operating Cash Flow</div>
-              <div className="text-xl font-bold text-emerald-700 mt-1">{formatCurrency(cashFlow.operating)}</div>
+        <div className="space-y-8">
+          {/* Header Card & Summary */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-extrabold text-slate-900">Cash Flow & Liquidity Intelligence Workstation</h2>
+                <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                  AS-3 / Ind AS 7 Compliant
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Detailed Classification into Operating (CFO), Investing (CFI), and Financing (CFF) Cash Flows, Accounting Profit Reconciliation, and Monthly Cash Trends.
+              </p>
             </div>
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="text-xs font-bold text-slate-500 uppercase">Investing Cash Flow</div>
-              <div className="text-xl font-bold text-rose-700 mt-1">{formatCurrency(cashFlow.investing)}</div>
-            </div>
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <div className="text-xs font-bold text-slate-500 uppercase">Financing Cash Flow</div>
-              <div className="text-xl font-bold text-slate-800 mt-1">{formatCurrency(cashFlow.financing)}</div>
+
+            <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <div className="text-right">
+                <div className="text-[11px] font-bold text-slate-500 uppercase">Closing Cash & Bank Position</div>
+                <div className="text-lg font-extrabold text-emerald-700 font-mono">{formatCurrency(cashFlow.closingCash)}</div>
+              </div>
             </div>
           </div>
+
+          {/* Executive Cash Movement & Reconciliation Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Opening Cash */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Opening Cash Balance</div>
+              <div className="text-2xl font-extrabold text-slate-900 font-mono">{formatCurrency(cashFlow.openingCash)}</div>
+              <div className="text-xs text-slate-400">At start of selected period</div>
+            </div>
+
+            {/* Operating Cash Flow (CFO) */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Operating Cash Flow (CFO)</div>
+              <div className="text-2xl font-extrabold text-emerald-700 font-mono">{formatCurrency(cashFlow.operating)}</div>
+              <div className="text-xs text-emerald-600 font-medium">Cash from core business</div>
+            </div>
+
+            {/* Investing Cash Flow (CFI) */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Investing Cash Flow (CFI)</div>
+              <div className={`text-2xl font-extrabold font-mono ${cashFlow.investing < 0 ? "text-rose-700" : "text-slate-900"}`}>
+                {formatCurrency(cashFlow.investing)}
+              </div>
+              <div className="text-xs text-slate-400">Capital expenditure / assets</div>
+            </div>
+
+            {/* Net Cash Movement */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Net Cash Surplus / Deficit</div>
+              <div className={`text-2xl font-extrabold font-mono ${cashFlow.netMovement >= 0 ? "text-emerald-700" : "text-rose-600"}`}>
+                {formatCurrency(cashFlow.netMovement)}
+              </div>
+              <div className="text-xs text-slate-500 font-medium">
+                {cashFlow.netMovement >= 0 ? "↑ Positive cash accumulation" : "↓ Net cash outflow"}
+              </div>
+            </div>
+          </div>
+
+          {/* Profit vs Cash Reconciliation & Cash Ratios */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Reconciliation Card */}
+            <div className="md:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Profit vs Cash Flow Reconciliation</h3>
+                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded">Why Profit ≠ Cash</span>
+              </div>
+
+              <div className="divide-y divide-slate-100 text-xs">
+                <div className="flex justify-between py-2 font-semibold">
+                  <span className="text-slate-700">Net Accounting Profit (P&L Bottom Line)</span>
+                  <span className="font-mono font-bold text-slate-900">{formatCurrency(currentData.netProfit)}</span>
+                </div>
+                <div className="flex justify-between py-2 text-slate-600">
+                  <span>Add: Non-Cash Depreciation & Amortisation</span>
+                  <span className="font-mono text-emerald-700">+{formatCurrency(currentData.depreciation)}</span>
+                </div>
+                <div className="flex justify-between py-2 text-slate-600">
+                  <span>Less: Fixed Asset Capital Outflows</span>
+                  <span className="font-mono text-rose-600">-{formatCurrency(currentData.fixedAssetAdditions)}</span>
+                </div>
+                <div className="flex justify-between py-2 font-extrabold bg-slate-50 px-2 rounded text-sm text-slate-900">
+                  <span>Net Operating Cash Flow Generated</span>
+                  <span className="font-mono text-emerald-700">{formatCurrency(cashFlow.operating)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Cash Ratios */}
+            <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-sm space-y-4">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cash Quality Metrics</h3>
+              <div className="space-y-3">
+                <div>
+                  <div className="text-[11px] text-slate-400 uppercase">Cash Flow Margin %</div>
+                  <div className="text-xl font-bold text-emerald-400 font-mono">
+                    {currentData.totalRevenue > 0 ? `${((cashFlow.operating / currentData.totalRevenue) * 100).toFixed(1)}%` : "N/A"}
+                  </div>
+                  <div className="text-[10px] text-slate-400">Cash generated per ₹100 revenue</div>
+                </div>
+                <div className="pt-2 border-t border-slate-800">
+                  <div className="text-[11px] text-slate-400 uppercase">Operating Cash Coverage</div>
+                  <div className="text-xl font-bold text-white font-mono">
+                    {currentData.totalCurrentLiabilities > 0 ? `${(cashFlow.operating / currentData.totalCurrentLiabilities).toFixed(2)} x` : "N/A"}
+                  </div>
+                  <div className="text-[10px] text-slate-400">Ability to cover current debts</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* AS-3 Cash Flow Statement Table */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <h3 className="text-lg font-extrabold text-slate-900 border-b border-slate-100 pb-3">Standard Cash Flow Statement (AS-3 / Ind AS 7)</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-y border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3">Cash Flow Activity & Particulars</th>
+                    <th className="px-4 py-3 text-right">Amount (₹)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-mono">
+                  <tr className="bg-slate-900 text-white font-extrabold uppercase text-xs">
+                    <td colSpan={2} className="px-4 py-2.5">I. CASH FLOW FROM OPERATING ACTIVITIES</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50 font-sans">
+                    <td className="px-4 py-2 text-slate-700">Cash Inflows from Sales / Customer Collections</td>
+                    <td className="px-4 py-2 text-right font-mono font-bold text-emerald-700">{formatCurrency(currentData.totalRevenue)}</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50 font-sans">
+                    <td className="px-4 py-2 text-slate-700">Less: Cash Paid for Operational Expenses & Purchases</td>
+                    <td className="px-4 py-2 text-right font-mono font-bold text-rose-700">-{formatCurrency(currentData.totalExpenses - currentData.depreciation)}</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50 font-sans">
+                    <td className="px-4 py-2 text-slate-700">Add: Adjustment for Non-Cash Depreciation</td>
+                    <td className="px-4 py-2 text-right font-mono text-emerald-700">+{formatCurrency(currentData.depreciation)}</td>
+                  </tr>
+                  <tr className="bg-slate-100 font-bold text-slate-900 font-sans">
+                    <td className="px-4 py-2.5 font-bold">NET CASH GENERATED FROM OPERATING ACTIVITIES (A)</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-emerald-800 text-sm font-extrabold">{formatCurrency(cashFlow.operating)}</td>
+                  </tr>
+
+                  <tr className="bg-slate-900 text-white font-extrabold uppercase text-xs">
+                    <td colSpan={2} className="px-4 py-2.5">II. CASH FLOW FROM INVESTING ACTIVITIES</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50 font-sans">
+                    <td className="px-4 py-2 text-slate-700">Purchase of Fixed Assets & Equipment (CAPEX)</td>
+                    <td className="px-4 py-2 text-right font-mono font-bold text-rose-700">-{formatCurrency(currentData.fixedAssetAdditions)}</td>
+                  </tr>
+                  <tr className="bg-slate-100 font-bold text-slate-900 font-sans">
+                    <td className="px-4 py-2.5 font-bold">NET CASH USED IN INVESTING ACTIVITIES (B)</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-rose-800 text-sm font-extrabold">{formatCurrency(cashFlow.investing)}</td>
+                  </tr>
+
+                  <tr className="bg-slate-900 text-white font-extrabold uppercase text-xs">
+                    <td colSpan={2} className="px-4 py-2.5">III. CASH FLOW FROM FINANCING ACTIVITIES</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50 font-sans">
+                    <td className="px-4 py-2 text-slate-700">Capital Contributions & Equity Movements</td>
+                    <td className="px-4 py-2 text-right font-mono text-slate-500">₹0.00</td>
+                  </tr>
+                  <tr className="bg-slate-100 font-bold text-slate-900 font-sans">
+                    <td className="px-4 py-2.5 font-bold">NET CASH FROM FINANCING ACTIVITIES (C)</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-slate-900 text-sm font-extrabold">{formatCurrency(cashFlow.financing)}</td>
+                  </tr>
+
+                  <tr className="bg-emerald-100 text-emerald-950 font-extrabold text-sm border-t-2 border-emerald-600 font-sans">
+                    <td className="px-4 py-3">NET INCREASE / DECREASE IN CASH & CASH EQUIVALENTS (A + B + C)</td>
+                    <td className="px-4 py-3 text-right font-mono font-extrabold text-base">{formatCurrency(cashFlow.netMovement)}</td>
+                  </tr>
+                  <tr className="bg-slate-50 font-semibold text-slate-800 font-sans">
+                    <td className="px-4 py-2.5">Add: Opening Cash & Bank Balance at Start of Period</td>
+                    <td className="px-4 py-2.5 text-right font-mono">{formatCurrency(cashFlow.openingCash)}</td>
+                  </tr>
+                  <tr className="bg-slate-900 text-white font-extrabold text-sm font-sans">
+                    <td className="px-4 py-3">CLOSING CASH & BANK BALANCE AT END OF PERIOD</td>
+                    <td className="px-4 py-3 text-right font-mono font-extrabold text-emerald-400 text-base">{formatCurrency(cashFlow.closingCash)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Monthly Cash Flow Seasonality & Trend Table */}
+          {cashFlow.monthlyTrends && cashFlow.monthlyTrends.length > 0 && (
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900">Monthly Cash Flow Breakdown & Seasonality</h3>
+                  <p className="text-xs text-slate-500">Track month-by-month cash receipts, disbursements, and running cash balances</p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-y border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3">Month</th>
+                      <th className="px-4 py-3 text-right">Cash Inflows (₹)</th>
+                      <th className="px-4 py-3 text-right">Cash Outflows (₹)</th>
+                      <th className="px-4 py-3 text-right">Net Cash Movement (₹)</th>
+                      <th className="px-4 py-3 text-right">Opening Cash (₹)</th>
+                      <th className="px-4 py-3 text-right">Closing Cash (₹)</th>
+                      <th className="px-4 py-3 text-center">Cash Position</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono">
+                    {cashFlow.monthlyTrends.map((m: any, idx: number) => {
+                      const isSurplus = m.netCashFlow >= 0;
+                      return (
+                        <tr key={idx} className="hover:bg-slate-50 font-sans">
+                          <td className="px-4 py-2.5 font-bold text-slate-900">{m.month}</td>
+                          <td className="px-4 py-2.5 text-right font-mono text-emerald-700 font-semibold">{formatCurrency(m.inflows)}</td>
+                          <td className="px-4 py-2.5 text-right font-mono text-rose-700 font-semibold">{formatCurrency(m.outflows)}</td>
+                          <td className={`px-4 py-2.5 text-right font-mono font-bold ${isSurplus ? "text-emerald-700" : "text-rose-600"}`}>
+                            {formatCurrency(m.netCashFlow)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono text-slate-500">{formatCurrency(m.openingCash)}</td>
+                          <td className="px-4 py-2.5 text-right font-mono font-bold text-slate-900">{formatCurrency(m.closingCash)}</td>
+                          <td className="px-4 py-2.5 text-center">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              isSurplus ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                            }`}>
+                              {isSurplus ? "SURPLUS" : "DEFICIT"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

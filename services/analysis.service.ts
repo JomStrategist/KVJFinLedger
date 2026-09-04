@@ -513,11 +513,54 @@ export class AnalysisService {
       else payablesAgeing.days180Plus += amount;
     }
 
-    // 9. Cash Flow Analysis
+    // 9. Cash Flow Analysis & Monthly Seasonality Breakdown
     const cashFromOperations = currentData.totalRevenue - currentData.totalExpenses + currentData.depreciation;
     const cashFromInvesting = -currentData.fixedAssetAdditions;
     const cashFromFinancing = 0;
     const netCashMovement = cashFromOperations + cashFromInvesting + cashFromFinancing;
+
+    const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthlyCashMap: Record<string, { month: string; inflows: number; outflows: number }> = {};
+
+    for (const inv of currentData.invoices) {
+      for (const p of (inv.payments || [])) {
+        const d = new Date(p.paymentDate || inv.invoiceDate);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const label = `${monthNamesShort[d.getMonth()]} ${d.getFullYear()}`;
+        if (!monthlyCashMap[key]) monthlyCashMap[key] = { month: label, inflows: 0, outflows: 0 };
+        monthlyCashMap[key].inflows += Number(p.paymentAmount || 0);
+      }
+      if (!inv.payments || inv.payments.length === 0) {
+        const d = new Date(inv.invoiceDate);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const label = `${monthNamesShort[d.getMonth()]} ${d.getFullYear()}`;
+        if (!monthlyCashMap[key]) monthlyCashMap[key] = { month: label, inflows: 0, outflows: 0 };
+        monthlyCashMap[key].inflows += Number(inv.netAmount || 0);
+      }
+    }
+
+    for (const exp of currentData.expenses) {
+      const d = new Date(exp.expenseDate);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = `${monthNamesShort[d.getMonth()]} ${d.getFullYear()}`;
+      if (!monthlyCashMap[key]) monthlyCashMap[key] = { month: label, inflows: 0, outflows: 0 };
+      monthlyCashMap[key].outflows += Number(exp.netAmount || 0);
+    }
+
+    let runningCash = currentData.cashBankBalance - netCashMovement;
+    const monthlyCashFlow = Object.values(monthlyCashMap).map(m => {
+      const net = m.inflows - m.outflows;
+      const open = runningCash;
+      runningCash += net;
+      return {
+        month: m.month,
+        inflows: Number(m.inflows.toFixed(2)),
+        outflows: Number(m.outflows.toFixed(2)),
+        netCashFlow: Number(net.toFixed(2)),
+        openingCash: Number(open.toFixed(2)),
+        closingCash: Number(runningCash.toFixed(2)),
+      };
+    });
 
     // 10. Financial Ratios
     const currentRatio = this.safePercent(currentData.totalCurrentAssets, currentData.totalCurrentLiabilities);
@@ -579,7 +622,8 @@ export class AnalysisService {
         financing: cashFromFinancing,
         netMovement: netCashMovement,
         openingCash: currentData.cashBankBalance - netCashMovement,
-        closingCash: currentData.cashBankBalance
+        closingCash: currentData.cashBankBalance,
+        monthlyTrends: monthlyCashFlow,
       },
       ratios: {
         grossMargin: currentData.grossProfitMargin,
