@@ -177,26 +177,25 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
 
   return (
     <aside 
-      style={{ backgroundColor: "#0F766E" }}
-      className={`text-white min-h-screen flex flex-col transition-all duration-300 ease-in-out relative z-20 shrink-0 print:hidden ${sidebarWidth}`}
+      className={`bg-gradient-to-b from-[#052722] via-[#09352e] to-[#041d19] border-r border-emerald-500/10 text-white min-h-screen flex flex-col transition-all duration-300 ease-in-out relative z-20 shrink-0 print:hidden shadow-2xl ${sidebarWidth}`}
     >
       {/* Brand & Collapse Header */}
       <div className={`flex items-center pt-5 pb-4 border-b border-white/10 ${isCollapsed ? "flex-col gap-3 px-2 justify-center" : "justify-between px-4"}`}>
         {!isCollapsed ? (
           <div className="flex items-center transition-opacity duration-300">
-            <div className="h-11 bg-white rounded-xl px-3 py-1.5 flex items-center justify-center shadow-sm border border-white/20">
+            <div className="h-11 bg-white/95 backdrop-blur-md rounded-xl px-3 py-1.5 flex items-center justify-center shadow-lg border border-white/30">
               <img src="/finledger-logo.png" alt="FinLedger Financial Management" className="h-full w-auto object-contain max-w-[170px]" />
             </div>
           </div>
         ) : (
-          <div className="h-10 w-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm shrink-0 border border-white/20 mb-1">
+          <div className="h-10 w-10 rounded-xl bg-white/95 backdrop-blur-md p-1 flex items-center justify-center shadow-lg shrink-0 border border-white/30 mb-1">
             <img src="/finledger-icon.png" alt="FinLedger" className="h-full w-full object-contain" />
           </div>
         )}
 
         <button 
           onClick={toggleSidebar} 
-          className="p-1.5 rounded-lg hover:bg-white/10 text-white/80 hover:text-white focus:outline-none transition-colors"
+          className="p-1.5 rounded-lg hover:bg-white/10 text-emerald-100/70 hover:text-white focus:outline-none transition-colors border border-transparent hover:border-white/10"
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,29 +219,29 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
                   href={item.href}
                   prefetch={true}
                   onClick={(e) => handleLinkClick(e, item.href)}
-                  className={`flex items-center rounded-lg text-sm transition-all duration-150 ${
-                    isCollapsed ? "justify-center p-3" : "px-3 py-2.5"
+                  className={`flex items-center rounded-xl text-sm transition-all duration-200 ${
+                    isCollapsed ? "justify-center p-3" : "px-3.5 py-2.5"
                   } ${
                     active
-                      ? "bg-white/20 text-white font-semibold shadow-sm"
-                      : "text-white/80 hover:bg-white/10 hover:text-white font-medium"
+                      ? "bg-emerald-500/20 text-emerald-300 font-semibold shadow-inner border-l-4 border-emerald-400 pl-2.5 backdrop-blur-md"
+                      : "text-emerald-100/70 hover:bg-white/10 hover:text-white font-medium"
                   }`}
                 >
-                  <span className={`${active ? "text-white" : "text-white/80 group-hover:text-white"} flex-shrink-0 transition-colors`}>
+                  <span className={`${active ? "text-emerald-400" : "text-emerald-200/70 group-hover:text-emerald-100"} flex-shrink-0 transition-colors`}>
                     {item.icon}
                   </span>
                   
                   {/* Expanded text */}
                   {!isCollapsed && (
-                    <span className="ml-3 truncate">{item.name}</span>
+                    <span className="ml-3 truncate tracking-wide">{item.name}</span>
                   )}
                 </Link>
 
                 {/* Tooltip for Collapsed Sidebar */}
                 {isCollapsed && (
-                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#17211B] text-white text-xs font-semibold rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap border border-white/10 pointer-events-none">
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#090D16] text-white text-xs font-semibold rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap border border-emerald-500/20 pointer-events-none">
                     {item.name}
-                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#17211B]"></div>
+                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#090D16]"></div>
                   </div>
                 )}
               </li>
@@ -252,23 +251,23 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
       </nav>
 
       {/* Left Panel Bottom - User Profile & Logout */}
-      <div className="border-t border-white/15 p-3 bg-black/15 shrink-0">
+      <div className="border-t border-white/10 p-3 bg-black/20 backdrop-blur-md shrink-0">
         {!isCollapsed ? (
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-9 w-9 rounded-full bg-emerald-800 border border-white/20 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
+              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 border border-emerald-300/30 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md">
                 {user?.name?.[0] || 'J'}
               </div>
               <div className="min-w-0 leading-tight">
                 <p className="text-xs font-bold text-white truncate">{user?.name || 'Jomon Joseph'}</p>
-                <p className="text-[10px] font-semibold text-emerald-200/80 tracking-wider uppercase truncate">
+                <p className="text-[10px] font-semibold text-emerald-300/80 tracking-wider uppercase truncate">
                   {(user as any)?.role || userRole || 'ADMIN'}
                 </p>
               </div>
             </div>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="px-2 py-1 rounded-md text-xs font-semibold text-red-200 hover:text-white hover:bg-red-600/30 border border-red-400/20 transition-colors shrink-0 flex items-center gap-1"
+              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-300 hover:text-white hover:bg-rose-500/20 border border-rose-500/20 transition-all shrink-0 flex items-center gap-1 shadow-sm"
               title="Logout"
             >
               <span>Logout</span>
@@ -276,19 +275,19 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 py-1 relative group">
-            <div className="h-9 w-9 rounded-full bg-emerald-800 border border-white/20 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 border border-emerald-300/30 flex items-center justify-center text-white font-bold text-sm shadow-md">
               {user?.name?.[0] || 'J'}
             </div>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="p-1.5 rounded-md text-red-200 hover:text-white hover:bg-red-600/30 border border-red-400/20 transition-colors"
+              className="p-1.5 rounded-lg text-rose-300 hover:text-white hover:bg-rose-500/20 border border-rose-500/20 transition-all"
               title="Logout"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
             </button>
-            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#17211B] text-white text-xs font-semibold rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap border border-white/10 pointer-events-none">
+            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#090D16] text-white text-xs font-semibold rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap border border-emerald-500/20 pointer-events-none">
               {user?.name || 'Jomon Joseph'} ({(user as any)?.role || userRole || 'ADMIN'})
             </div>
           </div>

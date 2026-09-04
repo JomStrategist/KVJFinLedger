@@ -93,15 +93,15 @@ export default function LedgerClient({
   return (
     <div className="space-y-6 pb-16">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 print:hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-6 rounded-2xl shadow-lg border border-slate-200/80 print:hidden">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Account Ledgers & General Ledger Statement</h1>
-            <span className="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Account Ledgers & General Ledger Statement</h1>
+            <span className="bg-gradient-to-r from-emerald-500/15 to-teal-500/15 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30 shadow-xs">
               Chartered Accountant Format
             </span>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1 font-medium">
             Official account ledger statement showing opening balances, chronological entries, debits, credits, and running balances.
           </p>
         </div>
@@ -109,7 +109,7 @@ export default function LedgerClient({
         <div className="flex items-center gap-3">
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-xl border border-slate-300 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-4 py-2.5 rounded-xl border border-slate-300/80 transition-all shadow-xs"
           >
             <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -118,7 +118,7 @@ export default function LedgerClient({
           </button>
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 px-4 py-2 rounded-xl shadow-sm transition-colors"
+            className="flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 px-4 py-2.5 rounded-xl shadow-md transition-all scale-[1.02]"
           >
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -129,17 +129,17 @@ export default function LedgerClient({
       </div>
 
       {/* Account Selector & Date Filter Panel */}
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4 print:hidden">
+      <div className="glass-card p-5 rounded-2xl shadow-md border border-slate-200/80 space-y-4 print:hidden">
         <form onSubmit={handleDateSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Account Selector */}
           <div className="md:col-span-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
               Select Account Ledger
             </label>
             <select
               value={accountId}
               onChange={(e) => handleAccountChange(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
             >
               {Object.entries(groupedAccounts).map(([groupName, accs]) => (
                 <optgroup key={groupName} label={`── ${groupName.toUpperCase()} ──`}>
@@ -155,20 +155,20 @@ export default function LedgerClient({
 
           {/* From Date */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
               From Date
             </label>
             <input
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none font-medium"
             />
           </div>
 
           {/* To Date & Filter Action */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
               To Date
             </label>
             <div className="flex gap-2">
@@ -176,11 +176,11 @@ export default function LedgerClient({
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none font-medium"
               />
               <button
                 type="submit"
-                className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition-colors shrink-0"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs shrink-0"
               >
                 Apply
               </button>
@@ -193,33 +193,33 @@ export default function LedgerClient({
       {statement && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="text-xs font-bold text-slate-500 uppercase">Opening Balance</div>
-              <div className="text-2xl font-extrabold text-slate-900 mt-1">
+            <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Opening Balance</div>
+              <div className="text-2xl font-black font-tabular text-slate-900 mt-1 tracking-tight">
                 {formatCurrency(statement.openingBalance)}
-                <span className="text-sm font-semibold ml-1.5 text-slate-500">[{statement.openingBalanceType}]</span>
+                <span className="text-xs font-bold ml-1.5 text-slate-500">[{statement.openingBalanceType}]</span>
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="text-xs font-bold text-slate-500 uppercase">Total Debit (Dr)</div>
-              <div className="text-2xl font-extrabold text-emerald-700 mt-1">
+            <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Debit (Dr)</div>
+              <div className="text-2xl font-black font-tabular text-emerald-600 mt-1 tracking-tight">
                 {formatCurrency(statement.totalDebit)}
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="text-xs font-bold text-slate-500 uppercase">Total Credit (Cr)</div>
-              <div className="text-2xl font-extrabold text-rose-700 mt-1">
+            <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Credit (Cr)</div>
+              <div className="text-2xl font-black font-tabular text-rose-600 mt-1 tracking-tight">
                 {formatCurrency(statement.totalCredit)}
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="text-xs font-bold text-slate-500 uppercase">Closing Net Balance</div>
-              <div className="text-2xl font-extrabold text-slate-900 mt-1">
+            <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Closing Net Balance</div>
+              <div className="text-2xl font-black font-tabular text-slate-900 mt-1 tracking-tight">
                 {formatCurrency(statement.closingBalance)}
-                <span className="text-sm font-semibold ml-1.5 text-slate-600">[{statement.closingBalanceType}]</span>
+                <span className="text-xs font-bold ml-1.5 text-slate-600">[{statement.closingBalanceType}]</span>
               </div>
             </div>
           </div>

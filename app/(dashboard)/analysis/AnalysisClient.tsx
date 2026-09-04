@@ -124,29 +124,29 @@ export default function AnalysisClient({
   return (
     <div className="space-y-6 pb-16">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-6 rounded-2xl shadow-lg border border-slate-200/80">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Financial Analysis & Business Intelligence</h1>
-            <span className="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Financial Analysis & Business Intelligence</h1>
+            <span className="bg-gradient-to-r from-emerald-500/15 to-teal-500/15 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30 shadow-xs">
               CA / BI Standard
             </span>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1 font-medium">
             Real-time, dynamic accounting analytics directly computed from FinLedger database models.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Comparison Period Indicator */}
-          <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 text-xs">
-            <div className="font-semibold text-slate-700 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <div className="bg-slate-900/5 backdrop-blur-md px-4 py-2.5 rounded-xl border border-slate-200/80 text-xs shadow-xs">
+            <div className="font-bold text-slate-800 flex items-center gap-2 font-tabular">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-emerald-500/50 shadow-sm animate-pulse"></span>
               CURRENT: {new Date(dates.current.fromDate).toLocaleDateString("en-IN")} – {new Date(dates.current.toDate).toLocaleDateString("en-IN")}
             </div>
             {dates.comparison ? (
-              <div className="font-semibold text-slate-500 flex items-center gap-2 mt-1">
-                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              <div className="font-bold text-slate-500 flex items-center gap-2 mt-1 font-tabular">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-amber-500/50 shadow-sm"></span>
                 VS ({dates.comparisonType}): {new Date(dates.comparison.fromDate).toLocaleDateString("en-IN")} – {new Date(dates.comparison.toDate).toLocaleDateString("en-IN")}
               </div>
             ) : (
@@ -157,17 +157,19 @@ export default function AnalysisClient({
       </div>
 
       {/* Global Slicers Panel */}
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+      <div className="glass-card p-5 rounded-2xl shadow-md border border-slate-200/80 space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2 font-bold text-sm text-slate-800 uppercase tracking-wider">
-            <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
+          <div className="flex items-center gap-2 font-black text-xs text-slate-800 uppercase tracking-wider">
+            <div className="h-7 w-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+            </div>
             Global Filter & Slicer Bar
           </div>
           <button
             onClick={handleClearFilters}
-            className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg border border-rose-200 transition-colors"
+            className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-500/10 hover:bg-rose-500/20 px-3.5 py-1.5 rounded-xl border border-rose-300/30 transition-all shadow-xs"
           >
             Clear All Filters
           </button>
@@ -176,11 +178,11 @@ export default function AnalysisClient({
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {/* Financial Year */}
           <div>
-            <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">Financial Year</label>
+            <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">Financial Year</label>
             <select
               value={filters.financialYear}
               onChange={(e) => handleFilterChange("financialYear", e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
             >
               <option value="FY 2026–27">FY 2026–27 (Current)</option>
               <option value="FY 2025–26">FY 2025–26 (Previous)</option>
@@ -191,11 +193,11 @@ export default function AnalysisClient({
 
           {/* Period */}
           <div>
-            <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">Period Quarter</label>
+            <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">Period Quarter</label>
             <select
               value={filters.period}
               onChange={(e) => handleFilterChange("period", e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
             >
               <option value="ALL">Entire Year (Full)</option>
               <option value="Q1">Q1 (Apr – Jun)</option>
@@ -207,11 +209,11 @@ export default function AnalysisClient({
 
           {/* Comparison Type */}
           <div>
-            <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">Comparison Methodology</label>
+            <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">Comparison Methodology</label>
             <select
               value={filters.comparisonType}
               onChange={(e) => handleFilterChange("comparisonType", e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
             >
               <option value="NONE">No Comparison</option>
               <option value="PREV_FY">Previous Financial Year</option>
@@ -225,11 +227,11 @@ export default function AnalysisClient({
 
           {/* Customer */}
           <div>
-            <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">Customer Filter</label>
+            <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">Customer Filter</label>
             <select
               value={filters.customerId}
               onChange={(e) => handleFilterChange("customerId", e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
             >
               <option value="">All Customers</option>
               {customers.map((c) => (
@@ -240,11 +242,11 @@ export default function AnalysisClient({
 
           {/* Vendor */}
           <div>
-            <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">Vendor Filter</label>
+            <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">Vendor Filter</label>
             <select
               value={filters.vendorId}
               onChange={(e) => handleFilterChange("vendorId", e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
             >
               <option value="">All Vendors</option>
               {vendors.map((v) => (
@@ -277,8 +279,8 @@ export default function AnalysisClient({
         )}
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-1 border-b border-slate-200 bg-white px-4 rounded-xl shadow-sm overflow-x-auto">
+      {/* Navigation Tabs Bar — Segmented Pill Control */}
+      <div className="bg-slate-900/5 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/80 shadow-inner overflow-x-auto flex items-center gap-1">
         {[
           { id: "overview", label: "Executive Overview" },
           { id: "pnl", label: "P&L Analysis" },
@@ -295,10 +297,10 @@ export default function AnalysisClient({
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-4 py-3 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
+            className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all whitespace-nowrap ${
               activeTab === tab.id
-                ? "border-emerald-600 text-emerald-700 bg-emerald-50/50"
-                : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black shadow-md shadow-emerald-600/20 scale-[1.02]"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold"
             }`}
           >
             {tab.label}
@@ -312,83 +314,83 @@ export default function AnalysisClient({
           {/* Executive KPI Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Revenue */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Revenue</div>
-              <div className="text-2xl font-extrabold text-slate-900">{formatCurrency(currentData.totalRevenue)}</div>
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
-                <span>Comp: {formatCurrency(compData?.totalRevenue || 0)}</span>
+            <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-2.5">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Revenue</div>
+              <div className="text-2xl font-black font-tabular text-slate-900 tracking-tight">{formatCurrency(currentData.totalRevenue)}</div>
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100/80">
+                <span className="font-tabular font-semibold">Comp: {formatCurrency(compData?.totalRevenue || 0)}</span>
                 {renderVarianceBadge(kpis.totalRevenue)}
               </div>
             </div>
 
             {/* Expenses */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Expenses</div>
-              <div className="text-2xl font-extrabold text-slate-900">{formatCurrency(currentData.totalExpenses)}</div>
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
-                <span>Comp: {formatCurrency(compData?.totalExpenses || 0)}</span>
+            <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-2.5">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Expenses</div>
+              <div className="text-2xl font-black font-tabular text-slate-900 tracking-tight">{formatCurrency(currentData.totalExpenses)}</div>
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100/80">
+                <span className="font-tabular font-semibold">Comp: {formatCurrency(compData?.totalExpenses || 0)}</span>
                 {renderVarianceBadge(kpis.totalExpenses)}
               </div>
             </div>
 
             {/* Gross Profit */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Gross Profit</div>
-              <div className="text-2xl font-extrabold text-emerald-700">{formatCurrency(currentData.grossProfit)}</div>
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
-                <span>Comp: {formatCurrency(compData?.grossProfit || 0)}</span>
+            <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-2.5">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Gross Profit</div>
+              <div className="text-2xl font-black font-tabular text-emerald-600 tracking-tight">{formatCurrency(currentData.grossProfit)}</div>
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100/80">
+                <span className="font-tabular font-semibold">Comp: {formatCurrency(compData?.grossProfit || 0)}</span>
                 {renderVarianceBadge(kpis.grossProfit)}
               </div>
             </div>
 
             {/* Net Profit */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Net Profit</div>
-              <div className={`text-2xl font-extrabold ${currentData.netProfit >= 0 ? "text-emerald-700" : "text-rose-600"}`}>
+            <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-2.5">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Net Profit</div>
+              <div className={`text-2xl font-black font-tabular tracking-tight ${currentData.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
                 {formatCurrency(currentData.netProfit)}
               </div>
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
-                <span>Margin: {currentData.profitMargin}%</span>
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100/80">
+                <span className="font-tabular font-semibold">Margin: {currentData.profitMargin}%</span>
                 {renderVarianceBadge(kpis.netProfit)}
               </div>
             </div>
 
             {/* Assets */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Assets</div>
-              <div className="text-2xl font-extrabold text-slate-900">{formatCurrency(currentData.totalAssets)}</div>
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
-                <span>Comp: {formatCurrency(compData?.totalAssets || 0)}</span>
+            <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-2.5">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Assets</div>
+              <div className="text-2xl font-black font-tabular text-slate-900 tracking-tight">{formatCurrency(currentData.totalAssets)}</div>
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100/80">
+                <span className="font-tabular font-semibold">Comp: {formatCurrency(compData?.totalAssets || 0)}</span>
                 {renderVarianceBadge(kpis.totalAssets)}
               </div>
             </div>
 
             {/* Liabilities */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Liabilities</div>
-              <div className="text-2xl font-extrabold text-slate-900">{formatCurrency(currentData.totalLiabilities)}</div>
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
-                <span>Comp: {formatCurrency(compData?.totalLiabilities || 0)}</span>
+            <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-2.5">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Liabilities</div>
+              <div className="text-2xl font-black font-tabular text-slate-900 tracking-tight">{formatCurrency(currentData.totalLiabilities)}</div>
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100/80">
+                <span className="font-tabular font-semibold">Comp: {formatCurrency(compData?.totalLiabilities || 0)}</span>
                 {renderVarianceBadge(kpis.totalLiabilities)}
               </div>
             </div>
 
             {/* Cash & Bank */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cash & Bank Balance</div>
-              <div className="text-2xl font-extrabold text-emerald-700">{formatCurrency(currentData.cashBankBalance)}</div>
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
-                <span>Comp: {formatCurrency(compData?.cashBankBalance || 0)}</span>
+            <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-2.5">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Cash & Bank Balance</div>
+              <div className="text-2xl font-black font-tabular text-emerald-600 tracking-tight">{formatCurrency(currentData.cashBankBalance)}</div>
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100/80">
+                <span className="font-tabular font-semibold">Comp: {formatCurrency(compData?.cashBankBalance || 0)}</span>
                 {renderVarianceBadge(kpis.cashBankBalance)}
               </div>
             </div>
 
             {/* Accounts Receivable */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Accounts Receivable</div>
-              <div className="text-2xl font-extrabold text-amber-700">{formatCurrency(currentData.outstandingReceivables)}</div>
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
-                <span>Comp: {formatCurrency(compData?.outstandingReceivables || 0)}</span>
+            <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-2.5">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Accounts Receivable</div>
+              <div className="text-2xl font-black font-tabular text-amber-600 tracking-tight">{formatCurrency(currentData.outstandingReceivables)}</div>
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100/80">
+                <span className="font-tabular font-semibold">Comp: {formatCurrency(compData?.outstandingReceivables || 0)}</span>
                 {renderVarianceBadge(kpis.outstandingReceivables)}
               </div>
             </div>
@@ -396,37 +398,37 @@ export default function AnalysisClient({
 
           {/* Quick Business Health Highlights */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-emerald-900 text-white p-6 rounded-2xl space-y-3">
-              <div className="text-xs font-bold uppercase tracking-wider text-emerald-200">Balance Sheet Status</div>
-              <div className="flex items-center gap-3">
-                <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-lg ${balanceCheck.isBalanced ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"}`}>
+            <div className="glass-card-emerald text-white p-6 rounded-2xl space-y-3 shadow-xl">
+              <div className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-200">Balance Sheet Status</div>
+              <div className="flex items-center gap-3.5">
+                <div className={`h-11 w-11 rounded-full flex items-center justify-center font-black text-xl shadow-md ${balanceCheck.isBalanced ? "bg-emerald-400 text-emerald-950" : "bg-rose-500 text-white"}`}>
                   {balanceCheck.isBalanced ? "✓" : "⚠"}
                 </div>
                 <div>
-                  <div className="font-bold text-lg">{balanceCheck.isBalanced ? "Balanced Position" : "Discrepancy Detected"}</div>
-                  <div className="text-xs text-emerald-200">
+                  <div className="font-extrabold text-lg tracking-tight">{balanceCheck.isBalanced ? "Balanced Position" : "Discrepancy Detected"}</div>
+                  <div className="text-xs text-emerald-100/80 font-medium">
                     {balanceCheck.isBalanced ? "Total Assets = Liabilities + Equity" : `Difference: ${formatCurrency(balanceCheck.difference)}`}
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-slate-900 text-white p-6 rounded-2xl space-y-3">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Current Ratio (Liquidity)</div>
-              <div className="text-3xl font-extrabold text-white">
+            <div className="glass-card-dark text-white p-6 rounded-2xl space-y-3 shadow-xl">
+              <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Current Ratio (Liquidity)</div>
+              <div className="text-3xl font-black font-tabular text-white tracking-tight">
                 {ratios.currentRatio ? `${ratios.currentRatio.toFixed(2)} x` : "N/A"}
               </div>
-              <div className="text-xs text-slate-400">
+              <div className="text-xs text-slate-400 font-medium">
                 {ratios.currentRatio && ratios.currentRatio >= 1.5 ? "✓ Healthy liquidity position" : "⚠ Monitor short-term working capital"}
               </div>
             </div>
 
-            <div className="bg-slate-900 text-white p-6 rounded-2xl space-y-3">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Net GST Position</div>
-              <div className="text-3xl font-extrabold text-emerald-400">
+            <div className="glass-card-dark text-white p-6 rounded-2xl space-y-3 shadow-xl">
+              <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Net GST Position</div>
+              <div className="text-3xl font-black font-tabular text-emerald-400 tracking-tight">
                 {formatCurrency(currentData.netGstLiability)}
               </div>
-              <div className="text-xs text-slate-400">
+              <div className="text-xs text-slate-400 font-medium font-tabular">
                 Output GST ({formatCurrency(currentData.totalOutputGST)}) – Input ITC ({formatCurrency(currentData.totalInputGST)})
               </div>
             </div>
