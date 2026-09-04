@@ -20,11 +20,11 @@ export const metadata: Metadata = {
   description: "Comprehensive Financial Management System for Business Accounting, Invoicing, Tax & Financial Reporting",
   icons: {
     icon: [
-      { url: "/finledger-icon.svg", type: "image/svg+xml" },
+      { url: "/finledger-icon.png", type: "image/png" },
       { url: "/favicon.ico" },
     ],
-    shortcut: "/finledger-icon.svg",
-    apple: "/finledger-icon.svg",
+    shortcut: "/finledger-icon.png",
+    apple: "/finledger-icon.png",
   },
 };
 

@@ -182,7 +182,7 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
           </div>
         ) : (
           <div className="h-10 w-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-sm shrink-0 border border-white/20 mb-1">
-            <img src="/finledger-icon.svg" alt="FinLedger" className="h-full w-full object-contain" />
+            <img src="/finledger-icon.png" alt="FinLedger" className="h-full w-full object-contain" />
           </div>
         )}
 
