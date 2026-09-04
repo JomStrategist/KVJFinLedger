@@ -26,26 +26,40 @@ export default function LedgerClient({
   const [fromDate, setFromDate] = useState(initialFromDate);
   const [toDate, setToDate] = useState(initialToDate);
 
-  const [isPending, startTransition] = React.useTransition();
+  const [statement, setStatement] = useState<LedgerStatement | null>(initialStatement);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchStatement = async (accId: string, from: string, to: string) => {
+    setIsLoading(true);
+    try {
+      const query = new URLSearchParams();
+      if (accId) query.set("accountId", accId);
+      if (from) query.set("fromDate", from);
+      if (to) query.set("toDate", to);
+
+      // Instant URL sync without Next.js server route re-render latency
+      window.history.replaceState(null, "", `/ledgers?${query.toString()}`);
+
+      const res = await fetch(`/api/ledgers/statement?${query.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setStatement(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch ledger statement:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleAccountChange = (newAccId: string) => {
     setAccountId(newAccId);
-    navigate(newAccId, fromDate, toDate);
+    fetchStatement(newAccId, fromDate, toDate);
   };
 
   const handleDateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(accountId, fromDate, toDate);
-  };
-
-  const navigate = (accId: string, from: string, to: string) => {
-    const query = new URLSearchParams();
-    if (accId) query.set("accountId", accId);
-    if (from) query.set("fromDate", from);
-    if (to) query.set("toDate", to);
-    startTransition(() => {
-      router.push(`/ledgers?${query.toString()}`);
-    });
+    fetchStatement(accountId, fromDate, toDate);
   };
 
   const handlePrint = () => {
@@ -91,8 +105,6 @@ export default function LedgerClient({
     acc[grp].push(account);
     return acc;
   }, {} as Record<string, AccountDescriptor[]>);
-
-  const statement = initialStatement;
 
   return (
     <div className="space-y-6 pb-16">
@@ -195,7 +207,7 @@ export default function LedgerClient({
 
       {/* Account Info & Summary Cards */}
       {statement && (
-        <div className="space-y-6">
+        <div className={`space-y-6 transition-opacity duration-200 ${isLoading ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
             <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm">
               <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Opening Balance</div>

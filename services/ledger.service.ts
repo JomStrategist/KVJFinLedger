@@ -165,23 +165,102 @@ export class LedgerService {
     const toDate = toDateStr ? new Date(toDateStr) : new Date(startYr + 1, 2, 31);
     toDate.setHours(23, 59, 59, 999);
 
-    // Raw transaction queries
-    const [invoices, expenses, payments] = await Promise.all([
-      prisma.taxInvoice.findMany({
-        where: { status: { in: ["CONFIRMED", "PAID", "PARTIALLY_PAID"] } },
-        include: { customer: true, payments: true, items: { include: { incomeCategory: true } } },
-        orderBy: { invoiceDate: "asc" }
-      }),
-      prisma.expense.findMany({
-        where: { status: "APPROVED" },
+    // Targeted transaction queries based on Account Type
+    let invoices: any[] = [];
+    let expenses: any[] = [];
+    let payments: any[] = [];
+
+    if (account.type === "CUSTOMER") {
+      const custId = account.id.replace("customer_", "");
+      [invoices, payments] = await Promise.all([
+        prisma.taxInvoice.findMany({
+          where: { status: { in: ["CONFIRMED", "PAID", "PARTIALLY_PAID"] }, customerId: custId },
+          include: { customer: true, payments: true, items: { include: { incomeCategory: true } } },
+          orderBy: { invoiceDate: "asc" }
+        }),
+        prisma.invoicePayment.findMany({
+          where: { taxInvoice: { customerId: custId } },
+          include: { taxInvoice: { include: { customer: true } } },
+          orderBy: { paymentDate: "asc" }
+        })
+      ]);
+    } else if (account.type === "VENDOR") {
+      const vendorId = account.id.replace("vendor_", "");
+      expenses = await prisma.expense.findMany({
+        where: { status: "APPROVED", vendorId: vendorId },
         include: { vendor: true, category: true, items: { include: { category: true } } },
         orderBy: { expenseDate: "asc" }
-      }),
-      prisma.invoicePayment.findMany({
-        include: { taxInvoice: { include: { customer: true } } },
-        orderBy: { paymentDate: "asc" }
-      })
-    ]);
+      });
+    } else if (account.type === "EXPENSE_CATEGORY") {
+      const catId = account.id.replace("cat_", "");
+      expenses = await prisma.expense.findMany({
+        where: {
+          status: "APPROVED",
+          OR: [
+            { categoryId: catId },
+            { items: { some: { categoryId: catId } } }
+          ]
+        },
+        include: { vendor: true, category: true, items: { include: { category: true } } },
+        orderBy: { expenseDate: "asc" }
+      });
+    } else if (account.type === "INCOME_CATEGORY") {
+      const catId = account.id.replace("cat_", "");
+      invoices = await prisma.taxInvoice.findMany({
+        where: {
+          status: { in: ["CONFIRMED", "PAID", "PARTIALLY_PAID"] },
+          ...(catId !== "cat_income_default" ? { items: { some: { incomeCategoryId: catId } } } : {})
+        },
+        include: { customer: true, payments: true, items: { include: { incomeCategory: true } } },
+        orderBy: { invoiceDate: "asc" }
+      });
+    } else if (account.type === "BANK" || account.type === "CASH") {
+      [payments, expenses] = await Promise.all([
+        prisma.invoicePayment.findMany({
+          include: { taxInvoice: { include: { customer: true } } },
+          orderBy: { paymentDate: "asc" }
+        }),
+        prisma.expense.findMany({
+          where: { status: "APPROVED", paymentStatus: "PAID" },
+          include: { vendor: true, category: true, items: { include: { category: true } } },
+          orderBy: { expenseDate: "asc" }
+        })
+      ]);
+    } else if (account.type === "STATUTORY_GST") {
+      if (account.id.includes("output")) {
+        invoices = await prisma.taxInvoice.findMany({
+          where: { status: { in: ["CONFIRMED", "PAID", "PARTIALLY_PAID"] }, totalGST: { gt: 0 } },
+          include: { customer: true, payments: true, items: { include: { incomeCategory: true } } },
+          orderBy: { invoiceDate: "asc" }
+        });
+      } else {
+        expenses = await prisma.expense.findMany({
+          where: { status: "APPROVED", totalInputGST: { gt: 0 } },
+          include: { vendor: true, category: true, items: { include: { category: true } } },
+          orderBy: { expenseDate: "asc" }
+        });
+      }
+    } else if (account.type === "STATUTORY_TDS") {
+      if (account.id.includes("payable")) {
+        expenses = await prisma.expense.findMany({
+          where: { status: "APPROVED", tdsAmount: { gt: 0 } },
+          include: { vendor: true, category: true, items: { include: { category: true } } },
+          orderBy: { expenseDate: "asc" }
+        });
+      } else {
+        invoices = await prisma.taxInvoice.findMany({
+          where: { status: { in: ["CONFIRMED", "PAID", "PARTIALLY_PAID"] }, tdsAmount: { gt: 0 } },
+          include: { customer: true, payments: true, items: { include: { incomeCategory: true } } },
+          orderBy: { invoiceDate: "asc" }
+        });
+      }
+    } else if (account.type === "FIXED_ASSET") {
+      expenses = await prisma.expense.findMany({
+        where: { status: "APPROVED", isAsset: true },
+        include: { vendor: true, category: true, items: { include: { category: true } } },
+        orderBy: { expenseDate: "asc" }
+      });
+    }
 
     const rawLedgerItems: Array<{
       date: Date;
@@ -262,7 +341,7 @@ export class LedgerService {
     } else if (account.type === "EXPENSE_CATEGORY") {
       const catId = account.id.replace("cat_", "");
       for (const exp of expenses) {
-        if (exp.categoryId === catId || (exp.items || []).some(i => i.categoryId === catId)) {
+        if (exp.categoryId === catId || (exp.items || []).some((i: any) => i.categoryId === catId)) {
           const net = Number(exp.netAmount || 0);
           rawLedgerItems.push({
             date: new Date(exp.expenseDate),
@@ -279,10 +358,10 @@ export class LedgerService {
     } else if (account.type === "INCOME_CATEGORY") {
       const catId = account.id.replace("cat_", "");
       for (const inv of invoices) {
-        const matchingItems = (inv.items || []).filter(i => i.incomeCategoryId === catId);
+        const matchingItems = (inv.items || []).filter((i: any) => i.incomeCategoryId === catId);
         if (matchingItems.length > 0 || catId === "cat_income_default") {
           const catAmount = matchingItems.length > 0 
-            ? matchingItems.reduce((sum, item) => sum + Number(item.taxableAmount || 0), 0)
+            ? matchingItems.reduce((sum: number, item: any) => sum + Number(item.taxableAmount || 0), 0)
             : Number(inv.taxableAmount || inv.netAmount || 0);
 
           rawLedgerItems.push({
