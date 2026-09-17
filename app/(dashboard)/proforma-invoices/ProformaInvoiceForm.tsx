@@ -3,6 +3,7 @@
 import { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createProformaInvoiceAction, updateProformaInvoiceAction } from "../invoices/proforma-actions";
+import { updateTaxInvoiceAction } from "../invoices/actions";
 import { CustomerForm } from "../customers/CustomerForm";
 import { TaxEngine } from "@/lib/tax";
 import { BUSINESS_LOCATION } from "@/lib/config/business";
@@ -17,6 +18,7 @@ type FormProps = {
   customers: any[];
   products: any[];
   categories?: any[];
+  mode?: "proforma" | "taxInvoice";
 };
 
 const PAYMENT_TERMS_OPTIONS = [
@@ -48,7 +50,7 @@ const getFinancialYearsList = () => {
   });
 };
 
-export function ProformaInvoiceForm({ initialData, customers: initialCustomers, products: initialProducts, categories: initialCategories = [] }: FormProps) {
+export function ProformaInvoiceForm({ initialData, customers: initialCustomers, products: initialProducts, categories: initialCategories = [], mode = "proforma" }: FormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +76,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
     initialData?.invoiceDate ? new Date(initialData.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
   );
   const [isPurchaseOrder, setIsPurchaseOrder] = useState(initialData?.isPurchaseOrder || false);
+  const [poNumber, setPoNumber] = useState(initialData?.poNumber || "");
   const [notes, setNotes] = useState(initialData?.notes || "");
 
   // GST & Tax Options
@@ -106,7 +109,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
       unit: i.unit || "Piece",
       unitPrice: Number(i.unitPrice) || 0,
       discountPercent: Number(i.discountPercent) || 0,
-      isGstEnabled: i.isGstEnabled ?? true,
+      isGstEnabled: i.isGstEnabled ?? (Number(i.gstRate || 0) > 0),
       gstRate: Number(i.gstRate || 0),
     })) || [
       {
@@ -184,7 +187,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
         itemTaxable = Number((rawGross - discountAmount).toFixed(2));
       }
 
-      subtotal += rawGross;
+      subtotal += (isInclusive && effectiveGstRate > 0) ? itemTaxable : rawGross;
       totalDiscount += discountAmount;
       taxableAmount += itemTaxable;
 
@@ -359,7 +362,8 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
         customerType,
         financialYear,
         invoiceDate,
-        isPurchaseOrder,
+        isPurchaseOrder: Boolean(poNumber.trim()),
+        poNumber: poNumber.trim() || null,
         notes,
         tdsRate: calculationResult.tdsRate,
         globalGstRate: effectiveGstRate,
@@ -389,19 +393,31 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
       };
 
       let res;
-      if (initialData) {
+      if (mode === "taxInvoice" && initialData) {
+        res = await updateTaxInvoiceAction(initialData.id, payload);
+      } else if (initialData) {
         res = await updateProformaInvoiceAction(initialData.id, payload);
       } else {
         res = await createProformaInvoiceAction(payload);
       }
 
       if (res.success) {
-        setSuccess("Proforma Invoice saved as draft successfully.");
+        setSuccess(
+          mode === "taxInvoice"
+            ? "Tax Invoice updated successfully."
+            : initialData
+            ? "Proforma Invoice updated successfully."
+            : "Proforma Invoice saved as draft successfully."
+        );
         setTimeout(() => {
-          router.push("/invoices?tab=proforma");
+          if (mode === "taxInvoice") {
+            router.push(`/invoices/${initialData.id}`);
+          } else {
+            router.push("/invoices?tab=proforma");
+          }
         }, 1200);
       } else {
-        setError(res.error || "Unable to save Proforma Invoice.");
+        setError(res.error || (mode === "taxInvoice" ? "Unable to update Tax Invoice." : "Unable to save Proforma Invoice."));
       }
     });
   };
@@ -432,15 +448,19 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
               <p className="text-xs text-theme-text-muted">Basic details for this proforma invoice</p>
             </div>
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-xs font-medium text-theme-text bg-theme-surface-hover px-2.5 py-1 rounded-lg border border-theme-border cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={isPurchaseOrder} 
-                  onChange={(e) => setIsPurchaseOrder(e.target.checked)}
-                  className="w-3.5 h-3.5 text-theme-primary focus:ring-theme-primary border-theme-border rounded"
+              <div className="flex items-center gap-1.5 bg-theme-surface-hover px-2.5 py-1 rounded-lg border border-theme-border">
+                <label className="text-xs font-semibold text-theme-text-muted whitespace-nowrap">PO Number:</label>
+                <input
+                  type="text"
+                  value={poNumber}
+                  onChange={(e) => {
+                    setPoNumber(e.target.value);
+                    setIsPurchaseOrder(Boolean(e.target.value.trim()));
+                  }}
+                  placeholder="Optional PO No."
+                  className="w-32 sm:w-40 px-2 py-0.5 text-xs border border-theme-border rounded bg-theme-surface text-theme-text focus:outline-none focus:ring-1 focus:ring-theme-primary"
                 />
-                <span>Purchase Order</span>
-              </label>
+              </div>
               <span className="bg-yellow-100 text-yellow-800 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider">
                 {initialData?.status || "DRAFT"}
               </span>
@@ -557,11 +577,10 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
             <table className="w-full text-left min-w-[750px]">
               <thead>
                 <tr className="bg-theme-surface-hover text-[11px] uppercase text-theme-text-muted font-bold tracking-wider border-b border-theme-border">
-                  <th className="px-4 py-3 w-64">Item & Description</th>
-                  <th className="px-3 py-3 w-48">Income Category *</th>
+                  <th className="px-4 py-3 w-80">Item & Description</th>
                   <th className="px-3 py-3 w-28">HSN / SAC</th>
                   <th className="px-3 py-3 w-20">Qty</th>
-                  <th className="px-3 py-3 w-32">Rate</th>
+                  <th className="px-3 py-3 w-36">Rate</th>
                   <th className="px-4 py-3 text-right w-36">Amount</th>
                   <th className="px-2 py-3 w-10 text-center"></th>
                 </tr>
@@ -570,9 +589,10 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                 {items.map((item, index) => {
                   const calc = calculationResult.calculatedItems[index];
                   const enteredLineAmount = Number(((item.quantity || 0) * (item.unitPrice || 0)).toFixed(2));
-                  const displayAmount = isGstInclusive === "INCLUSIVE"
-                    ? enteredLineAmount
-                    : (calc?.taxableAmount || 0);
+                  const isInclusive = isGstInclusive === "INCLUSIVE";
+                  const baseRate = isInclusive && effectiveGstRate > 0 
+                    ? (Number(item.unitPrice || 0) / (1 + effectiveGstRate / 100))
+                    : Number(item.unitPrice || 0);
 
                   return (
                     <tr key={item.id} className="bg-theme-surface align-top hover:bg-theme-surface-hover/50">
@@ -598,30 +618,6 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                           onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
                           className="w-full border border-theme-border/60 rounded-md px-2.5 py-1 text-xs bg-theme-surface text-theme-text-muted"
                         />
-                      </td>
-                      <td className="px-3 py-3">
-                        <select
-                          value={item.incomeCategoryId || ""}
-                          onChange={(e) => {
-                            if (e.target.value === "ADD_NEW_CATEGORY") {
-                              setModalConfig({ type: "category", itemId: item.id });
-                            } else {
-                              handleItemChange(item.id, "incomeCategoryId", e.target.value);
-                            }
-                          }}
-                          required
-                          className="w-full border border-theme-border rounded-lg px-2 py-1.5 text-xs font-semibold focus:ring-1 focus:ring-theme-primary bg-theme-surface text-[#177B55]"
-                        >
-                          <option value="">Select Category...</option>
-                          {incomeCategories.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name} ({c.code || "INC"})
-                            </option>
-                          ))}
-                          <option value="ADD_NEW_CATEGORY" className="font-bold text-theme-primary bg-theme-surface-hover">
-                            + Add Income Category...
-                          </option>
-                        </select>
                       </td>
                       <td className="px-3 py-3">
                         <input
@@ -653,9 +649,21 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                           onChange={(e) => handleItemChange(item.id, 'unitPrice', e.target.value)}
                           className="w-full border border-theme-border rounded-lg px-2.5 py-1.5 text-sm bg-theme-surface font-medium"
                         />
+                        {isInclusive && effectiveGstRate > 0 && (
+                          <p className="text-[10px] text-theme-text-muted mt-1 whitespace-nowrap">
+                            Base Rate: ₹{baseRate.toFixed(2)}
+                          </p>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-right font-bold text-theme-text whitespace-nowrap pt-4">
-                        ₹{Number(displayAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <td className="px-4 py-3 text-right font-bold text-theme-text whitespace-nowrap pt-3">
+                        <div>
+                          <p>₹{Number(calc?.taxableAmount ?? enteredLineAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          {isInclusive && effectiveGstRate > 0 && (
+                            <span className="text-[10px] font-normal text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
+                              ₹{Number(enteredLineAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })} incl.
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-2 py-3 text-center pt-3.5">
                         <button
@@ -959,13 +967,15 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
             
             <div className="flex flex-col items-end text-right">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1e3a8a] tracking-tight mb-3 uppercase">
-                {isPurchaseOrder ? "PURCHASE ORDER" : "PROFORMA INVOICE"}
+                {mode === "taxInvoice" ? "TAX INVOICE" : "PROFORMA INVOICE"}
               </h2>
               
               <table className="text-xs sm:text-sm">
                 <tbody>
                   <tr>
-                    <td className="text-gray-500 pr-3 py-0.5 text-right">Proforma No:</td>
+                    <td className="text-gray-500 pr-3 py-0.5 text-right">
+                      {mode === "taxInvoice" ? "Invoice No:" : "Proforma No:"}
+                    </td>
                     <td className="font-bold text-gray-900 text-right">{initialData?.invoiceNumber || "Auto-assigned on Save"}</td>
                   </tr>
                   <tr>
@@ -999,7 +1009,9 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                 <p><span className="text-gray-500 font-medium">GSTIN:</span> <strong className="text-gray-900">{customerGstin}</strong></p>
               )}
               <p><span className="text-gray-500 font-medium">Place of Supply:</span> <strong className="text-gray-900">{placeCountry}</strong></p>
-              <p><span className="text-gray-500 font-medium">Purchase Order No:</span> <strong className="text-gray-900">NIL</strong></p>
+              {poNumber && poNumber.trim() && (
+                <p><span className="text-gray-500 font-medium">Purchase Order No:</span> <strong className="text-gray-900">{poNumber}</strong></p>
+              )}
             </div>
           </div>
 
@@ -1017,6 +1029,11 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
               <tbody className="divide-y divide-gray-200">
                 {calculationResult.calculatedItems.map((itemCalc, idx) => {
                   const item = items[idx];
+                  const isInclusive = isGstInclusive === "INCLUSIVE";
+                  const effectiveRate = isInclusive && effectiveGstRate > 0 
+                    ? (Number(item.unitPrice || 0) / (1 + effectiveGstRate / 100))
+                    : Number(item.unitPrice || 0);
+
                   return (
                     <tr key={idx}>
                       <td className="py-2.5 px-2">
@@ -1025,7 +1042,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                       </td>
                       <td className="py-2.5 px-2 text-gray-600">{item.hsnSacCode || "—"}</td>
                       <td className="py-2.5 px-2 text-right">{Number(item.quantity || 0)}</td>
-                      <td className="py-2.5 px-2 text-right">₹{Number(item.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="py-2.5 px-2 text-right">₹{Number(effectiveRate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td className="py-2.5 px-2 text-right font-medium">₹{Number(itemCalc?.taxableAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     </tr>
                   );
@@ -1125,7 +1142,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
               className="px-6 py-2.5 text-sm font-semibold text-white bg-theme-primary rounded-xl hover:bg-theme-primary-dark transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {isPending && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
-              Save Proforma
+              {mode === "taxInvoice" ? "Update Tax Invoice" : (initialData ? "Update Proforma" : "Save Proforma")}
             </button>
           </div>
         </div>
@@ -1148,7 +1165,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
               <div className="flex flex-col items-end text-right">
                 <div className="flex items-center gap-4 mb-2">
                   <h2 className="text-2xl font-extrabold text-[#1e3a8a] tracking-tight uppercase">
-                    {isPurchaseOrder ? "PURCHASE ORDER" : "PROFORMA INVOICE"}
+                    {mode === "taxInvoice" ? "TAX INVOICE" : "PROFORMA INVOICE"}
                   </h2>
                   <button
                     type="button"
@@ -1163,7 +1180,9 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                 <table className="text-xs sm:text-sm">
                   <tbody>
                     <tr>
-                      <td className="text-gray-500 pr-3 py-0.5 text-right">Proforma No:</td>
+                      <td className="text-gray-500 pr-3 py-0.5 text-right">
+                        {mode === "taxInvoice" ? "Invoice No:" : "Proforma No:"}
+                      </td>
                       <td className="font-bold text-gray-900 text-right">{initialData?.invoiceNumber || "Auto-assigned on Save"}</td>
                     </tr>
                     <tr>
@@ -1193,7 +1212,9 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                   <p><span className="text-gray-500 font-medium">GSTIN:</span> <strong className="text-gray-900">{customerGstin}</strong></p>
                 )}
                 <p><span className="text-gray-500 font-medium">Place of Supply:</span> <strong className="text-gray-900">{placeCountry}</strong></p>
-                <p><span className="text-gray-500 font-medium">Purchase Order No:</span> <strong className="text-gray-900">NIL</strong></p>
+                {poNumber && poNumber.trim() && (
+                  <p><span className="text-gray-500 font-medium">Purchase Order No:</span> <strong className="text-gray-900">{poNumber}</strong></p>
+                )}
               </div>
             </div>
 
@@ -1210,6 +1231,11 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
               <tbody className="divide-y divide-gray-200">
                 {calculationResult.calculatedItems.map((itemCalc, idx) => {
                   const item = items[idx];
+                  const isInclusive = isGstInclusive === "INCLUSIVE";
+                  const effectiveRate = isInclusive && effectiveGstRate > 0 
+                    ? (Number(item.unitPrice || 0) / (1 + effectiveGstRate / 100))
+                    : Number(item.unitPrice || 0);
+
                   return (
                     <tr key={idx}>
                       <td className="py-2.5 px-2">
@@ -1218,7 +1244,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
                       </td>
                       <td className="py-2.5 px-2 text-gray-600">{item.hsnSacCode || "—"}</td>
                       <td className="py-2.5 px-2 text-right">{Number(item.quantity || 0)}</td>
-                      <td className="py-2.5 px-2 text-right">₹{Number(item.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="py-2.5 px-2 text-right">₹{Number(effectiveRate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td className="py-2.5 px-2 text-right font-medium">₹{Number(itemCalc?.taxableAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     </tr>
                   );

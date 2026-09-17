@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { recordInvoicePaymentAction } from "./actions";
+import { recordInvoicePaymentAction, updateInvoicePaymentAction, deleteInvoicePaymentAction } from "./actions";
 
 export function InvoicePaymentModal({
   invoice,
@@ -14,6 +14,7 @@ export function InvoicePaymentModal({
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
 
   // Existing payments calculation
   const payments: any[] = invoice.payments || [];
@@ -23,7 +24,10 @@ export function InvoicePaymentModal({
   const invoiceTotal = Number(invoice.grossAmount || invoice.netAmount);
   const outstanding = Math.max(0, invoiceTotal - totalSettled);
 
-  // Form State for new payment
+  const editingPayment = payments.find(p => p.id === editingPaymentId);
+  const maxAllowedAmount = editingPayment ? outstanding + Number(editingPayment.paymentAmount) : outstanding;
+
+  // Form State for payment
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [paymentAmount, setPaymentAmount] = useState<number>(outstanding);
   const [isTdsDeducted, setIsTdsDeducted] = useState(Number(invoice.tdsAmount) > 0);
@@ -35,6 +39,42 @@ export function InvoicePaymentModal({
   const calculatedTdsAmount = isTdsDeducted ? (paymentAmount * tdsRate) / 100 : 0;
   const calculatedBankReceipt = Math.max(0, paymentAmount - calculatedTdsAmount);
 
+  const handleStartEdit = (p: any) => {
+    setEditingPaymentId(p.id);
+    setPaymentDate(new Date(p.paymentDate).toISOString().split("T")[0]);
+    setPaymentAmount(Number(p.paymentAmount));
+    setIsTdsDeducted(Boolean(p.isTdsDeducted));
+    setTdsRate(Number(p.tdsRate) || 10);
+    setReference(p.reference || "");
+    setRemarks(p.remarks || "");
+    setError(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPaymentId(null);
+    setPaymentDate(new Date().toISOString().split("T")[0]);
+    setPaymentAmount(outstanding);
+    setIsTdsDeducted(Number(invoice.tdsAmount) > 0);
+    setTdsRate(Number(invoice.tdsRate) || (Number(invoice.tdsAmount) > 0 ? 10 : 0));
+    setReference("");
+    setRemarks("");
+    setError(null);
+  };
+
+  const handleDelete = (paymentId: string) => {
+    if (!confirm("Are you sure you want to delete this payment record? The invoice outstanding balance will be recalculated.")) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await deleteInvoicePaymentAction(paymentId, invoice.id);
+      if (res.success) {
+        if (onSuccess) onSuccess();
+        onClose();
+      } else {
+        setError(res.error || "Failed to delete payment.");
+      }
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -44,30 +84,52 @@ export function InvoicePaymentModal({
       return;
     }
 
-    if (paymentAmount > outstanding + 1) { // allow small 1 rupee tolerance
-      setError(`Payment amount cannot exceed outstanding balance of ₹${outstanding.toFixed(2)}.`);
+    if (paymentAmount > maxAllowedAmount + 1) { // allow small 1 rupee tolerance
+      setError(`Payment amount cannot exceed allowable balance of ₹${maxAllowedAmount.toFixed(2)}.`);
       return;
     }
 
-    startTransition(async () => {
-      const res = await recordInvoicePaymentAction(invoice.id, {
-        paymentDate,
-        paymentAmount,
-        isTdsDeducted,
-        tdsRate: isTdsDeducted ? tdsRate : 0,
-        tdsAmount: calculatedTdsAmount,
-        bankReceipt: calculatedBankReceipt,
-        reference: reference.trim() || undefined,
-        remarks: remarks.trim() || undefined,
-      });
+    if (editingPaymentId) {
+      startTransition(async () => {
+        const res = await updateInvoicePaymentAction(editingPaymentId, invoice.id, {
+          paymentDate,
+          paymentAmount,
+          isTdsDeducted,
+          tdsRate: isTdsDeducted ? tdsRate : 0,
+          tdsAmount: calculatedTdsAmount,
+          bankReceipt: calculatedBankReceipt,
+          reference: reference.trim() || undefined,
+          remarks: remarks.trim() || undefined,
+        });
 
-      if (res.success) {
-        if (onSuccess) onSuccess();
-        onClose();
-      } else {
-        setError(res.error);
-      }
-    });
+        if (res.success) {
+          if (onSuccess) onSuccess();
+          onClose();
+        } else {
+          setError(res.error || "Failed to update payment.");
+        }
+      });
+    } else {
+      startTransition(async () => {
+        const res = await recordInvoicePaymentAction(invoice.id, {
+          paymentDate,
+          paymentAmount,
+          isTdsDeducted,
+          tdsRate: isTdsDeducted ? tdsRate : 0,
+          tdsAmount: calculatedTdsAmount,
+          bankReceipt: calculatedBankReceipt,
+          reference: reference.trim() || undefined,
+          remarks: remarks.trim() || undefined,
+        });
+
+        if (res.success) {
+          if (onSuccess) onSuccess();
+          onClose();
+        } else {
+          setError(res.error || "Failed to record payment.");
+        }
+      });
+    }
   };
 
   return (
@@ -161,6 +223,7 @@ export function InvoicePaymentModal({
                       <th className="px-3 py-2 text-right">TDS Deducted</th>
                       <th className="px-3 py-2 text-right">Bank Receipt</th>
                       <th className="px-3 py-2">Reference</th>
+                      <th className="px-3 py-2 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-theme-border">
@@ -179,8 +242,24 @@ export function InvoicePaymentModal({
                         <td className="px-3 py-2 text-right font-semibold text-emerald-600">
                           ₹{Number(p.bankReceipt).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                         </td>
-                        <td className="px-3 py-2 text-theme-text-muted truncate max-w-[120px]">
+                        <td className="px-3 py-2 text-theme-text-muted truncate max-w-[100px]">
                           {p.reference || "—"}
+                        </td>
+                        <td className="px-3 py-2 text-right whitespace-nowrap space-x-1">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEdit(p)}
+                            className="px-2 py-0.5 text-[11px] font-bold text-[#0B5F46] bg-[#F4F7F3] hover:bg-[#E5EDE7] rounded border border-[#D9E3DC]"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(p.id)}
+                            className="px-2 py-0.5 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200"
+                          >
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -190,12 +269,23 @@ export function InvoicePaymentModal({
             </div>
           )}
 
-          {/* Add Payment Form */}
-          {outstanding > 0 ? (
+          {/* Add / Edit Payment Form */}
+          {(outstanding > 0 || editingPaymentId) ? (
             <form id="payment-form" onSubmit={handleSubmit} className="space-y-4 pt-2 border-t border-theme-border">
-              <h3 className="text-xs font-bold text-theme-text uppercase tracking-wider">
-                Record New Payment
-              </h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-xs font-bold text-theme-text uppercase tracking-wider">
+                  {editingPaymentId ? "Edit Payment Record" : "Record New Payment"}
+                </h3>
+                {editingPaymentId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="text-xs text-red-600 hover:underline font-semibold"
+                  >
+                    Cancel Editing
+                  </button>
+                )}
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -219,7 +309,7 @@ export function InvoicePaymentModal({
                     type="number"
                     step="0.01"
                     min="0.01"
-                    max={outstanding}
+                    max={maxAllowedAmount}
                     required
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(Number(e.target.value))}
@@ -358,14 +448,25 @@ export function InvoicePaymentModal({
           >
             Close
           </button>
-          {outstanding > 0 && (
+          {editingPaymentId && (
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="px-4 py-2 border border-theme-border rounded-lg text-xs font-medium hover:bg-theme-surface-hover text-theme-text"
+            >
+              Cancel
+            </button>
+          )}
+          {(outstanding > 0 || editingPaymentId) && (
             <button
               type="submit"
               form="payment-form"
               disabled={isPending}
               className="px-5 py-2 bg-theme-primary hover:bg-theme-primary-dark text-white rounded-lg text-xs font-medium shadow-sm transition-colors disabled:opacity-50"
             >
-              {isPending ? "Recording Payment..." : "Save Payment"}
+              {isPending 
+                ? (editingPaymentId ? "Updating Payment..." : "Recording Payment...") 
+                : (editingPaymentId ? "Update Payment" : "Save Payment")}
             </button>
           )}
         </div>

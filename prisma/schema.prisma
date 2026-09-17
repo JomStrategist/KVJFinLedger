@@ -165,6 +165,7 @@ model ProformaInvoice {
   totalAmount     Float
   notes           String?
   isPurchaseOrder Boolean @default(false)
+  poNumber        String?
   
   // Bank Account & Snapshot
   bankAccountId        String?  @db.ObjectId
@@ -223,6 +224,7 @@ model TaxInvoice {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   invoiceNumber   String   @unique
   sourceProformaId String?  @unique
+  poNumber        String?
   
   // Relations
   customerId      String   @db.ObjectId

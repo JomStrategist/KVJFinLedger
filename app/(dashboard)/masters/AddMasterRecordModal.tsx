@@ -374,6 +374,17 @@ const handleCreateParent = async () => {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1">Address</label>
+                <input
+                  type="text"
+                  placeholder="Street, City, Pincode"
+                  value={customerAddress}
+                  onChange={(e) => setCustomerAddress(e.target.value)}
+                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[#68756C] mb-1">
@@ -404,8 +415,8 @@ const handleCreateParent = async () => {
                 </div>
               </div>
 
-              {gstRegStatus === "REGISTERED" && (
-                <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                {gstRegStatus === "REGISTERED" ? (
                   <div>
                     <label className="block text-xs font-semibold text-[#68756C] mb-1">
                       GSTIN *
@@ -419,20 +430,33 @@ const handleCreateParent = async () => {
                       className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
                     />
                   </div>
+                ) : (
                   <div>
                     <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                      PAN (Optional)
+                      GSTIN (Optional)
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. ABCDE1234F"
-                      value={customerPan}
-                      onChange={(e) => setCustomerPan(e.target.value.toUpperCase())}
+                      placeholder="Unregistered"
+                      value={customerGstin}
+                      onChange={(e) => setCustomerGstin(e.target.value.toUpperCase())}
                       className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
                     />
                   </div>
+                )}
+                <div>
+                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
+                    PAN No. (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ABCDE1234F"
+                    value={customerPan}
+                    onChange={(e) => setCustomerPan(e.target.value.toUpperCase())}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
+                  />
                 </div>
-              )}
+              </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
@@ -464,17 +488,6 @@ const handleCreateParent = async () => {
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">Address</label>
-                <input
-                  type="text"
-                  placeholder="Street, City, Pincode"
-                  value={customerAddress}
-                  onChange={(e) => setCustomerAddress(e.target.value)}
-                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -525,6 +538,17 @@ const handleCreateParent = async () => {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-[#68756C] mb-1">Address</label>
+                <input
+                  type="text"
+                  placeholder="Street, City, Pincode"
+                  value={vendorAddress}
+                  onChange={(e) => setVendorAddress(e.target.value)}
+                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[#68756C] mb-1">Vendor Type</label>
@@ -550,8 +574,8 @@ const handleCreateParent = async () => {
                 </div>
               </div>
 
-              {vendorGstRegStatus === "REGISTERED" && (
-                <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                {vendorGstRegStatus === "REGISTERED" ? (
                   <div>
                     <label className="block text-xs font-semibold text-[#68756C] mb-1">GSTIN</label>
                     <input
@@ -562,18 +586,29 @@ const handleCreateParent = async () => {
                       className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
                     />
                   </div>
+                ) : (
                   <div>
-                    <label className="block text-xs font-semibold text-[#68756C] mb-1">PAN (Optional)</label>
+                    <label className="block text-xs font-semibold text-[#68756C] mb-1">GSTIN (Optional)</label>
                     <input
                       type="text"
-                      placeholder="e.g. VENDOR1234A"
-                      value={vendorPan}
-                      onChange={(e) => setVendorPan(e.target.value.toUpperCase())}
+                      placeholder="Unregistered"
+                      value={vendorGstin}
+                      onChange={(e) => setVendorGstin(e.target.value.toUpperCase())}
                       className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
                     />
                   </div>
+                )}
+                <div>
+                  <label className="block text-xs font-semibold text-[#68756C] mb-1">PAN No. (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. VENDOR1234A"
+                    value={vendorPan}
+                    onChange={(e) => setVendorPan(e.target.value.toUpperCase())}
+                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
+                  />
                 </div>
-              )}
+              </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[#68756C] mb-1">State</label>

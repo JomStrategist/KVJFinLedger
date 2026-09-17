@@ -57,6 +57,49 @@ export async function recordInvoicePaymentAction(
   }
 }
 
+export async function updateInvoicePaymentAction(
+  paymentId: string,
+  invoiceId: string,
+  payload: {
+    paymentDate: string;
+    paymentAmount: number;
+    isTdsDeducted: boolean;
+    tdsRate: number;
+    tdsAmount: number;
+    bankReceipt: number;
+    reference?: string;
+    remarks?: string;
+  }
+) {
+  try {
+    const res = await TaxInvoiceService.updatePayment(paymentId, payload);
+    revalidatePath("/invoices");
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/finance");
+    revalidatePath("/dashboard");
+    revalidatePath("/reports");
+    return { success: true, data: res };
+  } catch (error: any) {
+    console.error("Failed to update invoice payment:", error);
+    return { success: false, error: error.message || "Failed to update payment." };
+  }
+}
+
+export async function deleteInvoicePaymentAction(paymentId: string, invoiceId: string) {
+  try {
+    const res = await TaxInvoiceService.deletePayment(paymentId);
+    revalidatePath("/invoices");
+    revalidatePath(`/invoices/${invoiceId}`);
+    revalidatePath("/finance");
+    revalidatePath("/dashboard");
+    revalidatePath("/reports");
+    return { success: true, data: res };
+  } catch (error: any) {
+    console.error("Failed to delete invoice payment:", error);
+    return { success: false, error: error.message || "Failed to delete payment." };
+  }
+}
+
 /**
  * Mark GST as remitted to the Government for a specific invoice.
  * Records CPIN/challan reference and date of payment.
@@ -84,5 +127,20 @@ export async function markInvoiceGstPaidAction(
   } catch (error: any) {
     console.error("Failed to mark GST paid:", error);
     return { success: false, error: error.message || "Failed to mark GST as paid." };
+  }
+}
+
+export async function updateTaxInvoiceAction(id: string, payload: any) {
+  try {
+    const invoice = await TaxInvoiceService.updateTaxInvoice(id, payload);
+    revalidatePath("/invoices");
+    revalidatePath(`/invoices/${id}`);
+    revalidatePath("/finance");
+    revalidatePath("/dashboard");
+    revalidatePath("/reports");
+    return { success: true, data: invoice };
+  } catch (error: any) {
+    console.error("Failed to update tax invoice:", error);
+    return { success: false, error: error.message || "Failed to update tax invoice." };
   }
 }

@@ -65,7 +65,7 @@ export default async function TaxInvoiceDetailPage({
       )}
 
       {/* Printable Invoice Container */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden print:shadow-none print:border-none print:m-0 print:p-0 text-gray-900 font-sans printable-card flex flex-col justify-between min-h-[780px] print:min-h-[275mm]">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden print:shadow-none print:border-none print:m-0 print:p-0 text-gray-900 font-sans printable-card space-y-4 max-w-4xl mx-auto">
         {/* Main Document Body */}
         <div>
           {/* Top Header: Logo + Company Info (Left), Title & Invoice Meta (Right) */}
@@ -127,7 +127,9 @@ export default async function TaxInvoiceDetailPage({
               <p><span className="text-gray-500 font-medium">GSTIN:</span> <strong className="text-gray-900">{invoice.gstinSnapshot}</strong></p>
             )}
             <p><span className="text-gray-500 font-medium">Place of Supply:</span> <strong className="text-gray-900">{invoice.stateSnapshot || "Kerala"}</strong></p>
-            <p><span className="text-gray-500 font-medium">Purchase Order No:</span> <strong className="text-gray-900">NIL</strong></p>
+            {invoice.poNumber && invoice.poNumber.trim() && (
+              <p><span className="text-gray-500 font-medium">Purchase Order No:</span> <strong className="text-gray-900">{invoice.poNumber}</strong></p>
+            )}
           </div>
         </div>
 
@@ -154,8 +156,8 @@ export default async function TaxInvoiceDetailPage({
                   </td>
                   <td className="py-2.5 print:py-2 px-3 text-center font-mono text-xs text-gray-600">{item.hsnSacCode}</td>
                   <td className="py-2.5 print:py-2 px-3 text-center">{item.quantity.toString()}</td>
-                  <td className="py-2.5 print:py-2 px-3 text-right font-medium">₹{Number(item.unitPrice).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                  <td className="py-2.5 print:py-2 px-3 text-right font-semibold text-gray-900">₹{Number(item.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                  <td className="py-2.5 print:py-2 px-3 text-right font-medium">₹{(Number(item.quantity) > 0 ? (Number(item.taxableAmount || item.unitPrice) / Number(item.quantity)) : Number(item.unitPrice)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td className="py-2.5 print:py-2 px-3 text-right font-semibold text-gray-900">₹{Number(item.taxableAmount || item.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                 </tr>
               ))}
             </tbody>

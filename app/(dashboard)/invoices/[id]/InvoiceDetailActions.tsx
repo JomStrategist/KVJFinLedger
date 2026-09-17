@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { CancelInvoiceButton } from "./CancelInvoiceButton";
 import { PrintButton } from "./PrintButton";
 import { InvoicePaymentModal } from "../InvoicePaymentModal";
@@ -12,6 +13,15 @@ export function InvoiceDetailActions({ invoice }: { invoice: any }) {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
+      {invoice.status !== "CANCELLED" && (
+        <Link
+          href={`/invoices/${invoice.id}/edit`}
+          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors bg-white border border-theme-border text-theme-text hover:bg-theme-surface-hover"
+        >
+          Edit Invoice
+        </Link>
+      )}
+
       {invoice.status !== "CANCELLED" && (
         <button
           type="button"

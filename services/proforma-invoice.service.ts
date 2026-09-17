@@ -12,6 +12,7 @@ export type CreateProformaInvoiceInput = {
   invoiceDate: string | Date;
   notes?: string | null;
   isPurchaseOrder?: boolean;
+  poNumber?: string | null;
   tdsRate?: number; // overall invoice-level tds rate
   globalGstRate?: number;
   isGlobalGstEnabled?: boolean;
@@ -103,7 +104,7 @@ export class ProformaInvoiceService {
     }
   }
 
-  private static async processCalculations(data: CreateProformaInvoiceInput) {
+  static async processCalculations(data: CreateProformaInvoiceInput) {
     const customer = await prisma.customer.findUnique({ where: { id: data.customerId } });
     if (!customer) throw new Error("Customer not found");
 
@@ -173,6 +174,7 @@ export class ProformaInvoiceService {
         invoiceDate: new Date(data.invoiceDate),
         notes: data.notes,
         isPurchaseOrder: data.isPurchaseOrder || false,
+        poNumber: data.poNumber || null,
         status: "DRAFT",
         
         subtotal: calculationResult.subtotal,
@@ -237,6 +239,7 @@ export class ProformaInvoiceService {
           invoiceDate: new Date(data.invoiceDate),
           notes: data.notes,
           isPurchaseOrder: data.isPurchaseOrder || false,
+          poNumber: data.poNumber || null,
           
           subtotal: calculationResult.subtotal,
           totalDiscount: calculationResult.totalDiscount,

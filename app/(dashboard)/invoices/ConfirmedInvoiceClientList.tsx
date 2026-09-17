@@ -458,6 +458,14 @@ export function ConfirmedInvoiceClientList({
                               Payment
                             </button>
                           )}
+                          {invoice.status !== "CANCELLED" && (
+                            <Link
+                              href={`/invoices/${invoice.id}/edit`}
+                              className="px-2.5 py-0.5 border border-[#D9E3DC] rounded-lg text-[11px] font-bold text-[#1e40af] hover:bg-blue-50 transition-colors shadow-2xs bg-white text-center min-w-[50px]"
+                            >
+                              Edit
+                            </Link>
+                          )}
                           <Link
                             href={`/invoices/${invoice.id}`}
                             className="px-2.5 py-0.5 border border-[#D9E3DC] rounded-lg text-[11px] font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs bg-white text-center min-w-[50px]"
