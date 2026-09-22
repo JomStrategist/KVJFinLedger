@@ -65,8 +65,8 @@ export const defaultSettings: AppSettings = {
   
   gstin: '',
   pan: '',
-  defaultGstState: '',
-  defaultGstStateCode: '',
+  defaultGstState: 'Kerala',
+  defaultGstStateCode: '32',
 
   invoicePrefix: 'INV',
   proformaPrefix: 'PI',
@@ -76,7 +76,7 @@ export const defaultSettings: AppSettings = {
   defaultPaymentTerms: 'Due on Receipt',
   defaultCurrency: 'INR',
 
-  currentFinancialYear: 'FY 2025-26',
+  currentFinancialYear: 'FY 2026–27',
   financialYearStartMonth: 'April',
   financialYearEndMonth: 'March',
   incomeTaxRates: {
@@ -86,7 +86,7 @@ export const defaultSettings: AppSettings = {
   },
 
   defaultCountry: 'India',
-  defaultState: '',
+  defaultState: 'Kerala',
   dateFormat: 'DD/MM/YYYY',
   numberFormat: 'en-IN',
 

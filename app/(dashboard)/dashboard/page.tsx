@@ -3,21 +3,42 @@ import { DashboardService } from '@/services/dashboard.service';
 import { formatCurrency } from '@/lib/utils/currency';
 import Link from 'next/link';
 import { RevenueVsExpenseChart } from './DashboardCharts';
+import { getCurrentFinancialYear, getFyDateRange } from '@/lib/utils/financial-year';
+import { DashboardFYSelect } from '@/components/DashboardFYSelect';
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; fy?: string }>;
 }) {
   await requireAdmin();
 
   const resolvedParams = await searchParams;
+  const rawFy = resolvedParams?.fy;
   const fromFilter = resolvedParams?.from;
   const toFilter = resolvedParams?.to;
 
+  // Determine active FY and date bounds
+  let activeFy = rawFy || getCurrentFinancialYear();
+  let fromDate: Date | undefined;
+  let toDate: Date | undefined;
+
+  if (fromFilter && toFilter) {
+    fromDate = new Date(fromFilter);
+    toDate = new Date(toFilter);
+    activeFy = "Custom";
+  } else if (activeFy === "ALL") {
+    fromDate = undefined;
+    toDate = undefined;
+  } else {
+    const range = getFyDateRange(activeFy);
+    fromDate = range.start;
+    toDate = range.end;
+  }
+
   const filters = {
-    fromDate: fromFilter ? new Date(fromFilter) : undefined,
-    toDate: toFilter ? new Date(toFilter) : undefined,
+    fromDate,
+    toDate,
   };
 
   const dashboardData = await DashboardService.getUnifiedDashboardData(filters);
@@ -53,53 +74,40 @@ export default async function DashboardPage({
           </div>
         </div>
       )}
-      {/* Top Hero Banner */}
-      <div className="bg-gradient-to-r from-emerald-50/90 via-teal-50/70 to-emerald-100/60 border border-emerald-200/90 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="space-y-2 max-w-xl z-10">
+      {/* Top Hero Banner - Sleek Executive Command Bar */}
+      <div className="bg-gradient-to-r from-emerald-50/90 via-teal-50/70 to-emerald-100/60 border border-emerald-200/90 rounded-3xl p-6 sm:p-7 relative overflow-hidden shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="space-y-1.5 max-w-xl z-10">
           <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-emerald-500/50 shadow-sm animate-pulse"></span>
-            <span className="text-[11px] font-extrabold text-emerald-800 tracking-widest uppercase font-tabular">
-              FINANCIAL MANAGEMENT • INDIA
+            <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-emerald-500/50 shadow-sm animate-pulse"></span>
+            <span className="text-[10px] font-extrabold text-emerald-800 tracking-widest uppercase font-tabular">
+              FINANCIAL MANAGEMENT • INDIA (KERALA - 32)
             </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             Executive Dashboard
           </h1>
-          <p className="text-slate-600 text-sm font-medium leading-relaxed">
-            Real-time financial performance, revenue trends, and tax position.
+          <p className="text-slate-600 text-xs sm:text-sm font-medium">
+            Real-time financial performance, revenue trends, and tax position for <span className="font-bold text-emerald-900">{activeFy}</span>.
           </p>
         </div>
 
-        {/* Hero Vector Graphic Art & Financial Year Filter */}
-        <div className="flex items-center gap-4 z-10">
-          <div className="hidden lg:flex items-center gap-3 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-md border border-emerald-100 text-xs font-bold text-emerald-950">
-            <div className="h-8 w-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-black">
+        {/* Interactive Financial Year Filter & Quick Stat */}
+        <div className="flex items-center gap-3 z-10">
+          <div className="hidden lg:flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-xs border border-emerald-100 text-xs font-bold text-emerald-950">
+            <div className="h-7 w-7 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-black">
               ⚡
             </div>
             <div>
-              <div className="font-extrabold text-slate-900">Smarter Finance</div>
-              <div className="text-[10px] text-slate-500 font-semibold">Stronger Tomorrow</div>
+              <div className="font-extrabold text-slate-900 leading-tight">Smarter Finance</div>
+              <div className="text-[10px] text-slate-500 font-semibold leading-tight">Auto GST & TDS</div>
             </div>
           </div>
 
-          <div className="relative">
-            <select
-              defaultValue="FY 2026–27"
-              className="appearance-none border border-emerald-200/90 rounded-2xl pl-4 pr-9 py-2.5 text-xs font-extrabold bg-white text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer font-tabular"
-            >
-              <option value="FY 2026–27">📅 FY 2026–27</option>
-              <option value="FY 2025–26">📅 FY 2025–26</option>
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
+          <DashboardFYSelect currentFy={activeFy} />
         </div>
 
         {/* Decorative Background Waves */}
-        <div className="absolute right-0 bottom-0 opacity-20 pointer-events-none translate-x-12 translate-y-6">
+        <div className="absolute right-0 bottom-0 opacity-15 pointer-events-none translate-x-12 translate-y-6">
           <svg className="w-80 h-40 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 200 100">
             <path strokeWidth="3" strokeLinecap="round" d="M 0,80 Q 50,20 100,50 T 200,10" />
             <path strokeWidth="1.5" strokeLinecap="round" opacity="0.6" d="M 0,90 Q 50,40 100,70 T 200,30" />
@@ -314,13 +322,13 @@ export default async function DashboardPage({
           <div className="flex items-center justify-between border-b border-theme-border pb-3">
             <div>
               <h2 className="text-base font-bold text-theme-text">Monthly Revenue vs Expense</h2>
-              <p className="text-xs text-theme-text-muted mt-0.5">Clustered column chart · FY 2026–27</p>
+              <p className="text-xs text-theme-text-muted mt-0.5">Clustered column chart · {activeFy}</p>
             </div>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-theme-surface-hover border border-theme-border text-theme-text-muted">
               Monthly Trend
             </span>
           </div>
-          <RevenueVsExpenseChart data={trends} />
+          <RevenueVsExpenseChart data={trends} fy={activeFy} />
         </div>
 
         {/* Right Column: Tax Position */}

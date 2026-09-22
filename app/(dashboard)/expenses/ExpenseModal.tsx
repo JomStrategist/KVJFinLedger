@@ -170,8 +170,19 @@ export function ExpenseModal({
     e.preventDefault();
     setError(null);
 
-    const primaryVendor = vendors.find((v) => v.id === vendorId);
+    const primaryVendor = vendorList.find((v) => v.id === vendorId);
     const primaryCategory = categories.find((c) => c.id === items[0]?.categoryId);
+
+    // Determine Inter-state (IGST) vs Intra-state (CGST + SGST) based on Kerala base state (32)
+    const isInterstate = Boolean(
+      primaryVendor?.state &&
+      primaryVendor.state.trim().toLowerCase() !== "kerala" &&
+      primaryVendor.state.trim() !== "32"
+    );
+
+    const inputCGST = isInterstate ? 0 : totalGst / 2;
+    const inputSGST = isInterstate ? 0 : totalGst / 2;
+    const inputIGST = isInterstate ? totalGst : 0;
 
     const payload = {
       expenseDate: new Date(date),
@@ -183,12 +194,12 @@ export function ExpenseModal({
       taxableAmount: totalTaxable,
       totalGST: totalGst,
       totalInputGST: totalGst,
-      inputCGST: totalGst / 2,
-      inputSGST: totalGst / 2,
-      inputIGST: 0,
-      cgstAmount: totalGst / 2,
-      sgstAmount: totalGst / 2,
-      igstAmount: 0,
+      inputCGST,
+      inputSGST,
+      inputIGST,
+      cgstAmount: inputCGST,
+      sgstAmount: inputSGST,
+      igstAmount: inputIGST,
       tdsRate: isTdsApplicable ? globalTdsRate : 0,
       tdsAmount: calculatedTds,
       grossAmount: totalTaxable + totalGst,
@@ -208,12 +219,12 @@ export function ExpenseModal({
         unitPrice: i.rate,
         taxableAmount: i.quantity * i.rate,
         gstRate: i.gstRate,
-        cgstRate: i.gstRate / 2,
-        cgstAmount: (i.quantity * i.rate * i.gstRate) / 200,
-        sgstRate: i.gstRate / 2,
-        sgstAmount: (i.quantity * i.rate * i.gstRate) / 200,
-        igstRate: 0,
-        igstAmount: 0,
+        cgstRate: isInterstate ? 0 : i.gstRate / 2,
+        cgstAmount: isInterstate ? 0 : (i.quantity * i.rate * i.gstRate) / 200,
+        sgstRate: isInterstate ? 0 : i.gstRate / 2,
+        sgstAmount: isInterstate ? 0 : (i.quantity * i.rate * i.gstRate) / 200,
+        igstRate: isInterstate ? i.gstRate : 0,
+        igstAmount: isInterstate ? (i.quantity * i.rate * i.gstRate) / 100 : 0,
         totalGST: (i.quantity * i.rate * i.gstRate) / 100,
         totalAmount: i.amount,
         isAsset: expenseTreatment === "Fixed Asset",
@@ -301,10 +312,33 @@ export function ExpenseModal({
                   <select
                     value={vendorId}
                     onChange={(e) => {
-                      if (e.target.value === "ADD_NEW") {
+                      const val = e.target.value;
+                      if (val === "ADD_NEW") {
                         setIsAddVendorOpen(true);
                       } else {
-                        setVendorId(e.target.value);
+                        setVendorId(val);
+                        const vObj = vendorList.find((v) => v.id === val);
+                        if (vObj) {
+                          if (vObj.tdsRate && Number(vObj.tdsRate) > 0) {
+                            setIsTdsApplicable(true);
+                            setGlobalTdsRate(Number(vObj.tdsRate));
+                          }
+                          if ((vObj as any).defaultCategoryId) {
+                            setItems((prev) =>
+                              prev.map((it, idx) =>
+                                idx === 0
+                                  ? {
+                                      ...it,
+                                      categoryId: (vObj as any).defaultCategoryId,
+                                      categoryName:
+                                        categoryList.find((c) => c.id === (vObj as any).defaultCategoryId)?.name ||
+                                        it.categoryName,
+                                    }
+                                  : it
+                              )
+                            );
+                          }
+                        }
                       }
                     }}
                     className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"

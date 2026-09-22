@@ -1,11 +1,14 @@
 "use client";
 
 import React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { getCurrentFinancialYear } from "@/lib/utils/financial-year";
 
 export function Header({ user }: { user?: any }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeFy = searchParams?.get("fy") || getCurrentFinancialYear();
 
   const getBreadcrumbs = () => {
     if (!pathname) return [{ label: "Dashboard", href: "/dashboard" }];
@@ -60,7 +63,7 @@ export function Header({ user }: { user?: any }) {
         {/* Financial Year Tag */}
         <div className="hidden sm:flex items-center gap-1.5 bg-emerald-500/10 text-emerald-800 border border-emerald-500/20 px-3 py-1 rounded-xl text-xs font-bold font-tabular">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>FY 2026–27</span>
+          <span>{activeFy}</span>
         </div>
 
         {/* Database Status */}

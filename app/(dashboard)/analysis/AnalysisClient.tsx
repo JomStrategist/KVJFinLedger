@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -21,6 +21,7 @@ export default function AnalysisClient({
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const [activeTab, setActiveTab] = useState<
     "overview" | "pnl" | "balance_sheet" | "cash_flow" | "revenue" | "expense" | "ageing" | "gst_tds" | "ratios" | "insights" | "tables"
@@ -41,6 +42,23 @@ export default function AnalysisClient({
     paymentStatus: initialFilters.paymentStatus || "",
   });
 
+  useEffect(() => {
+    setFilters({
+      financialYear: initialFilters.financialYear || "FY 2026–27",
+      period: initialFilters.period || "ALL",
+      fromDate: initialFilters.fromDate || "",
+      toDate: initialFilters.toDate || "",
+      comparisonType: initialFilters.comparisonType || "PREV_FY",
+      comparisonFromDate: initialFilters.comparisonFromDate || "",
+      comparisonToDate: initialFilters.comparisonToDate || "",
+      customerId: initialFilters.customerId || "",
+      vendorId: initialFilters.vendorId || "",
+      categoryId: initialFilters.categoryId || "",
+      financialType: initialFilters.financialType || "",
+      paymentStatus: initialFilters.paymentStatus || "",
+    });
+  }, [initialFilters]);
+
   // Drilldown modal state
   const [drilldownTitle, setDrilldownTitle] = useState<string | null>(null);
   const [drilldownItems, setDrilldownItems] = useState<any[]>([]);
@@ -55,7 +73,9 @@ export default function AnalysisClient({
     });
     const queryString = query.toString();
     const newUrl = queryString ? `/analysis?${queryString}` : "/analysis";
-    window.history.replaceState(null, "", newUrl);
+    startTransition(() => {
+      router.push(newUrl);
+    });
   };
 
   const handleClearFilters = () => {
@@ -74,7 +94,9 @@ export default function AnalysisClient({
       paymentStatus: "",
     };
     setFilters(reset);
-    window.history.replaceState(null, "", "/analysis");
+    startTransition(() => {
+      router.push("/analysis");
+    });
   };
 
   const formatCurrency = (amount: number) => {

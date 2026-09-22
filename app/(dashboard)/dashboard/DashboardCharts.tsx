@@ -20,7 +20,13 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'
 
 const ALL_FY_MONTHS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
 
-export const RevenueVsExpenseChart = React.memo(function RevenueVsExpenseChart({ data }: { data: RevenueVsExpenseTrend[] }) {
+export const RevenueVsExpenseChart = React.memo(function RevenueVsExpenseChart({
+  data,
+  fy = "FY 2026–27",
+}: {
+  data: RevenueVsExpenseTrend[];
+  fy?: string;
+}) {
   const finalData = useMemo(() => {
     return ALL_FY_MONTHS.map(m => {
       const found = data?.find(d => d.month?.toLowerCase().startsWith(m.toLowerCase()));
@@ -74,7 +80,7 @@ export const RevenueVsExpenseChart = React.memo(function RevenueVsExpenseChart({
                 const exp = Number(payload[1]?.value || 0);
                 return (
                   <div className="bg-[#17211B] text-white p-3 rounded-xl shadow-2xl border border-white/10 text-xs space-y-1.5 min-w-[140px]">
-                    <p className="font-bold text-white/90 border-b border-white/10 pb-1">{label} FY 2026–27</p>
+                    <p className="font-bold text-white/90 border-b border-white/10 pb-1">{label} · {fy}</p>
                     <div className="flex justify-between items-center font-medium gap-3">
                       <span className="flex items-center gap-1.5 text-emerald-400">
                         <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Revenue:
