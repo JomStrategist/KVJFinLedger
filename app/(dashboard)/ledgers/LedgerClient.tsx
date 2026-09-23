@@ -318,32 +318,32 @@ export default function LedgerClient({
             {filteredAccounts.map((acc) => (
               <div
                 key={acc.id}
-                className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between group"
+                className="bg-white hover:bg-slate-50/80 p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
+                    <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
                       {acc.group}
                     </span>
                     <span
-                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                      className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
                         acc.currentBalanceType === "Dr"
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                           : "bg-rose-50 text-rose-700 border border-rose-200"
                       }`}
                     >
-                      {acc.currentBalanceType === "Dr" ? "Debit Balance (Dr)" : "Credit Balance (Cr)"}
+                      {acc.currentBalanceType === "Dr" ? "Debit (Dr)" : "Credit (Cr)"}
                     </span>
                   </div>
 
-                  <h3 className="font-bold text-slate-900 text-base mt-2.5 line-clamp-1 group-hover:text-emerald-700 transition-colors">
+                  <h3 className="font-bold text-slate-900 text-base mt-2.5 line-clamp-2 group-hover:text-emerald-700 transition-colors leading-snug">
                     {acc.name}
                   </h3>
 
                   {(acc.gstin || acc.pan) && (
-                    <div className="text-[11px] font-mono text-slate-500 mt-1">
+                    <div className="text-[11px] font-mono text-slate-500 mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
                       {acc.gstin && <span>GSTIN: <strong className="text-slate-700">{acc.gstin}</strong></span>}
-                      {acc.pan && <span className="ml-2">PAN: <strong className="text-slate-700">{acc.pan}</strong></span>}
+                      {acc.pan && <span>PAN: <strong className="text-slate-700">{acc.pan}</strong></span>}
                     </div>
                   )}
                 </div>

@@ -84,7 +84,7 @@ export function SettingsClient() {
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-xl text-xs font-bold text-white bg-[#1b5e4b] hover:bg-[#136f58] shadow-xs transition-colors disabled:opacity-50"
+          className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent rounded-xl text-xs font-bold text-white bg-[#177B55] hover:bg-[#136f4e] shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
         >
           {isSaving ? "Saving..." : "Save Changes"}
         </button>

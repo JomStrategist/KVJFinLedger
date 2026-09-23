@@ -76,16 +76,24 @@ export function ProformaInvoiceClientList({
     return matchesSearch && matchesCustomer && matchesCustomerType && matchesStatus;
   });
 
-  const getStatusColor = (status: ProformaInvoiceStatus) => {
+  const getStatusBadge = (status: ProformaInvoiceStatus) => {
     switch (status) {
-      case "DRAFT": return "bg-theme-surface-hover text-theme-text";
-      case "SENT": return "bg-theme-surface-hover text-blue-800";
-      case "ACCEPTED": return "bg-emerald-100 text-emerald-800";
-      case "CONVERTED": return "bg-purple-100 text-purple-800";
-      case "REJECTED": return "bg-red-100 text-red-800";
-      case "EXPIRED": return "bg-orange-100 text-orange-800";
-      case "CANCELLED": return "bg-theme-surface-hover text-theme-text-muted line-through";
-      default: return "bg-theme-surface-hover text-theme-text";
+      case "DRAFT":
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#F3F4F6] text-[#4B5563] tracking-wider">DRAFT</span>;
+      case "SENT":
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 tracking-wider">SENT</span>;
+      case "ACCEPTED":
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#E5F3EC] text-[#0B5F46] tracking-wider">ACCEPTED</span>;
+      case "CONVERTED":
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-50 text-purple-700 tracking-wider">CONVERTED</span>;
+      case "REJECTED":
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-50 text-red-700 tracking-wider">REJECTED</span>;
+      case "EXPIRED":
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-orange-50 text-orange-700 tracking-wider">EXPIRED</span>;
+      case "CANCELLED":
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-gray-100 text-gray-500 line-through tracking-wider">CANCELLED</span>;
+      default:
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-gray-100 text-gray-700">{status}</span>;
     }
   };
 
@@ -128,85 +136,88 @@ export function ProformaInvoiceClientList({
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <div className="bg-theme-surface border border-theme-border rounded-xl shadow-sm p-4 flex flex-col md:flex-row gap-4 items-stretch md:items-center">
-        <div className="flex-1 relative">
-          <input
-            type="text"
-            placeholder="Search by Invoice Number or Customer..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-theme-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface"
-          />
-          <svg className="w-5 h-5 text-theme-text-muted absolute left-3 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+      {/* Main Card Container */}
+      <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 space-y-5">
+        {/* Filters Toolbar */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[240px]">
+            <input
+              type="text"
+              placeholder="Search invoice number, customer, GSTIN..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-[41px] px-3.5 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white placeholder-[#68756C]"
+            />
+          </div>
+
+          {/* All Customers Dropdown */}
+          <select
+            value={customerFilter}
+            onChange={(e) => setCustomerFilter(e.target.value)}
+            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[150px]"
+          >
+            <option value="ALL">All Customers</option>
+            {customerOptions.map((cust) => (
+              <option key={cust.id} value={cust.id}>
+                {cust.name}
+              </option>
+            ))}
+          </select>
+
+          {/* All Status Dropdown */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[130px]"
+          >
+            <option value="ALL">Active (All)</option>
+            <option value="DRAFT">Draft</option>
+            <option value="SENT">Sent</option>
+            <option value="ACCEPTED">Accepted</option>
+            <option value="CONVERTED">Converted</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="EXPIRED">Expired</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+
+          {/* All Types Dropdown */}
+          <select
+            value={customerTypeFilter}
+            onChange={(e) => setCustomerTypeFilter(e.target.value)}
+            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[130px]"
+          >
+            <option value="ALL">All Types</option>
+            <option value="B2B">B2B</option>
+            <option value="B2B_EXPORT">B2B Export</option>
+            <option value="B2C">B2C</option>
+          </select>
+
+          <span className="ml-auto text-[11px] text-[#738078] font-semibold">
+            {filteredInvoices.length} proforma{filteredInvoices.length !== 1 ? "s" : ""}
+          </span>
         </div>
 
-        {/* All Customers Dropdown */}
-        <select
-          value={customerFilter}
-          onChange={(e) => setCustomerFilter(e.target.value)}
-          className="border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface min-w-[150px]"
-        >
-          <option value="ALL">All Customers</option>
-          {customerOptions.map((cust) => (
-            <option key={cust.id} value={cust.id}>
-              {cust.name}
-            </option>
-          ))}
-        </select>
-
-        {/* All Customer Type Dropdown */}
-        <select
-          value={customerTypeFilter}
-          onChange={(e) => setCustomerTypeFilter(e.target.value)}
-          className="border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface min-w-[160px]"
-        >
-          <option value="ALL">All Customer Types</option>
-          <option value="B2B">B2B</option>
-          <option value="B2C">B2C</option>
-          <option value="B2B_EXPORT">B2B Export</option>
-        </select>
-
-        {/* Status Dropdown */}
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          className="border border-theme-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface min-w-[150px]"
-        >
-          <option value="ALL">All Statuses</option>
-          <option value="DRAFT">Draft</option>
-          <option value="SENT">Sent</option>
-          <option value="ACCEPTED">Accepted</option>
-          <option value="CONVERTED">Converted</option>
-          <option value="REJECTED">Rejected</option>
-          <option value="EXPIRED">Expired</option>
-          <option value="CANCELLED">Cancelled</option>
-        </select>
-      </div>
-
-      {/* Data Table */}
-      <div className="bg-theme-surface border border-theme-border rounded-xl shadow-sm overflow-hidden">
+        {/* Data Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead>
-              <tr className="bg-theme-surface-hover border-b border-theme-border text-xs uppercase text-theme-text-muted font-semibold tracking-wider">
-                <th className="px-6 py-4">Invoice #</th>
-                <th className="px-6 py-4">Customer</th>
-                <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4 text-right">Amount</th>
-                <th className="px-6 py-4">GST</th>
-                <th className="px-6 py-4">TDS</th>
-                <th className="px-6 py-4 text-center">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+              <tr className="border-b border-[#D9E3DC] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
+                <th className="py-3 px-2">PROFORMA #</th>
+                <th className="py-3 px-3">CUSTOMER</th>
+                <th className="py-3 px-3">DATE</th>
+                <th className="py-3 px-3 text-right">TOTAL</th>
+                <th className="py-3 px-3">GST</th>
+                <th className="py-3 px-3">TDS</th>
+                <th className="py-3 px-3 text-center">STATUS</th>
+                <th className="py-3 px-2 text-right">ACTIONS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-theme-border text-sm">
+            <tbody className="divide-y divide-[#E9EEE9] text-xs">
               {filteredInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-theme-text-muted">
-                    No proforma invoices found. Create your first proforma invoice to begin billing.
+                  <td colSpan={8} className="py-12 text-center text-[#68756C]">
+                    No proforma invoices found matching your criteria.
                   </td>
                 </tr>
               ) : (
@@ -222,99 +233,120 @@ export function ProformaInvoiceClientList({
 
                   const effectiveTdsAmount = Number(invoice.tdsAmount || 0);
                   const effectiveTdsRate = Number(invoice.tdsRate || 0);
+                  const totalGross = Number(invoice.totalAmount || invoice.netAmount || 0);
 
                   return (
-                  <tr key={invoice.id} className="hover:bg-theme-surface-hover transition-colors">
-                    <td className="px-6 py-4 font-medium text-theme-text">
-                      <Link href={`/proforma-invoices/${invoice.id}`} className="hover:text-theme-primary">
-                        {invoice.invoiceNumber}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-theme-text font-medium">{invoice.customer.legalName}</div>
-                      {invoice.customer.gstin && <div className="text-xs text-theme-text-muted mt-0.5">GSTIN: {invoice.customer.gstin}</div>}
-                    </td>
-                    <td className="px-6 py-4 text-theme-text-muted" suppressHydrationWarning>
-                      {new Date(invoice.invoiceDate).toLocaleDateString("en-IN")}
-                    </td>
-                    <td className="px-6 py-4 text-right font-medium text-theme-text">
-                      ₹{Number(invoice.totalAmount || invoice.netAmount || 0).toLocaleString("en-IN")}
-                    </td>
-                    {/* GST */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {totalGstAmount > 0 ? (
-                        <div>
-                          <p className="font-semibold text-theme-text">₹{totalGstAmount.toLocaleString("en-IN")}</p>
-                          {effectiveGstRate > 0 && (
-                            <p className="text-xs text-theme-text-muted mt-0.5">{effectiveGstRate}%</p>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-theme-text-muted">—</span>
-                      )}
-                    </td>
-                    {/* TDS */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {effectiveTdsAmount > 0 ? (
-                        <div>
-                          <p className="font-semibold text-theme-text">₹{effectiveTdsAmount.toLocaleString("en-IN")}</p>
-                          {effectiveTdsRate > 0 && (
-                            <p className="text-xs text-theme-text-muted mt-0.5">{effectiveTdsRate}%</p>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-theme-text-muted">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
-                        {invoice.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-3 flex-wrap">
-                        {invoice.status === "DRAFT" && (
-                          <Link 
-                            href={`/proforma-invoices/${invoice.id}/edit`}
-                            className="text-theme-text-muted hover:text-theme-primary font-medium text-xs transition-colors"
-                          >
-                            Edit
-                          </Link>
-                        )}
-                        <Link 
-                          href={`/proforma-invoices/${invoice.id}`}
-                          className="text-theme-text-muted hover:text-theme-primary font-medium text-xs transition-colors"
-                        >
-                          View
+                    <tr key={invoice.id} className="hover:bg-[#F9FAF8] transition-colors align-middle">
+                      {/* Invoice # */}
+                      <td className="py-4 px-2 font-bold text-[#17211B] align-middle">
+                        <Link href={`/proforma-invoices/${invoice.id}`} className="hover:text-[#177B55]">
+                          {invoice.invoiceNumber}
                         </Link>
-                        {invoice.status !== "CONVERTED" && invoice.status !== "CANCELLED" && invoice.status !== "REJECTED" && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setConvertingInvoice(invoice);
-                              setConvertError(null);
-                            }}
-                            disabled={isConverting}
-                            className="text-theme-primary hover:text-theme-primary-dark font-medium text-xs transition-colors cursor-pointer"
-                          >
-                            Convert to Tax Invoice
-                          </button>
+                      </td>
+
+                      {/* Customer with GSTIN */}
+                      <td className="py-4 px-3 align-middle">
+                        <p className="font-bold text-[#17211B]">
+                          {invoice.customer?.tradeName || invoice.customer?.legalName}
+                        </p>
+                        {invoice.customer?.gstin ? (
+                          <p className="text-[11px] text-[#7B877F] mt-0.5">
+                            GSTIN · {invoice.customer.gstin}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-[#7B877F] mt-0.5">Unregistered</p>
                         )}
-                        {invoice.status !== "CANCELLED" && (
-                          <button
-                            type="button"
-                            onClick={() => handleCancel(invoice.id)}
-                            disabled={isPending}
-                            className="text-red-500 hover:text-red-700 font-medium text-xs disabled:opacity-50 transition-colors cursor-pointer"
-                          >
-                            Cancel
-                          </button>
+                      </td>
+
+                      {/* Date */}
+                      <td className="py-4 px-3 text-[#17211B] font-medium align-middle" suppressHydrationWarning>
+                        {new Date(invoice.invoiceDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </td>
+
+                      {/* Total Amount */}
+                      <td className="py-4 px-3 text-right font-bold text-[#17211B] align-middle">
+                        ₹{totalGross.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
+                      </td>
+
+                      {/* GST */}
+                      <td className="py-4 px-3 whitespace-nowrap align-middle">
+                        {totalGstAmount > 0 ? (
+                          <div>
+                            <p className="font-bold text-[#17211B]">₹{totalGstAmount.toLocaleString("en-IN", { minimumFractionDigits: 0 })}</p>
+                            {effectiveGstRate > 0 && (
+                              <p className="text-[11px] text-[#7B877F] mt-0.5">{effectiveGstRate}%</p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[#7B877F]">—</span>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              }))}
+                      </td>
+
+                      {/* TDS */}
+                      <td className="py-4 px-3 whitespace-nowrap align-middle">
+                        {effectiveTdsAmount > 0 ? (
+                          <div>
+                            <p className="font-bold text-[#17211B]">₹{effectiveTdsAmount.toLocaleString("en-IN", { minimumFractionDigits: 0 })}</p>
+                            {effectiveTdsRate > 0 && (
+                              <p className="text-[11px] text-[#7B877F] mt-0.5">{effectiveTdsRate}%</p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[#7B877F]">—</span>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-4 px-3 text-center align-middle">
+                        {getStatusBadge(invoice.status)}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3 px-2 text-right align-middle whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {invoice.status !== "CONVERTED" && invoice.status !== "CANCELLED" && invoice.status !== "REJECTED" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConvertingInvoice(invoice);
+                                setConvertError(null);
+                              }}
+                              disabled={isConverting}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#177B55] text-white hover:bg-[#136f4e] transition-colors shadow-2xs cursor-pointer"
+                            >
+                              Convert to Invoice
+                            </button>
+                          )}
+                          {invoice.status === "DRAFT" && (
+                            <Link 
+                              href={`/proforma-invoices/${invoice.id}/edit`}
+                              className="px-2.5 py-1 border border-[#D9E3DC] rounded-lg text-[11px] font-bold text-[#1e40af] hover:bg-blue-50 transition-colors shadow-2xs bg-white text-center"
+                            >
+                              Edit
+                            </Link>
+                          )}
+                          <Link 
+                            href={`/proforma-invoices/${invoice.id}`}
+                            className="px-2.5 py-1 border border-[#D9E3DC] rounded-lg text-[11px] font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs bg-white text-center"
+                          >
+                            View
+                          </Link>
+                          {invoice.status !== "CANCELLED" && invoice.status !== "CONVERTED" && (
+                            <button
+                              type="button"
+                              onClick={() => handleCancel(invoice.id)}
+                              disabled={isPending}
+                              className="px-2.5 py-1 border border-red-200 rounded-lg text-[11px] font-bold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors shadow-2xs bg-white cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -323,20 +355,25 @@ export function ProformaInvoiceClientList({
       {/* Confirmation Dialog */}
       {convertingInvoice && (
         <div 
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={(e) => e.stopPropagation()}
         >
           <div 
-            className="bg-white rounded-xl border border-theme-border p-6 w-full max-w-md shadow-2xl space-y-5"
+            className="bg-white rounded-2xl border border-[#D9E3DC] p-6 w-full max-w-md shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-theme-border pb-3">
-              <h3 className="text-lg font-bold text-theme-text">Confirm and Finalize</h3>
+            <div className="flex items-center justify-between border-b border-[#E5EDE7] pb-3">
+              <div>
+                <span className="text-[10px] font-bold text-[#177B55] uppercase tracking-widest block">
+                  PROFORMA WORKFLOW
+                </span>
+                <h3 className="text-base font-black text-[#111827] mt-0.5">Convert to Confirmed Tax Invoice</h3>
+              </div>
               <button
                 type="button"
                 onClick={() => { if (!isConverting) { setConvertingInvoice(null); setConvertError(null); } }}
                 disabled={isConverting}
-                className="text-theme-text-muted hover:text-theme-text p-1 rounded-lg transition-colors disabled:opacity-50"
+                className="text-[#9CA3AF] hover:text-[#374151] p-1 rounded-lg transition-colors disabled:opacity-50"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -345,38 +382,38 @@ export function ProformaInvoiceClientList({
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm text-theme-text leading-relaxed">
-                Are you sure you want to convert this Proforma Invoice into a Confirmed Tax Invoice?
+              <p className="text-xs text-[#4B5563] leading-relaxed">
+                Converting this proforma will create a confirmed Tax Invoice with official numbering and update accounts receivable.
               </p>
 
-              <div className="bg-theme-surface-hover p-3.5 rounded-lg border border-theme-border text-xs space-y-1.5 text-theme-text-muted">
+              <div className="bg-[#F8FAF9] p-3.5 rounded-xl border border-[#D9E3DC] text-xs space-y-1.5 text-[#4B5563]">
                 <div className="flex justify-between">
-                  <span className="font-medium text-theme-text">Proforma Invoice:</span>
-                  <span className="font-semibold text-theme-text">{convertingInvoice.invoiceNumber}</span>
+                  <span className="font-medium text-[#738078]">Proforma Invoice:</span>
+                  <span className="font-bold text-[#17211B]">{convertingInvoice.invoiceNumber}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-medium text-theme-text">Customer:</span>
-                  <span className="font-medium text-theme-text">{convertingInvoice.customer?.legalName}</span>
+                  <span className="font-medium text-[#738078]">Customer:</span>
+                  <span className="font-bold text-[#17211B]">{convertingInvoice.customer?.tradeName || convertingInvoice.customer?.legalName}</span>
                 </div>
-                <div className="flex justify-between border-t border-theme-border pt-1.5 mt-1.5">
-                  <span className="font-medium text-theme-text">Total Amount:</span>
-                  <span className="font-bold text-theme-primary">₹{convertingInvoice.totalAmount?.toString()}</span>
+                <div className="flex justify-between border-t border-[#E5EDE7] pt-1.5 mt-1.5">
+                  <span className="font-bold text-[#17211B]">Total Amount:</span>
+                  <span className="font-extrabold text-[#177B55] text-sm">₹{Number(convertingInvoice.totalAmount || 0).toLocaleString("en-IN")}</span>
                 </div>
               </div>
             </div>
 
             {convertError && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg font-medium">
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-medium">
                 {convertError}
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-theme-border">
+            <div className="flex justify-end gap-3 pt-2 border-t border-[#E5EDE7]">
               <button
                 type="button"
                 onClick={() => { setConvertingInvoice(null); setConvertError(null); }}
                 disabled={isConverting}
-                className="px-4 py-2 text-sm font-medium text-theme-text bg-white border border-theme-border rounded-lg hover:bg-theme-surface-hover transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-xs font-bold text-[#4B5563] bg-white border border-[#D1D5DB] rounded-xl hover:bg-[#F9FAFB] transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -384,10 +421,10 @@ export function ProformaInvoiceClientList({
                 type="button"
                 onClick={handleConfirmConvert}
                 disabled={isConverting}
-                className="px-4 py-2 text-sm font-medium text-white bg-theme-primary hover:bg-theme-primary-dark rounded-lg flex items-center gap-2 disabled:opacity-50 shadow-sm transition-colors"
+                className="px-5 py-2 text-xs font-bold text-white bg-[#177B55] hover:bg-[#136f4e] rounded-xl flex items-center gap-2 disabled:opacity-50 shadow-sm transition-colors cursor-pointer"
               >
-                {isConverting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
-                {isConverting ? "Converting..." : "Confirm and Finalize"}
+                {isConverting && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                {isConverting ? "Converting..." : "✓ Confirm & Convert"}
               </button>
             </div>
           </div>
