@@ -199,7 +199,7 @@ export default function AnalysisClient({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
           {/* Financial Year */}
           <div>
             <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">Financial Year</label>

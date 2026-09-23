@@ -281,42 +281,42 @@ export function ExpenseModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-md">
-      <div className="bg-white/95 backdrop-blur-2xl w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-2.5 sm:p-4 backdrop-blur-md">
+      <div className="bg-white/95 backdrop-blur-2xl w-full max-w-4xl rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[94vh]">
         {/* Modal Header */}
-        <div className="px-6 py-4.5 border-b border-slate-200/70 flex justify-between items-center bg-white/70">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center font-bold text-base">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4.5 border-b border-slate-200/70 flex justify-between items-center bg-white/70 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center font-bold text-sm sm:text-base shrink-0">
               💸
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">
                 {isEdit ? "Edit Expense / Purchase" : "Record Expense or Purchase"}
               </h2>
-              <p className="text-[11px] text-slate-500 font-medium">Fast entry with auto GST, TDS, employee reimbursement & partial payment</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">Fast entry with auto GST, TDS, employee reimbursement & partial payment</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-colors"
+            className="text-slate-400 hover:text-slate-700 p-1.5 sm:p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
           >
             ✕
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-5">
+        <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar space-y-4 sm:space-y-5">
           {/* Nature of Payment Switcher (Operating Overhead vs Purchase COGS) */}
-          <div className="flex items-center justify-between p-3.5 bg-slate-50/80 border border-slate-200/70 rounded-2xl">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 p-3 sm:p-3.5 bg-slate-50/80 border border-slate-200/70 rounded-2xl">
             <div>
               <span className="text-xs font-bold text-slate-800">Nature of Transaction:</span>
-              <p className="text-[11px] text-slate-500">Classify whether this is an operating expense or direct material/service purchase</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-500">Classify whether this is an operating expense or direct material/service purchase</p>
             </div>
-            <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-xs">
+            <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-xs w-full sm:w-auto justify-center sm:justify-start">
               <button
                 type="button"
                 onClick={() => setPaymentNature("EXPENSE")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   paymentNature === "EXPENSE"
                     ? "bg-emerald-600 text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
@@ -327,7 +327,7 @@ export function ExpenseModal({
               <button
                 type="button"
                 onClick={() => setPaymentNature("PURCHASE")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   paymentNature === "PURCHASE"
                     ? "bg-indigo-600 text-white shadow-xs"
                     : "text-slate-600 hover:text-slate-900"

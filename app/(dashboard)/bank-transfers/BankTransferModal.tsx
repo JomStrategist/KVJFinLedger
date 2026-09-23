@@ -111,31 +111,31 @@ export function BankTransferModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-md">
-      <div className="bg-white/95 backdrop-blur-2xl w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-2.5 sm:p-4 backdrop-blur-md">
+      <div className="bg-white/95 backdrop-blur-2xl w-full max-w-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[94vh]">
         {/* Modal Header */}
-        <div className="px-6 py-4.5 border-b border-slate-200/70 flex justify-between items-center bg-white/70">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center font-bold text-base">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4.5 border-b border-slate-200/70 flex justify-between items-center bg-white/70 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center font-bold text-sm sm:text-base shrink-0">
               🏦
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">
                 {isEdit ? "Edit Bank Transfer / Withdrawal" : "Record Bank Transfer / Withdrawal"}
               </h2>
-              <p className="text-[11px] text-slate-500 font-medium">Inter-bank transfers, owner capital drawings &amp; office cash withdrawals</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">Inter-bank transfers, owner capital drawings &amp; office cash withdrawals</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-colors"
+            className="text-slate-400 hover:text-slate-700 p-1.5 sm:p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
           >
             ✕
           </button>
         </div>
 
         {/* Modal Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto custom-scrollbar">
           {error && (
             <div className="p-3.5 bg-rose-50 border border-rose-200/80 rounded-2xl text-rose-700 text-xs font-semibold flex items-center gap-2">
               <span>⚠️</span>
@@ -148,11 +148,11 @@ export function BankTransferModal({
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
               Transfer &amp; Withdrawal Category *
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setTransferType("TRANSFER")}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center ${
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer ${
                   transferType === "TRANSFER"
                     ? "bg-emerald-50 text-emerald-800 border-emerald-500 shadow-xs"
                     : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
@@ -163,7 +163,7 @@ export function BankTransferModal({
               <button
                 type="button"
                 onClick={() => setTransferType("DRAWINGS")}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center ${
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer ${
                   transferType === "DRAWINGS"
                     ? "bg-purple-50 text-purple-800 border-purple-500 shadow-xs"
                     : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
@@ -174,7 +174,7 @@ export function BankTransferModal({
               <button
                 type="button"
                 onClick={() => setTransferType("CASH_WITHDRAWAL")}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center ${
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer ${
                   transferType === "CASH_WITHDRAWAL"
                     ? "bg-blue-50 text-blue-800 border-blue-500 shadow-xs"
                     : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"

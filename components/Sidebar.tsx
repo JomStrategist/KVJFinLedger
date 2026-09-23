@@ -116,7 +116,17 @@ const navItems = [
   }
 ];
 
-export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
+export function Sidebar({
+  userRole,
+  user,
+  isMobileOpen = false,
+  onCloseMobile,
+}: {
+  userRole?: string;
+  user?: any;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -144,6 +154,7 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
   };
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    onCloseMobile?.();
     if (pathname === href) return;
     setOptimisticHref(href);
     startTransition(() => {
@@ -186,13 +197,149 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
   const sidebarWidth = !isMounted ? "w-64" : (isCollapsed ? "w-20" : "w-64");
 
   return (
-    <aside 
-      className={`bg-[#0A120E] border-r border-[#1B2B23] text-slate-100 min-h-screen flex flex-col transition-all duration-300 ease-in-out relative z-20 shrink-0 print:hidden shadow-2xl ${sidebarWidth}`}
-    >
-      {/* Brand & Collapse Header */}
-      <div className={`flex items-center pt-5 pb-4 border-b border-[#16251E] ${isCollapsed ? "flex-col gap-3 px-2 justify-center" : "justify-between px-4"}`}>
-        {!isCollapsed ? (
-          <div className="flex items-center gap-3 px-1 transition-opacity duration-300">
+    <>
+      {/* 1. Desktop In-Flow Sidebar */}
+      <aside 
+        className={`hidden md:flex bg-[#0A120E] border-r border-[#1B2B23] text-slate-100 min-h-screen flex-col transition-all duration-300 ease-in-out relative z-20 shrink-0 print:hidden shadow-2xl ${sidebarWidth}`}
+      >
+        {/* Brand & Collapse Header */}
+        <div className={`flex items-center pt-5 pb-4 border-b border-[#16251E] ${isCollapsed ? "flex-col gap-3 px-2 justify-center" : "justify-between px-4"}`}>
+          {!isCollapsed ? (
+            <div className="flex items-center gap-3 px-1 transition-opacity duration-300">
+              <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-emerald-300 p-0.5 shadow-lg shadow-emerald-950/60 flex items-center justify-center shrink-0">
+                <div className="h-full w-full bg-[#06100B] rounded-[14px] p-1.5 flex items-center justify-center">
+                  <img src="/finledger-icon.png" alt="FinLedger" className="h-full w-full object-contain" />
+                </div>
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-black tracking-tight text-white flex items-center gap-1.5 font-sans">
+                  FinLedger
+                  <span className="text-[9px] font-extrabold bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                    ERP
+                  </span>
+                </span>
+                <span className="text-[10px] font-medium text-[#8EA699] truncate">Financial Management</span>
+              </div>
+            </div>
+          ) : (
+            <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-emerald-300 p-0.5 shadow-lg shadow-emerald-950/60 flex items-center justify-center shrink-0 mb-1">
+              <div className="h-full w-full bg-[#06100B] rounded-[14px] p-1.5 flex items-center justify-center">
+                <img src="/finledger-icon.png" alt="FinLedger" className="h-full w-full object-contain" />
+              </div>
+            </div>
+          )}
+
+          <button 
+            onClick={toggleSidebar} 
+            className="p-1.5 rounded-xl hover:bg-white/[0.08] text-[#8EA699] hover:text-white focus:outline-none transition-colors border border-transparent hover:border-white/10 cursor-pointer"
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isCollapsed ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
+        
+        {/* Navigation List */}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-1">
+          <ul className="space-y-1">
+            {filteredNavItems.map((item) => {
+              const active = isItemActive(item.href);
+              return (
+                <li key={item.name} className="relative group">
+                  <Link
+                    href={item.href}
+                    prefetch={true}
+                    onClick={(e) => handleLinkClick(e, item.href)}
+                    className={`flex items-center rounded-xl text-xs font-bold transition-all duration-200 ${
+                      isCollapsed ? "justify-center p-2.5" : "px-3.5 py-2.5"
+                    } ${
+                      active
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/70 border border-emerald-400/40"
+                        : "text-[#9EB5A9] hover:bg-white/[0.06] hover:text-white"
+                    }`}
+                  >
+                    <span className={`${active ? "text-white" : "text-[#80998C] group-hover:text-white"} flex-shrink-0 transition-colors`}>
+                      {item.icon}
+                    </span>
+                    
+                    {/* Expanded text */}
+                    {!isCollapsed && (
+                      <span className="ml-3 truncate tracking-normal font-sans font-semibold text-[13px]">{item.name}</span>
+                    )}
+                  </Link>
+
+                  {/* Tooltip for Collapsed Sidebar */}
+                  {isCollapsed && (
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#06100B] text-white text-xs font-semibold rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap border border-[#1B2B23] pointer-events-none">
+                      {item.name}
+                      <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#06100B]"></div>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/* Left Panel Bottom - User Profile & Logout */}
+        <div className="border-t border-[#16251E] p-3.5 bg-[#070D0A] shrink-0">
+          {!isCollapsed ? (
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 border border-emerald-400/30 flex items-center justify-center text-white font-black text-sm shrink-0 shadow-md">
+                  {user?.name?.[0] || 'J'}
+                </div>
+                <div className="min-w-0 leading-tight">
+                  <p className="text-xs font-bold text-white truncate">{user?.name || 'Jomon Joseph'}</p>
+                  <p className="text-[10px] font-bold text-emerald-400/90 tracking-wider uppercase truncate">
+                    {(user as any)?.role || userRole || 'ADMIN'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => signOut({ callbackUrl: '/login' })}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/[0.05] hover:bg-rose-600/30 border border-white/10 hover:border-rose-500/40 transition-all shrink-0 shadow-xs cursor-pointer"
+                title="Logout"
+              >
+                <span>Logout</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-1 relative group">
+              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 border border-emerald-400/30 flex items-center justify-center text-white font-black text-sm shadow-md">
+                {user?.name?.[0] || 'J'}
+              </div>
+              <button
+                onClick={() => signOut({ callbackUrl: '/login' })}
+                className="p-2 rounded-xl text-slate-300 hover:text-white bg-white/[0.05] hover:bg-rose-600/30 border border-white/10 hover:border-rose-500/40 transition-all cursor-pointer"
+                title="Logout"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#06100B] text-white text-xs font-semibold rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap border border-[#1B2B23] pointer-events-none">
+                {user?.name || 'Jomon Joseph'} ({(user as any)?.role || userRole || 'ADMIN'})
+              </div>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* 2. Mobile Off-Canvas Drawer */}
+      <div 
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#0A120E] border-r border-[#1B2B23] text-slate-100 flex flex-col shadow-2xl transition-transform duration-300 ease-in-out md:hidden ${
+          isMobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Mobile Header with Close Button */}
+        <div className="flex items-center justify-between pt-5 pb-4 px-4 border-b border-[#16251E]">
+          <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-emerald-300 p-0.5 shadow-lg shadow-emerald-950/60 flex items-center justify-center shrink-0">
               <div className="h-full w-full bg-[#06100B] rounded-[14px] p-1.5 flex items-center justify-center">
                 <img src="/finledger-icon.png" alt="FinLedger" className="h-full w-full object-contain" />
@@ -208,74 +355,48 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
               <span className="text-[10px] font-medium text-[#8EA699] truncate">Financial Management</span>
             </div>
           </div>
-        ) : (
-          <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-emerald-300 p-0.5 shadow-lg shadow-emerald-950/60 flex items-center justify-center shrink-0 mb-1">
-            <div className="h-full w-full bg-[#06100B] rounded-[14px] p-1.5 flex items-center justify-center">
-              <img src="/finledger-icon.png" alt="FinLedger" className="h-full w-full object-contain" />
-            </div>
-          </div>
-        )}
 
-        <button 
-          onClick={toggleSidebar} 
-          className="p-1.5 rounded-xl hover:bg-white/[0.08] text-[#8EA699] hover:text-white focus:outline-none transition-colors border border-transparent hover:border-white/10"
-          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {isCollapsed ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
-        </button>
-      </div>
-      
-      {/* Navigation List */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-1">
-        <ul className="space-y-1">
-          {filteredNavItems.map((item) => {
-            const active = isItemActive(item.href);
-            return (
-              <li key={item.name} className="relative group">
-                <Link
-                  href={item.href}
-                  prefetch={true}
-                  onClick={(e) => handleLinkClick(e, item.href)}
-                  className={`flex items-center rounded-xl text-xs font-bold transition-all duration-200 ${
-                    isCollapsed ? "justify-center p-2.5" : "px-3.5 py-2.5"
-                  } ${
-                    active
-                      ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/70 border border-emerald-400/40"
-                      : "text-[#9EB5A9] hover:bg-white/[0.06] hover:text-white"
-                  }`}
-                >
-                  <span className={`${active ? "text-white" : "text-[#80998C] group-hover:text-white"} flex-shrink-0 transition-colors`}>
-                    {item.icon}
-                  </span>
-                  
-                  {/* Expanded text */}
-                  {!isCollapsed && (
-                    <span className="ml-3 truncate tracking-normal font-sans font-semibold text-[13px]">{item.name}</span>
-                  )}
-                </Link>
+          <button
+            onClick={onCloseMobile}
+            className="p-2 rounded-xl text-[#8EA699] hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            aria-label="Close menu"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-                {/* Tooltip for Collapsed Sidebar */}
-                {isCollapsed && (
-                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#06100B] text-white text-xs font-semibold rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap border border-[#1B2B23] pointer-events-none">
-                    {item.name}
-                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#06100B]"></div>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+        {/* Navigation Links */}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-1 custom-scrollbar">
+          <ul className="space-y-1">
+            {filteredNavItems.map((item) => {
+              const active = isItemActive(item.href);
+              return (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    prefetch={true}
+                    onClick={(e) => handleLinkClick(e, item.href)}
+                    className={`flex items-center px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+                      active
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/70 border border-emerald-400/40"
+                        : "text-[#9EB5A9] hover:bg-white/[0.06] hover:text-white"
+                    }`}
+                  >
+                    <span className={`${active ? "text-white" : "text-[#80998C]"} flex-shrink-0`}>
+                      {item.icon}
+                    </span>
+                    <span className="ml-3 font-sans font-semibold text-[13px]">{item.name}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-      {/* Left Panel Bottom - User Profile & Logout */}
-      <div className="border-t border-[#16251E] p-3.5 bg-[#070D0A] shrink-0">
-        {!isCollapsed ? (
+        {/* Mobile Drawer Footer User Profile */}
+        <div className="border-t border-[#16251E] p-4 bg-[#070D0A] shrink-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 border border-emerald-400/30 flex items-center justify-center text-white font-black text-sm shrink-0 shadow-md">
@@ -290,32 +411,13 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
             </div>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/[0.05] hover:bg-rose-600/30 border border-white/10 hover:border-rose-500/40 transition-all shrink-0 shadow-xs"
-              title="Logout"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/[0.05] hover:bg-rose-600/30 border border-white/10 hover:border-rose-500/40 transition-all shrink-0 shadow-xs cursor-pointer"
             >
               <span>Logout</span>
             </button>
           </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2 py-1 relative group">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 border border-emerald-400/30 flex items-center justify-center text-white font-black text-sm shadow-md">
-              {user?.name?.[0] || 'J'}
-            </div>
-            <button
-              onClick={() => signOut({ callbackUrl: '/login' })}
-              className="p-2 rounded-xl text-slate-300 hover:text-white bg-white/[0.05] hover:bg-rose-600/30 border border-white/10 hover:border-rose-500/40 transition-all"
-              title="Logout"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </button>
-            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#06100B] text-white text-xs font-semibold rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap border border-[#1B2B23] pointer-events-none">
-              {user?.name || 'Jomon Joseph'} ({(user as any)?.role || userRole || 'ADMIN'})
-            </div>
-          </div>
-        )}
+        </div>
       </div>
-    </aside>
+    </>
   );
 }

@@ -135,63 +135,66 @@ export function ProformaInvoiceClientList({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Main Card Container */}
-      <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-3.5 sm:p-6 space-y-4 sm:space-y-5">
         {/* Filters Toolbar */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3">
           {/* Search Input */}
-          <div className="relative flex-1 min-w-[240px]">
+          <div className="relative flex-1 min-w-[220px]">
             <input
               type="text"
               placeholder="Search invoice number, customer, GSTIN..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-[41px] px-3.5 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white placeholder-[#68756C]"
+              className="w-full h-[40px] sm:h-[41px] px-3.5 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white placeholder-[#68756C]"
             />
           </div>
 
-          {/* All Customers Dropdown */}
-          <select
-            value={customerFilter}
-            onChange={(e) => setCustomerFilter(e.target.value)}
-            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[150px]"
-          >
-            <option value="ALL">All Customers</option>
-            {customerOptions.map((cust) => (
-              <option key={cust.id} value={cust.id}>
-                {cust.name}
-              </option>
-            ))}
-          </select>
+          {/* Dropdown filters */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3">
+            {/* All Customers Dropdown */}
+            <select
+              value={customerFilter}
+              onChange={(e) => setCustomerFilter(e.target.value)}
+              className="h-[40px] sm:h-[41px] border border-[#D9E3DC] rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] col-span-2 sm:col-auto sm:min-w-[150px]"
+            >
+              <option value="ALL">All Customers</option>
+              {customerOptions.map((cust) => (
+                <option key={cust.id} value={cust.id}>
+                  {cust.name}
+                </option>
+              ))}
+            </select>
 
-          {/* All Status Dropdown */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[130px]"
-          >
-            <option value="ALL">Active (All)</option>
-            <option value="DRAFT">Draft</option>
-            <option value="SENT">Sent</option>
-            <option value="ACCEPTED">Accepted</option>
-            <option value="CONVERTED">Converted</option>
-            <option value="REJECTED">Rejected</option>
-            <option value="EXPIRED">Expired</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
+            {/* All Status Dropdown */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="h-[40px] sm:h-[41px] border border-[#D9E3DC] rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] sm:min-w-[125px]"
+            >
+              <option value="ALL">Active (All)</option>
+              <option value="DRAFT">Draft</option>
+              <option value="SENT">Sent</option>
+              <option value="ACCEPTED">Accepted</option>
+              <option value="CONVERTED">Converted</option>
+              <option value="REJECTED">Rejected</option>
+              <option value="EXPIRED">Expired</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
 
-          {/* All Types Dropdown */}
-          <select
-            value={customerTypeFilter}
-            onChange={(e) => setCustomerTypeFilter(e.target.value)}
-            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[130px]"
-          >
-            <option value="ALL">All Types</option>
-            <option value="B2B">B2B</option>
-            <option value="B2B_EXPORT">B2B Export</option>
-            <option value="B2C">B2C</option>
-          </select>
+            {/* All Types Dropdown */}
+            <select
+              value={customerTypeFilter}
+              onChange={(e) => setCustomerTypeFilter(e.target.value)}
+              className="h-[40px] sm:h-[41px] border border-[#D9E3DC] rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] sm:min-w-[125px]"
+            >
+              <option value="ALL">All Types</option>
+              <option value="B2B">B2B</option>
+              <option value="B2B_EXPORT">B2B Export</option>
+              <option value="B2C">B2C</option>
+            </select>
+          </div>
 
           <span className="ml-auto text-[11px] text-[#738078] font-semibold">
             {filteredInvoices.length} proforma{filteredInvoices.length !== 1 ? "s" : ""}

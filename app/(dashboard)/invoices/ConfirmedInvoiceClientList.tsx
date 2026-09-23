@@ -173,72 +173,75 @@ export function ConfirmedInvoiceClientList({
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Main Card Container */}
-      <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 space-y-5">
+      <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-3.5 sm:p-6 space-y-4 sm:space-y-5">
         {/* Filters Toolbar */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3">
           {/* Search Input */}
-          <div className="relative flex-1 min-w-[240px]">
+          <div className="relative flex-1 min-w-[220px]">
             <input
               type="text"
               placeholder="Search invoice / customer"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-[41px] px-3.5 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white placeholder-[#68756C]"
+              className="w-full h-[40px] sm:h-[41px] px-3.5 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white placeholder-[#68756C]"
             />
           </div>
 
-          {/* All Customers Dropdown */}
-          <select
-            value={customerFilter}
-            onChange={(e) => setCustomerFilter(e.target.value)}
-            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[150px]"
-          >
-            <option value="ALL">All Customers</option>
-            {customerOptions.map((cust) => (
-              <option key={cust.id} value={cust.id}>
-                {cust.name}
-              </option>
-            ))}
-          </select>
+          {/* Filter Dropdowns Grid on mobile, inline on desktop */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3">
+            {/* All Customers Dropdown */}
+            <select
+              value={customerFilter}
+              onChange={(e) => setCustomerFilter(e.target.value)}
+              className="h-[40px] sm:h-[41px] border border-[#D9E3DC] rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] col-span-2 sm:col-auto sm:min-w-[150px]"
+            >
+              <option value="ALL">All Customers</option>
+              {customerOptions.map((cust) => (
+                <option key={cust.id} value={cust.id}>
+                  {cust.name}
+                </option>
+              ))}
+            </select>
 
-          {/* All Status Dropdown */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[130px]"
-          >
-            <option value="ALL">All Status</option>
-            <option value="PAID">Paid</option>
-            <option value="PARTIALLY_PAID">Partially Paid</option>
-            <option value="UNPAID">Unpaid</option>
-          </select>
+            {/* All Status Dropdown */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-[40px] sm:h-[41px] border border-[#D9E3DC] rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] sm:min-w-[125px]"
+            >
+              <option value="ALL">All Status</option>
+              <option value="PAID">Paid</option>
+              <option value="PARTIALLY_PAID">Partially Paid</option>
+              <option value="UNPAID">Unpaid</option>
+            </select>
 
-          {/* All Types Dropdown */}
-          <select
-            value={customerTypeFilter}
-            onChange={(e) => setCustomerTypeFilter(e.target.value)}
-            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[130px]"
-          >
-            <option value="ALL">All Types</option>
-            <option value="B2B">B2B</option>
-            <option value="B2B_EXPORT">Export</option>
-            <option value="B2C">B2C</option>
-          </select>
+            {/* All Types Dropdown */}
+            <select
+              value={customerTypeFilter}
+              onChange={(e) => setCustomerTypeFilter(e.target.value)}
+              className="h-[40px] sm:h-[41px] border border-[#D9E3DC] rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] sm:min-w-[125px]"
+            >
+              <option value="ALL">All Types</option>
+              <option value="B2B">B2B</option>
+              <option value="B2B_EXPORT">Export</option>
+              <option value="B2C">B2C</option>
+            </select>
+          </div>
         </div>
 
-        {/* Row 2: Date Filter */}
-        <div className="flex flex-wrap items-center gap-2 border-t border-[#F3F4F6] pt-3">
-          <span className="text-[11px] font-bold text-[#738078] uppercase tracking-wider mr-1">Date:</span>
+        {/* Row 2: Date Filter Swipeable Pills */}
+        <div className="flex items-center gap-2 border-t border-[#F3F4F6] pt-3 overflow-x-auto custom-scrollbar pb-1">
+          <span className="text-[10px] sm:text-[11px] font-bold text-[#738078] uppercase tracking-wider shrink-0 mr-1">Date:</span>
           {DATE_PRESETS.map(({ value, label }) => (
             <button
               key={value}
               type="button"
               onClick={() => setDatePreset(value)}
-              className={`h-[33px] px-3.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+              className={`h-[32px] px-3 rounded-xl text-[11px] font-bold border transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 datePreset === value
-                  ? "bg-[#177B55] text-white border-[#177B55] shadow-sm"
+                  ? "bg-[#177B55] text-white border-[#177B55] shadow-xs"
                   : "border-[#D9E3DC] text-[#4B5563] bg-white hover:bg-[#F4F7F3]"
               }`}
             >
@@ -247,12 +250,12 @@ export function ConfirmedInvoiceClientList({
           ))}
 
           {datePreset === "RANGE" && (
-            <div className="flex items-center gap-2 ml-1">
+            <div className="flex items-center gap-1.5 ml-1 shrink-0">
               <input
                 type="date"
                 value={rangeStart}
                 onChange={(e) => setRangeStart(e.target.value)}
-                className="h-[33px] px-2.5 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white"
+                className="h-[32px] px-2 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white"
               />
               <span className="text-[11px] text-[#738078] font-semibold">to</span>
               <input
@@ -260,12 +263,12 @@ export function ConfirmedInvoiceClientList({
                 value={rangeEnd}
                 min={rangeStart}
                 onChange={(e) => setRangeEnd(e.target.value)}
-                className="h-[33px] px-2.5 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white"
+                className="h-[32px] px-2 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white"
               />
             </div>
           )}
 
-          <span className="ml-auto text-[11px] text-[#738078] font-semibold">
+          <span className="ml-auto text-[11px] text-[#738078] font-semibold whitespace-nowrap pl-2">
             {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? "s" : ""}
           </span>
         </div>
