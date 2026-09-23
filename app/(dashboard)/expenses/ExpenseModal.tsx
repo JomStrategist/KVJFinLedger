@@ -44,15 +44,32 @@ export function ExpenseModal({
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [activeItemCategoryIndex, setActiveItemCategoryIndex] = useState<number | null>(null);
 
+  // Nature of Payment: Expense vs Purchase (Direct COGS)
+  const [paymentNature, setPaymentNature] = useState<"EXPENSE" | "PURCHASE">(
+    expense?.paymentNature || (expense?.isPurchase ? "PURCHASE" : "EXPENSE")
+  );
+
   // Section 1: Expense Details
   const [date, setDate] = useState(
     expense?.expenseDate
       ? new Date(expense.expenseDate).toISOString().split("T")[0]
       : new Date().toISOString().split("T")[0]
   );
-  const [vendorId, setVendorId] = useState(expense?.vendorId || (vendors[0]?.id || ""));
-  const [paidBy, setPaidBy] = useState<"Company" | "Employee">(expense?.employeeId ? "Employee" : "Company");
-  const [employeeId, setEmployeeId] = useState(expense?.employeeId || "");
+  
+  // Vendor (Optional for salaries, petty cash, bank charges)
+  const [vendorId, setVendorId] = useState(expense?.vendorId || "");
+  
+  // Unified "Paid By" value: "COMPANY" or "EMP_<id>"
+  const initialPaidBy = expense?.employeeId ? `EMP_${expense.employeeId}` : "COMPANY";
+  const [paidBySelection, setPaidBySelection] = useState<string>(initialPaidBy);
+
+  // Payment Status & Partial Payment
+  const [paymentStatus, setPaymentStatus] = useState<"PAID" | "PARTIALLY_PAID" | "UNPAID">(
+    expense?.paymentStatus || "PAID"
+  );
+  const [amountPaidNow, setAmountPaidNow] = useState<string>(
+    expense?.paidAmount ? String(expense.paidAmount) : ""
+  );
 
   // Section 2: Items
   const defaultCategoryId = categories[0]?.id || "";
@@ -66,7 +83,7 @@ export function ExpenseModal({
         hsnSac: i.hsnSacCode || "9983",
         quantity: Number(i.quantity) || 1,
         rate: Number(i.unitPrice) || Number(i.taxableAmount) || 0,
-        gstRate: Number(i.gstRate) || 18,
+        gstRate: Number(i.gstRate) || 0,
         tdsRate: Number(i.tdsRate) || 0,
         amount: Number(i.totalAmount) || (Number(i.quantity) || 1) * (Number(i.unitPrice) || 0),
       }))
@@ -79,7 +96,7 @@ export function ExpenseModal({
           hsnSac: "9983",
           quantity: 1,
           rate: Number(expense.taxableAmount) || Number(expense.netAmount) || 0,
-          gstRate: 18,
+          gstRate: 0,
           tdsRate: 0,
           amount: Number(expense.netAmount) || 0,
         },
@@ -92,7 +109,7 @@ export function ExpenseModal({
           hsnSac: "",
           quantity: 1,
           rate: 0,
-          gstRate: 18,
+          gstRate: 0,
           tdsRate: 0,
           amount: 0,
         },
@@ -142,15 +159,15 @@ export function ExpenseModal({
     setItems((prev) => [
       ...prev,
       {
-        item: "Service / Item",
+        item: "",
         categoryId: defaultCategoryId,
         categoryName: defaultCategoryName,
         hsnSac: "9983",
         quantity: 1,
-        rate: 10000,
-        gstRate: 18,
+        rate: 0,
+        gstRate: 0,
         tdsRate: 0,
-        amount: 11800,
+        amount: 0,
       },
     ]);
   };
@@ -166,6 +183,14 @@ export function ExpenseModal({
   const calculatedTds = isTdsApplicable ? (totalTaxable * globalTdsRate) / 100 : 0;
   const netTotal = totalTaxable + totalGst - calculatedTds;
 
+  const actualPaidAmount = paymentStatus === "PAID"
+    ? netTotal
+    : paymentStatus === "PARTIALLY_PAID"
+    ? Math.min(netTotal, Math.max(0, parseFloat(amountPaidNow) || 0))
+    : 0;
+
+  const pendingPayableBalance = Math.max(0, netTotal - actualPaidAmount);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -173,7 +198,6 @@ export function ExpenseModal({
     const primaryVendor = vendorList.find((v) => v.id === vendorId);
     const primaryCategory = categories.find((c) => c.id === items[0]?.categoryId);
 
-    // Determine Inter-state (IGST) vs Intra-state (CGST + SGST) based on Kerala base state (32)
     const isInterstate = Boolean(
       primaryVendor?.state &&
       primaryVendor.state.trim().toLowerCase() !== "kerala" &&
@@ -184,12 +208,17 @@ export function ExpenseModal({
     const inputSGST = isInterstate ? 0 : totalGst / 2;
     const inputIGST = isInterstate ? totalGst : 0;
 
+    const isEmployeePaid = paidBySelection.startsWith("EMP_");
+    const selectedEmployeeId = isEmployeePaid ? paidBySelection.replace("EMP_", "") : null;
+
     const payload = {
       expenseDate: new Date(date),
       vendorId: vendorId || null,
-      employeeId: paidBy === "Employee" && employeeId ? employeeId : null,
+      paidBy: isEmployeePaid ? "EMPLOYEE" : "COMPANY",
+      employeeId: selectedEmployeeId,
+      paymentNature,
       categoryId: primaryCategory?.id || categories[0]?.id,
-      notes: items.map((i) => i.item).join(", "),
+      notes: items.map((i) => i.item).filter(Boolean).join(", ") || (paymentNature === "PURCHASE" ? "Material Purchase" : "Operating Expense"),
       subtotal: totalTaxable,
       taxableAmount: totalTaxable,
       totalGST: totalGst,
@@ -204,7 +233,9 @@ export function ExpenseModal({
       tdsAmount: calculatedTds,
       grossAmount: totalTaxable + totalGst,
       netAmount: netTotal,
-      paymentStatus: "PAID",
+      paymentStatus,
+      paidAmount: actualPaidAmount,
+      balancePayable: pendingPayableBalance,
       isGstEligible,
       isTdsApplicable,
       expenseTreatment,
@@ -213,7 +244,7 @@ export function ExpenseModal({
       depreciationRate: expenseTreatment === "Fixed Asset" ? Number(depreciationRate || 0) : 0,
       items: items.map((i) => ({
         categoryId: i.categoryId,
-        description: i.item,
+        description: i.item || (paymentNature === "PURCHASE" ? "Purchase Item" : "Expense Item"),
         hsnSacCode: i.hsnSac,
         quantity: i.quantity,
         unitPrice: i.rate,
@@ -250,16 +281,24 @@ export function ExpenseModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-      <div className="bg-white w-full max-w-4xl rounded-2xl shadow-xl border border-[#D9E3DC] overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-md">
+      <div className="bg-white/95 backdrop-blur-2xl w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-[#D9E3DC] flex justify-between items-center bg-white">
-          <h2 className="text-xl font-bold text-[#17211B]">
-            {isEdit ? "Edit Expense" : "Add Expense"}
-          </h2>
+        <div className="px-6 py-4.5 border-b border-slate-200/70 flex justify-between items-center bg-white/70">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-2xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center font-bold text-base">
+              💸
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                {isEdit ? "Edit Expense / Purchase" : "Record Expense or Purchase"}
+              </h2>
+              <p className="text-[11px] text-slate-500 font-medium">Fast entry with auto GST, TDS, employee reimbursement & partial payment</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="text-[#68756C] hover:text-[#17211B] p-2 rounded-lg hover:bg-[#F4F7F3] transition-colors"
+            className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-colors"
           >
             ✕
           </button>
@@ -267,24 +306,52 @@ export function ExpenseModal({
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-5">
-          {/* Info Callout Banner */}
-          <div className="bg-[#F6FAF7] border border-[#D9E3DC] p-3.5 rounded-xl text-xs text-[#59675E] leading-relaxed">
-            <b>Simple entry:</b> record the purchase, categorise it, then the system handles GST, TDS and asset treatment.
+          {/* Nature of Payment Switcher (Operating Overhead vs Purchase COGS) */}
+          <div className="flex items-center justify-between p-3.5 bg-slate-50/80 border border-slate-200/70 rounded-2xl">
+            <div>
+              <span className="text-xs font-bold text-slate-800">Nature of Transaction:</span>
+              <p className="text-[11px] text-slate-500">Classify whether this is an operating expense or direct material/service purchase</p>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setPaymentNature("EXPENSE")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  paymentNature === "EXPENSE"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                🏢 Operating Expense
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentNature("PURCHASE")}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  paymentNature === "PURCHASE"
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                📦 Purchase (COGS)
+              </button>
+            </div>
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-medium">
-              {error}
+            <div className="p-3.5 bg-rose-50 border border-rose-200/80 rounded-2xl text-rose-700 text-xs font-semibold flex items-center gap-2">
+              <span>⚠️</span>
+              <span>{error}</span>
             </div>
           )}
 
-          <form id="expense-modal-form" onSubmit={handleSubmit} className="space-y-6">
-            {/* Section 1: Expense Details */}
+          <form id="expense-modal-form" onSubmit={handleSubmit} className="space-y-5">
+            {/* Section 1: Transaction Details */}
             <div className="space-y-2">
-              <h3 className="text-sm font-bold text-[#17211B]">Expense Details</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Transaction Details</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Date *
                   </label>
                   <input
@@ -292,19 +359,19 @@ export function ExpenseModal({
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                   />
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-[#68756C]">
-                      Vendor *
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Vendor <span className="text-[10px] text-slate-400 font-normal">(Optional for Salary/Petty)</span>
                     </label>
                     <button
                       type="button"
                       onClick={() => setIsAddVendorOpen(true)}
-                      className="text-[11px] font-bold text-[#177B55] hover:underline cursor-pointer"
+                      className="text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
                     >
                       + Add Vendor
                     </button>
@@ -318,33 +385,16 @@ export function ExpenseModal({
                       } else {
                         setVendorId(val);
                         const vObj = vendorList.find((v) => v.id === val);
-                        if (vObj) {
-                          if (vObj.tdsRate && Number(vObj.tdsRate) > 0) {
-                            setIsTdsApplicable(true);
-                            setGlobalTdsRate(Number(vObj.tdsRate));
-                          }
-                          if ((vObj as any).defaultCategoryId) {
-                            setItems((prev) =>
-                              prev.map((it, idx) =>
-                                idx === 0
-                                  ? {
-                                      ...it,
-                                      categoryId: (vObj as any).defaultCategoryId,
-                                      categoryName:
-                                        categoryList.find((c) => c.id === (vObj as any).defaultCategoryId)?.name ||
-                                        it.categoryName,
-                                    }
-                                  : it
-                              )
-                            );
-                          }
+                        if (vObj && vObj.tdsRate && Number(vObj.tdsRate) > 0) {
+                          setIsTdsApplicable(true);
+                          setGlobalTdsRate(Number(vObj.tdsRate));
                         }
                       }
                     }}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium text-slate-800"
                   >
-                    <option value="">— Select Vendor —</option>
-                    <option value="ADD_NEW" className="font-bold text-[#177B55]">+ Add New Vendor...</option>
+                    <option value="">— No Vendor / Internal (Salary, Refreshments, Fees) —</option>
+                    <option value="ADD_NEW" className="font-bold text-emerald-700">+ Add New Vendor...</option>
                     {vendorList.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.name}
@@ -353,82 +403,146 @@ export function ExpenseModal({
                   </select>
                 </div>
 
+                {/* Single Consolidated "Paid By" Smart Dropdown */}
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    Paid By
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Paid By *
                   </label>
                   <select
-                    value={paidBy}
-                    onChange={(e) => setPaidBy(e.target.value as any)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    value={paidBySelection}
+                    onChange={(e) => setPaidBySelection(e.target.value)}
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-semibold text-slate-800"
                   >
-                    <option value="Company">Company</option>
-                    <option value="Employee">Employee</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    Employee
-                  </label>
-                  <select
-                    value={employeeId}
-                    disabled={paidBy !== "Employee"}
-                    onChange={(e) => setEmployeeId(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] disabled:bg-gray-100"
-                  >
-                    <option value="">—</option>
-                    {employees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name}
-                      </option>
-                    ))}
+                    <optgroup label="Company Accounts">
+                      <option value="COMPANY">🏢 Company Bank Account / Cash</option>
+                    </optgroup>
+                    {employees.length > 0 && (
+                      <optgroup label="Employee Reimbursements (Paid by Staff)">
+                        {employees.map((emp) => (
+                          <option key={emp.id} value={`EMP_${emp.id}`}>
+                            👤 {emp.name} (Employee Reimbursement)
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
               </div>
             </div>
 
-            {/* Section 2: Expense Items */}
-            <div className="space-y-3 pt-2 border-t border-[#D9E3DC]">
-              <h3 className="text-sm font-bold text-[#17211B]">Expense Items</h3>
+            {/* Section 2: Payment Status & Partial Payment */}
+            <div className="p-3.5 bg-slate-50/70 border border-slate-200/70 rounded-2xl space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800">Payment Clearance Status</label>
+                  <span className="text-[11px] text-slate-500">Record full payment, partial deposit, or vendor credit</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentStatus("PAID")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      paymentStatus === "PAID"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    🟢 Fully Paid
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentStatus("PARTIALLY_PAID");
+                      if (!amountPaidNow && netTotal > 0) setAmountPaidNow(String(Math.round(netTotal / 2)));
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      paymentStatus === "PARTIALLY_PAID"
+                        ? "bg-amber-600 text-white shadow-xs"
+                        : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    🟡 Partial Payment
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentStatus("UNPAID")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      paymentStatus === "UNPAID"
+                        ? "bg-rose-600 text-white shadow-xs"
+                        : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    🔴 Credit (Unpaid)
+                  </button>
+                </div>
+              </div>
 
-              <div className="overflow-x-auto border border-[#D9E3DC] rounded-xl">
-                <table className="w-full text-left text-xs border-collapse min-w-[720px]">
-                  <thead className="bg-[#F6FAF7] border-b border-[#D9E3DC] text-[#738078] font-bold uppercase tracking-wider">
+              {/* Partial Payment Input Field */}
+              {paymentStatus === "PARTIALLY_PAID" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Amount Paid Now (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="e.g. 5000"
+                      value={amountPaidNow}
+                      onChange={(e) => setAmountPaidNow(e.target.value)}
+                      className="w-full h-9 border border-amber-300 rounded-xl px-3 text-xs font-bold bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 text-slate-900"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-2 bg-amber-50 border border-amber-200 rounded-xl">
+                    <div>
+                      <span className="text-[11px] font-bold text-amber-900">Remaining Balance (Payable)</span>
+                      <p className="text-[10px] text-amber-700">Tracked in Sundry Creditors</p>
+                    </div>
+                    <span className="text-sm font-extrabold text-amber-900 font-mono font-tabular">
+                      ₹{pendingPayableBalance.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Section 3: Expense Items */}
+            <div className="space-y-3 pt-2 border-t border-slate-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Particulars &amp; Line Items</h3>
+                <button
+                  type="button"
+                  onClick={addItemRow}
+                  className="px-3 py-1 border border-slate-200 text-emerald-700 hover:bg-emerald-50 rounded-xl text-xs font-bold transition-colors shadow-2xs"
+                >
+                  + Add Line Item
+                </button>
+              </div>
+
+              <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                <table className="w-full text-left text-xs border-collapse min-w-[680px]">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
                     <tr>
-                      <th className="py-2.5 px-3">ITEM</th>
-                      <th className="py-2.5 px-3">
-                        <div className="flex items-center justify-between gap-1">
-                          <span>CATEGORY</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveItemCategoryIndex(0);
-                              setIsAddCategoryOpen(true);
-                            }}
-                            className="text-[10px] font-bold text-[#177B55] hover:underline normal-case cursor-pointer"
-                          >
-                            + Add
-                          </button>
-                        </div>
-                      </th>
-                      <th className="py-2.5 px-2">HSN/SAC</th>
-                      <th className="py-2.5 px-2 text-center">QTY</th>
-                      <th className="py-2.5 px-2 text-right">RATE</th>
+                      <th className="py-2.5 px-3">Description / Item</th>
+                      <th className="py-2.5 px-3">Category Head</th>
+                      <th className="py-2.5 px-2 text-center">Qty</th>
+                      <th className="py-2.5 px-2 text-right">Rate (₹)</th>
                       <th className="py-2.5 px-2 text-center">GST</th>
-                      <th className="py-2.5 px-3 text-right">AMOUNT</th>
+                      <th className="py-2.5 px-3 text-right">Amount (₹)</th>
                       <th className="py-2.5 px-2 text-center"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E9EEE9]">
+                  <tbody className="divide-y divide-slate-100">
                     {items.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-[#F9FAF8]">
+                      <tr key={idx} className="hover:bg-slate-50/50">
                         <td className="py-2 px-3">
                           <input
                             type="text"
+                            placeholder="e.g. Monthly Office Rent / Refreshments"
                             value={row.item}
                             onChange={(e) => updateItem(idx, "item", e.target.value)}
-                            className="w-full border border-[#D9E3DC] rounded-lg px-2 py-1 text-xs bg-white"
+                            className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs bg-white font-medium"
                           />
                         </td>
                         <td className="py-2 px-3">
@@ -442,7 +556,7 @@ export function ExpenseModal({
                                 updateItem(idx, "categoryId", e.target.value);
                               }
                             }}
-                            className="w-full border border-[#D9E3DC] rounded-lg px-2 py-1 text-xs bg-white font-medium text-[#17211B]"
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white font-semibold text-slate-800"
                           >
                             <option value="">Select Category...</option>
                             {categoryList
@@ -452,18 +566,10 @@ export function ExpenseModal({
                                   {c.name}
                                 </option>
                               ))}
-                            <option value="ADD_NEW" className="font-bold text-[#177B55]">
+                            <option value="ADD_NEW" className="font-bold text-emerald-700">
                               + Add New Category...
                             </option>
                           </select>
-                        </td>
-                        <td className="py-2 px-2">
-                          <input
-                            type="text"
-                            value={row.hsnSac}
-                            onChange={(e) => updateItem(idx, "hsnSac", e.target.value)}
-                            className="w-16 border border-[#D9E3DC] rounded-lg px-1.5 py-1 text-xs text-center bg-white"
-                          />
                         </td>
                         <td className="py-2 px-2">
                           <input
@@ -471,7 +577,7 @@ export function ExpenseModal({
                             min="1"
                             value={row.quantity}
                             onChange={(e) => updateItem(idx, "quantity", Number(e.target.value))}
-                            className="w-12 border border-[#D9E3DC] rounded-lg px-1.5 py-1 text-xs text-center bg-white"
+                            className="w-12 border border-slate-200 rounded-lg px-1.5 py-1.5 text-xs text-center bg-white font-medium"
                           />
                         </td>
                         <td className="py-2 px-2 text-right">
@@ -480,22 +586,23 @@ export function ExpenseModal({
                             step="0.01"
                             value={row.rate}
                             onChange={(e) => updateItem(idx, "rate", Number(e.target.value))}
-                            className="w-24 border border-[#D9E3DC] rounded-lg px-2 py-1 text-xs text-right bg-white"
+                            className="w-24 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-right bg-white font-bold"
                           />
                         </td>
                         <td className="py-2 px-2 text-center">
                           <select
                             value={row.gstRate}
                             onChange={(e) => updateItem(idx, "gstRate", Number(e.target.value))}
-                            className="border border-[#D9E3DC] rounded-lg px-1.5 py-1 text-xs bg-white"
+                            className="border border-slate-200 rounded-lg px-1.5 py-1.5 text-xs bg-white font-medium"
                           >
-                            <option value="18">18%</option>
-                            <option value="12">12%</option>
-                            <option value="5">5%</option>
                             <option value="0">0%</option>
+                            <option value="5">5%</option>
+                            <option value="12">12%</option>
+                            <option value="18">18%</option>
+                            <option value="28">28%</option>
                           </select>
                         </td>
-                        <td className="py-2 px-3 text-right font-bold text-[#17211B]">
+                        <td className="py-2 px-3 text-right font-extrabold text-slate-900 font-tabular font-mono">
                           ₹{row.amount.toLocaleString("en-IN")}
                         </td>
                         <td className="py-2 px-2 text-center">
@@ -503,7 +610,7 @@ export function ExpenseModal({
                             <button
                               type="button"
                               onClick={() => removeItemRow(idx)}
-                              className="text-red-500 hover:text-red-700 text-sm font-bold"
+                              className="text-slate-400 hover:text-rose-600 text-sm font-bold p-1 rounded"
                             >
                               ✕
                             </button>
@@ -514,174 +621,81 @@ export function ExpenseModal({
                   </tbody>
                 </table>
               </div>
-
-              <button
-                type="button"
-                onClick={addItemRow}
-                className="px-3 py-1.5 border border-[#D9E3DC] text-[#177B55] hover:bg-[#F4F7F3] rounded-lg text-xs font-bold transition-colors shadow-2xs"
-              >
-                + Add Another Item
-              </button>
             </div>
 
-            {/* Section 3: Accounting Treatment */}
-            <div className="space-y-2 pt-2 border-t border-[#D9E3DC]">
-              <h3 className="text-sm font-bold text-[#17211B]">Accounting Treatment</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    GST Input Credit
-                  </label>
-                  <select
-                    value={isGstEligible ? "Eligible" : "Ineligible"}
-                    onChange={(e) => setIsGstEligible(e.target.value === "Eligible")}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  >
-                    <option value="Eligible">Eligible</option>
-                    <option value="Ineligible">Ineligible</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    Expense Treatment
-                  </label>
-                  <select
-                    value={expenseTreatment}
-                    onChange={(e) => setExpenseTreatment(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  >
-                    <option value="Fixed Asset">Fixed Asset</option>
-                    <option value="Operating Expense">Operating Expense</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    TDS Applicable?
-                  </label>
-                  <select
-                    value={isTdsApplicable ? "Yes" : "No"}
-                    onChange={(e) => setIsTdsApplicable(e.target.value === "Yes")}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  >
-                    <option value="No">No</option>
-                    <option value="Yes">Yes</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    TDS %
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    disabled={!isTdsApplicable}
-                    value={globalTdsRate}
-                    onChange={(e) => setGlobalTdsRate(Number(e.target.value))}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] disabled:bg-gray-100"
-                  />
-                </div>
-              </div>
-
-              {/* Fixed Asset Depreciation Panel */}
-              {expenseTreatment === "Fixed Asset" && (
-                <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-4 mt-3 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">🏢</span>
-                      <div>
-                        <p className="text-xs font-bold text-[#166534]">Fixed Asset Capitalization &amp; Depreciation</p>
-                        <p className="text-[10px] text-[#15803D]">
-                          Capitalized under Non-Current Assets (PPE) &amp; depreciated under Indian IT Act / Companies Act Schedule II
-                        </p>
-                      </div>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[#DCFCE7] text-[#166534] border border-[#86EFAC]">
-                      CAPEX (Fixed Asset)
-                    </span>
+            {/* Section 4: Accounting Treatment & Calculations */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-200">
+              <div className="space-y-3 p-3.5 bg-slate-50/70 border border-slate-200/70 rounded-2xl">
+                <span className="text-xs font-bold text-slate-800">Tax &amp; Depreciation Rules</span>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">GST Input Credit</label>
+                    <select
+                      value={isGstEligible ? "Eligible" : "Ineligible"}
+                      onChange={(e) => setIsGstEligible(e.target.value === "Eligible")}
+                      className="w-full h-8 border border-slate-200 rounded-lg px-2 text-xs bg-white font-medium"
+                    >
+                      <option value="Eligible">Eligible (ITC Claim)</option>
+                      <option value="Ineligible">Blocked / Ineligible</option>
+                    </select>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="block text-xs font-semibold text-[#166534] mb-1">
-                        Asset Class / IT Act Category
-                      </label>
-                      <select
-                        value={assetType}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setAssetType(val);
-                          if (val.includes("40%")) setDepreciationRate(40);
-                          else if (val.includes("15%")) setDepreciationRate(15);
-                          else if (val.includes("10%")) setDepreciationRate(10);
-                        }}
-                        className="w-full h-[38px] border border-[#86EFAC] rounded-xl px-3 text-xs bg-white text-[#17211B] font-medium focus:outline-none focus:ring-2 focus:ring-[#166534]"
-                      >
-                        <option value="Computers & IT Equipment (40%)">💻 Computers, Laptops &amp; IT Equipment (40% IT Act)</option>
-                        <option value="Plant & Machinery / Motor Vehicles (15%)">🚗 Plant &amp; Machinery / Vehicles (15% IT Act)</option>
-                        <option value="Office Equipment & Electronics (15%)">📱 Office Equipment &amp; Electronics (15% IT Act)</option>
-                        <option value="Furniture & Fixtures (10%)">🪑 Furniture &amp; Fixtures (10% IT Act)</option>
-                        <option value="Buildings & Premises (10%)">🏢 Buildings &amp; Civil Structures (10% IT Act)</option>
-                        <option value="Custom Asset Rate">⚙️ Custom Asset / Other Rate</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#166534] mb-1">
-                        Depreciation Rate (%) <span className="text-red-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          value={depreciationRate}
-                          onChange={(e) => setDepreciationRate(Math.max(0, Number(e.target.value)))}
-                          placeholder="e.g. 40"
-                          className="w-full h-[38px] border border-[#86EFAC] rounded-xl px-3 pr-8 text-xs font-bold bg-white text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#166534]"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-extrabold text-[#15803D]">%</span>
-                      </div>
-                      <p className="text-[10px] text-[#15803D] mt-1">
-                        Standard WDV / SLM annual rate applied in Financial Reports.
-                      </p>
-                    </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">TDS Deduction</label>
+                    <select
+                      value={isTdsApplicable ? "Yes" : "No"}
+                      onChange={(e) => setIsTdsApplicable(e.target.value === "Yes")}
+                      className="w-full h-8 border border-slate-200 rounded-lg px-2 text-xs bg-white font-medium"
+                    >
+                      <option value="No">No TDS</option>
+                      <option value="Yes">Deduct TDS</option>
+                    </select>
                   </div>
                 </div>
-              )}
-            </div>
+                {isTdsApplicable && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">TDS Rate (%)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={globalTdsRate}
+                      onChange={(e) => setGlobalTdsRate(Number(e.target.value))}
+                      className="w-full h-8 border border-slate-200 rounded-lg px-2 text-xs bg-white font-bold"
+                    />
+                  </div>
+                )}
+              </div>
 
-            {/* Calculations Summary */}
-            <div className="bg-[#F6FAF7] border border-[#D9E3DC] rounded-xl p-4 ml-auto w-full max-w-sm space-y-2 text-xs">
-              <div className="flex justify-between text-[#68756C]">
-                <span>Taxable Value</span>
-                <b className="text-[#17211B]">₹{totalTaxable.toLocaleString("en-IN")}</b>
-              </div>
-              <div className="flex justify-between text-[#68756C]">
-                <span>GST (Total)</span>
-                <b className="text-[#17211B]">₹{totalGst.toLocaleString("en-IN")}</b>
-              </div>
-              <div className="flex justify-between text-[#68756C]">
-                <span>TDS</span>
-                <b className="text-[#17211B]">₹{calculatedTds.toLocaleString("en-IN")}</b>
-              </div>
-              <div className="flex justify-between text-sm font-bold border-t border-[#D9E3DC] pt-2 text-[#17211B]">
-                <span>Total</span>
-                <b className="text-[#177B55]">₹{netTotal.toLocaleString("en-IN")}</b>
+              {/* Calculations Summary Card */}
+              <div className="glass-panel rounded-2xl p-4 space-y-2 text-xs border border-slate-200">
+                <div className="flex justify-between text-slate-500 font-medium">
+                  <span>Taxable Base Value</span>
+                  <b className="text-slate-900 font-mono font-tabular">₹{totalTaxable.toLocaleString("en-IN")}</b>
+                </div>
+                <div className="flex justify-between text-slate-500 font-medium">
+                  <span>Input GST (CGST + SGST / IGST)</span>
+                  <b className="text-slate-900 font-mono font-tabular">₹{totalGst.toLocaleString("en-IN")}</b>
+                </div>
+                {isTdsApplicable && (
+                  <div className="flex justify-between text-amber-700 font-medium">
+                    <span>Less: TDS Deducted ({globalTdsRate}%)</span>
+                    <b className="font-mono font-tabular">- ₹{calculatedTds.toLocaleString("en-IN")}</b>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm font-extrabold border-t border-slate-200 pt-2 text-slate-900">
+                  <span>Net Payable Amount</span>
+                  <span className="text-emerald-700 font-mono font-tabular text-base">₹{netTotal.toLocaleString("en-IN")}</span>
+                </div>
               </div>
             </div>
           </form>
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-[#D9E3DC] flex justify-end items-center gap-3 bg-white">
+        <div className="px-6 py-4 border-t border-slate-200/70 flex justify-end items-center gap-3 bg-white/80">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-[#D9E3DC] rounded-xl text-xs font-bold hover:bg-[#F4F7F3] text-[#17211B] transition-colors"
+            className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 text-slate-700 transition-colors"
           >
             Cancel
           </button>
@@ -689,9 +703,9 @@ export function ExpenseModal({
             type="submit"
             form="expense-modal-form"
             disabled={isPending}
-            className="px-5 py-2 bg-[#1b5e4b] hover:bg-[#136f58] text-white rounded-xl text-xs font-bold shadow-xs transition-colors disabled:opacity-50"
+            className="px-6 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-50 flex items-center gap-2"
           >
-            {isPending ? "Saving Expense..." : "Save Expense"}
+            {isPending ? "Saving Record..." : isEdit ? "Update Record" : "Record Entry"}
           </button>
         </div>
       </div>
@@ -733,3 +747,4 @@ export function ExpenseModal({
     </div>
   );
 }
+

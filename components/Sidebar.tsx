@@ -187,28 +187,28 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
 
   return (
     <aside 
-      className={`bg-gradient-to-b from-[#052722] via-[#09352e] to-[#041d19] border-r border-emerald-500/10 text-white min-h-screen flex flex-col transition-all duration-300 ease-in-out relative z-20 shrink-0 print:hidden shadow-2xl ${sidebarWidth}`}
+      className={`bg-slate-900/90 backdrop-blur-2xl border-r border-slate-700/40 text-slate-100 min-h-screen flex flex-col transition-all duration-300 ease-in-out relative z-20 shrink-0 print:hidden shadow-2xl ${sidebarWidth}`}
     >
       {/* Brand & Collapse Header */}
-      <div className={`flex items-center pt-5 pb-4 border-b border-white/10 ${isCollapsed ? "flex-col gap-3 px-2 justify-center" : "justify-between px-4"}`}>
+      <div className={`flex items-center pt-5 pb-4 border-b border-slate-800/80 ${isCollapsed ? "flex-col gap-3 px-2 justify-center" : "justify-between px-4"}`}>
         {!isCollapsed ? (
           <div className="flex items-center gap-3 px-1 transition-opacity duration-300">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 p-0.5 shadow-md shadow-emerald-500/20 flex items-center justify-center shrink-0">
-              <div className="h-full w-full bg-[#052722] rounded-[10px] p-1 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-500 p-0.5 shadow-lg shadow-emerald-500/20 flex items-center justify-center shrink-0">
+              <div className="h-full w-full bg-slate-950 rounded-[14px] p-1.5 flex items-center justify-center backdrop-blur-md">
                 <img src="/finledger-icon.png" alt="FinLedger" className="h-full w-full object-contain" />
               </div>
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-base font-black tracking-tight text-white flex items-center gap-1.5">
+              <span className="text-sm font-black tracking-tight text-white flex items-center gap-1.5 font-sans">
                 FinLedger
-                <span className="text-[9px] font-extrabold bg-emerald-500/25 text-emerald-300 border border-emerald-400/30 px-1.5 py-0.5 rounded-md uppercase tracking-wider">ERP</span>
+                <span className="text-[9px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider">ERP</span>
               </span>
-              <span className="text-[10px] font-semibold text-emerald-200/60 truncate">Financial Management</span>
+              <span className="text-[10px] font-medium text-slate-400 truncate">Financial Management</span>
             </div>
           </div>
         ) : (
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 p-0.5 shadow-md shadow-emerald-500/20 flex items-center justify-center shrink-0 mb-1">
-            <div className="h-full w-full bg-[#052722] rounded-[10px] p-1 flex items-center justify-center">
+          <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-500 p-0.5 shadow-lg shadow-emerald-500/20 flex items-center justify-center shrink-0 mb-1">
+            <div className="h-full w-full bg-slate-950 rounded-[14px] p-1.5 flex items-center justify-center">
               <img src="/finledger-icon.png" alt="FinLedger" className="h-full w-full object-contain" />
             </div>
           </div>
@@ -216,10 +216,10 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
 
         <button 
           onClick={toggleSidebar} 
-          className="p-1.5 rounded-lg hover:bg-white/10 text-emerald-100/70 hover:text-white focus:outline-none transition-colors border border-transparent hover:border-white/10"
+          className="p-1.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white focus:outline-none transition-colors border border-transparent hover:border-white/10"
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {isCollapsed ? (
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
             ) : (
@@ -230,8 +230,8 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
       </div>
       
       {/* Navigation List */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        <ul className="space-y-1.5">
+      <nav className="flex-1 px-2.5 py-4 overflow-y-auto space-y-1">
+        <ul className="space-y-1">
           {filteredNavItems.map((item) => {
             const active = isItemActive(item.href);
             return (
@@ -240,29 +240,29 @@ export function Sidebar({ userRole, user }: { userRole?: string; user?: any }) {
                   href={item.href}
                   prefetch={true}
                   onClick={(e) => handleLinkClick(e, item.href)}
-                  className={`flex items-center rounded-xl text-sm transition-all duration-200 ${
-                    isCollapsed ? "justify-center p-3" : "px-3.5 py-2.5"
+                  className={`flex items-center rounded-xl text-xs font-semibold transition-all duration-200 ${
+                    isCollapsed ? "justify-center p-2.5" : "px-3 py-2.5"
                   } ${
                     active
-                      ? "bg-emerald-500/20 text-emerald-300 font-semibold shadow-inner border-l-4 border-emerald-400 pl-2.5 backdrop-blur-md"
-                      : "text-emerald-100/70 hover:bg-white/10 hover:text-white font-medium"
+                      ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-sm shadow-emerald-950/50 backdrop-blur-md"
+                      : "text-slate-400 hover:bg-white/5 hover:text-slate-100 hover:border hover:border-white/5"
                   }`}
                 >
-                  <span className={`${active ? "text-emerald-400" : "text-emerald-200/70 group-hover:text-emerald-100"} flex-shrink-0 transition-colors`}>
+                  <span className={`${active ? "text-emerald-400" : "text-slate-400 group-hover:text-slate-200"} flex-shrink-0 transition-colors`}>
                     {item.icon}
                   </span>
                   
                   {/* Expanded text */}
                   {!isCollapsed && (
-                    <span className="ml-3 truncate tracking-wide">{item.name}</span>
+                    <span className="ml-3 truncate tracking-normal font-sans">{item.name}</span>
                   )}
                 </Link>
 
                 {/* Tooltip for Collapsed Sidebar */}
                 {isCollapsed && (
-                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#090D16] text-white text-xs font-semibold rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap border border-emerald-500/20 pointer-events-none">
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-slate-900/95 text-white text-xs font-medium rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap border border-slate-700/60 backdrop-blur-xl pointer-events-none">
                     {item.name}
-                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#090D16]"></div>
+                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-slate-900"></div>
                   </div>
                 )}
               </li>

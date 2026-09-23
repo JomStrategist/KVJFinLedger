@@ -14,6 +14,7 @@ import {
   getStatementGroupsAction,
   getAccountNaturesAction,
 } from "./actions";
+import { INDIAN_STATES, extractGstinInfo } from "@/lib/constants/indian-states";
 
 const DEFAULT_FINANCIAL_TYPES = [
   { code: "EXPENSE", name: "Expense", financialStatement: "Profit & Loss", normalBalance: "Debit" },
@@ -74,7 +75,6 @@ export function AddMasterRecordModal({
   const [customerName, setCustomerName] = useState(initialData?.legalName || initialData?.tradeName || "");
   const [customerGstin, setCustomerGstin] = useState(initialData?.gstin || "");
   const [customerType, setCustomerType] = useState(initialData?.customerType || "B2B");
-  const [gstRegStatus, setGstRegStatus] = useState(initialData?.gstRegistrationStatus || (initialData?.gstin ? "REGISTERED" : "UNREGISTERED"));
   const [customerPan, setCustomerPan] = useState(initialData?.pan || "");
   const [customerEmail, setCustomerEmail] = useState(initialData?.email || "");
   const [customerPhone, setCustomerPhone] = useState(initialData?.phone || "");
@@ -87,7 +87,6 @@ export function AddMasterRecordModal({
   // Vendor State
   const [vendorName, setVendorName] = useState(initialData?.name || "");
   const [vendorType, setVendorType] = useState(initialData?.vendorType || "B2B");
-  const [vendorGstRegStatus, setVendorGstRegStatus] = useState(initialData?.gstRegistrationStatus || (initialData?.gstin ? "REGISTERED" : "UNREGISTERED"));
   const [vendorGstin, setVendorGstin] = useState(initialData?.gstin || "");
   const [vendorPan, setVendorPan] = useState(initialData?.pan || "");
   const [vendorEmail, setVendorEmail] = useState(initialData?.email || "");
@@ -95,6 +94,7 @@ export function AddMasterRecordModal({
   const [vendorContact, setVendorContact] = useState(initialData?.contactPerson || "");
   const [vendorAddress, setVendorAddress] = useState(initialData?.address || "");
   const [vendorState, setVendorState] = useState(initialData?.state || "Kerala");
+  const [vendorCountry, setVendorCountry] = useState(initialData?.country || "India");
 
   // Product State
   const [productName, setProductName] = useState(initialData?.name || "");
@@ -122,71 +122,61 @@ export function AddMasterRecordModal({
     });
   }, []);
 
-function generateAutoCategoryCode(name: string, type: string) {
-  if (!name.trim()) return "";
-  const prefixMap: Record<string, string> = {
-    EXPENSE: "EXP",
-    INCOME: "INC",
-    ASSET: "AST",
-    LIABILITY: "LIAB",
-    EQUITY: "EQ",
-  };
-  const prefix = prefixMap[type.toUpperCase()] || "CAT";
-  const cleaned = name.replace(/[^a-zA-Z0-9\s]/g, "").trim();
-  const words = cleaned.split(/\s+/).filter(Boolean);
-  let abbr = "";
-  if (words.length >= 2) {
-    abbr = words.map((w) => w[0]).join("").slice(0, 4).toUpperCase();
-  } else if (words.length === 1) {
-    abbr = words[0].slice(0, 3).toUpperCase();
-  }
-  abbr = abbr || "GEN";
-  return `${prefix}-${abbr}-001`;
-}
-
-// Category State
-const [categoryList, setCategoryList] = useState<any[]>(categories);
-const [categoryName, setCategoryName] = useState(initialData?.name || "");
-const [categoryCode, setCategoryCode] = useState(initialData?.code || "");
-const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(Boolean(initialData?.code));
-const [parentCategoryId, setParentCategoryId] = useState(initialData?.parentId || "");
-const [financialType, setFinancialType] = useState(initialData?.financialType || "EXPENSE");
-
-// Quick-Add Parent Category state
-const [isCreatingParent, setIsCreatingParent] = useState(false);
-const [newParentName, setNewParentName] = useState("");
-const [isPendingParent, setIsPendingParent] = useState(false);
-const [parentError, setParentError] = useState<string | null>(null);
-
-const handleCreateParent = async () => {
-  if (!newParentName.trim()) return;
-  setIsPendingParent(true);
-  setParentError(null);
-  try {
-    const res = await createCategoryMasterAction({
-      name: newParentName.trim(),
-      financialType,
-      statementGroup,
-      accountNature,
-      parentId: null,
-      isActive: true,
-    });
-    if (res.success && res.data) {
-      setCategoryList((prev) => [...prev, res.data]);
-      setParentCategoryId(res.data.id);
-      setIsCreatingParent(false);
-      setNewParentName("");
-    } else {
-      setParentError(res.error || "Failed to create parent category.");
+  const handleCustomerGstinChange = (value: string) => {
+    const uppercaseVal = value.toUpperCase().trim();
+    setCustomerGstin(uppercaseVal);
+    
+    if (uppercaseVal.length >= 2) {
+      const info = extractGstinInfo(uppercaseVal);
+      if (info.pan && !customerPan) {
+        setCustomerPan(info.pan);
+      }
+      if (info.stateName && customerCountry === "India") {
+        setCustomerState(info.stateName);
+        setPlaceOfSupply(info.stateName);
+      }
     }
-  } catch (err: any) {
-    setParentError(err.message || "Failed to create parent category.");
-  } finally {
-    setIsPendingParent(false);
-  }
-};
+  };
 
-  // Dynamically filtered Statement Groups & Account Natures based on selected Financial Type
+  const handleVendorGstinChange = (value: string) => {
+    const uppercaseVal = value.toUpperCase().trim();
+    setVendorGstin(uppercaseVal);
+    
+    if (uppercaseVal.length >= 2) {
+      const info = extractGstinInfo(uppercaseVal);
+      if (info.pan && !vendorPan) {
+        setVendorPan(info.pan);
+      }
+      if (info.stateName && vendorCountry === "India") {
+        setVendorState(info.stateName);
+      }
+    }
+  };
+
+  const handleCustomerStateChange = (newState: string) => {
+    setCustomerState(newState);
+    setPlaceOfSupply(newState);
+  };
+
+  // Category State
+  const [categoryList, setCategoryList] = useState<any[]>(categories);
+  const [categoryName, setCategoryName] = useState(initialData?.name || "");
+  const [categoryCode, setCategoryCode] = useState(initialData?.code || "");
+  const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(Boolean(initialData?.code));
+  const [parentCategoryId, setParentCategoryId] = useState(initialData?.parentId || "");
+  const [financialType, setFinancialType] = useState(initialData?.financialType || "EXPENSE");
+
+  const generateAutoCategoryCode = (name: string, type: string) => {
+    const prefix = type === "INCOME" ? "INC" : type === "ASSET" ? "AST" : type === "LIABILITY" ? "LIA" : "EXP";
+    const slug = name
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "_")
+      .slice(0, 8);
+    return slug ? `${prefix}_${slug}` : prefix;
+  };
+
+  // Filtered Statement Groups & Account Natures
   const filteredGroups = dbGroups.filter(
     (g) => (g.financialType?.code || g.financialTypeCode || "").toUpperCase() === financialType.toUpperCase()
   );
@@ -231,12 +221,13 @@ const handleCreateParent = async () => {
       const isEdit = Boolean(initialData?.id);
 
       if (activeType === "customer") {
+        const isB2B = customerType === "B2B" || customerType === "B2B_EXPORT";
         const payload = {
           legalName: customerName,
           tradeName: customerName,
           customerType,
-          gstRegistrationStatus: gstRegStatus,
-          gstin: gstRegStatus === "REGISTERED" ? customerGstin || null : null,
+          gstRegistrationStatus: isB2B && customerGstin ? "REGISTERED" : "UNREGISTERED",
+          gstin: isB2B && customerGstin ? customerGstin : null,
           pan: customerPan || null,
           email: customerEmail || null,
           phone: customerPhone || null,
@@ -251,17 +242,19 @@ const handleCreateParent = async () => {
           ? await updateCustomerMasterAction(initialData.id, payload)
           : await createCustomerMasterAction(payload);
       } else if (activeType === "vendor") {
+        const isB2B = vendorType === "B2B";
         const payload = {
           name: vendorName,
           vendorType,
-          gstRegistrationStatus: vendorGstRegStatus,
-          gstin: vendorGstRegStatus === "REGISTERED" ? vendorGstin || null : null,
+          gstRegistrationStatus: isB2B && vendorGstin ? "REGISTERED" : "UNREGISTERED",
+          gstin: isB2B && vendorGstin ? vendorGstin : null,
           pan: vendorPan || null,
           email: vendorEmail || null,
           phone: vendorPhone || null,
           contactPerson: vendorContact || null,
           address: vendorAddress || null,
           state: vendorState,
+          country: vendorCountry || "India",
           isActive: true,
         };
         res = isEdit
@@ -310,16 +303,24 @@ const handleCreateParent = async () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-xl border border-[#D9E3DC] overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-md">
+      <div className="bg-white/95 backdrop-blur-2xl w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-[#D9E3DC] flex justify-between items-center bg-white">
-          <h2 className="text-xl font-bold text-[#17211B]">
-            {initialData ? "Edit Record" : "Add Record"}
-          </h2>
+        <div className="px-6 py-4.5 border-b border-slate-200/70 flex justify-between items-center bg-white/70">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-xl bg-emerald-500/10 text-emerald-700 flex items-center justify-center font-bold text-sm">
+              ✨
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                {initialData ? "Edit Master Record" : "Add Master Record"}
+              </h2>
+              <p className="text-[11px] text-slate-500 font-medium">Configure customer, vendor, service, or accounting heads</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="text-[#68756C] hover:text-[#17211B] p-2 rounded-lg hover:bg-[#F4F7F3] transition-colors"
+            className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-colors"
           >
             ✕
           </button>
@@ -327,24 +328,25 @@ const handleCreateParent = async () => {
 
         {/* Tab Type Selector */}
         {!initialData && (
-          <div className="px-6 pt-4 flex gap-2 border-b border-[#D9E3DC] bg-[#F6FAF7]">
+          <div className="px-6 pt-3 flex gap-2 border-b border-slate-200/70 bg-slate-50/50">
             {[
-              { id: "customer", label: "Customer" },
-              { id: "vendor", label: "Vendor" },
-              { id: "product", label: "Product & Service" },
-              { id: "category", label: "Category" },
+              { id: "customer", label: "Customer", icon: "👤" },
+              { id: "vendor", label: "Vendor", icon: "🏢" },
+              { id: "product", label: "Product & Service", icon: "📦" },
+              { id: "category", label: "Category", icon: "🏷️" },
             ].map((t) => (
               <button
                 key={t.id}
                 type="button"
                 onClick={() => setActiveType(t.id)}
-                className={`pb-3 px-3 text-xs font-bold transition-all border-b-2 ${
+                className={`pb-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 ${
                   activeType === t.id
-                    ? "border-[#177B55] text-[#177B55]"
-                    : "border-transparent text-[#68756C] hover:text-[#17211B]"
+                    ? "border-emerald-600 text-emerald-700"
+                    : "border-transparent text-slate-500 hover:text-slate-900"
                 }`}
               >
-                {t.label}
+                <span>{t.icon}</span>
+                <span>{t.label}</span>
               </button>
             ))}
           </div>
@@ -353,15 +355,16 @@ const handleCreateParent = async () => {
         {/* Modal Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-medium">
-              {error}
+            <div className="p-3.5 bg-rose-50 border border-rose-200/80 rounded-2xl text-rose-700 text-xs font-semibold flex items-center gap-2">
+              <span>⚠️</span>
+              <span>{error}</span>
             </div>
           )}
 
           {activeType === "customer" && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Customer Legal / Trade Name *
                 </label>
                 <input
@@ -370,152 +373,184 @@ const handleCreateParent = async () => {
                   placeholder="e.g. Exodesoft Technologies Pvt Ltd"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">Address</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Address</label>
                 <input
                   type="text"
                   placeholder="Street, City, Pincode"
                   value={customerAddress}
                   onChange={(e) => setCustomerAddress(e.target.value)}
-                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Customer Type & Registration Logic */}
+              <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    Customer Type *
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Customer Classification *
                   </label>
                   <select
                     value={customerType}
                     onChange={(e) => setCustomerType(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-semibold text-slate-800"
                   >
-                    <option value="B2B">B2B</option>
-                    <option value="B2C">Domestic B2C</option>
-                    <option value="B2B_EXPORT">B2B Export</option>
+                    <option value="B2B">Registered Business (B2B)</option>
+                    <option value="B2C">Consumer / Unregistered (B2C)</option>
+                    <option value="B2B_EXPORT">Export / Overseas Client (B2B)</option>
                   </select>
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    GST Registration Status
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    {customerType === "B2C" ? "GST Status" : "GSTIN *"}
                   </label>
-                  <select
-                    value={gstRegStatus}
-                    onChange={(e) => setGstRegStatus(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  >
-                    <option value="REGISTERED">Registered</option>
-                    <option value="UNREGISTERED">Unregistered</option>
-                  </select>
+                  {customerType === "B2C" ? (
+                    <div className="w-full h-10 border border-slate-200 rounded-xl px-3.5 flex items-center bg-slate-50 text-slate-400 text-xs font-semibold">
+                      Unregistered (B2C Consumer)
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 32AAAAA0000A1Z5"
+                      value={customerGstin}
+                      onChange={(e) => handleCustomerGstinChange(e.target.value)}
+                      className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 uppercase font-mono font-bold tracking-wider"
+                    />
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                {gstRegStatus === "REGISTERED" ? (
-                  <div>
-                    <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                      GSTIN *
-                    </label>
-                    <input
-                      type="text"
-                      required={gstRegStatus === "REGISTERED"}
-                      placeholder="e.g. 32ABCDE1234F1Z5"
-                      value={customerGstin}
-                      onChange={(e) => setCustomerGstin(e.target.value.toUpperCase())}
-                      className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                      GSTIN (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Unregistered"
-                      value={customerGstin}
-                      onChange={(e) => setCustomerGstin(e.target.value.toUpperCase())}
-                      className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
-                    />
-                  </div>
-                )}
+              {/* PAN & Country */}
+              <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">
-                    PAN No. (Optional)
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    PAN Number {customerType !== "B2C" && "(Auto-extracted from GSTIN)"}
                   </label>
                   <input
                     type="text"
                     placeholder="e.g. ABCDE1234F"
                     value={customerPan}
                     onChange={(e) => setCustomerPan(e.target.value.toUpperCase())}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">State *</label>
-                  <input
-                    type="text"
-                    required
-                    value={customerState}
-                    onChange={(e) => setCustomerState(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 uppercase font-mono font-bold tracking-wider"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Place of Supply</label>
-                  <input
-                    type="text"
-                    value={placeOfSupply}
-                    onChange={(e) => setPlaceOfSupply(e.target.value)}
-                    placeholder="Kerala"
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Country</label>
-                  <input
-                    type="text"
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Country *</label>
+                  <select
                     value={customerCountry}
-                    onChange={(e) => setCustomerCountry(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  />
+                    onChange={(e) => {
+                      const newCountry = e.target.value;
+                      setCustomerCountry(newCountry);
+                      if (newCountry !== "India") {
+                        setCustomerState("");
+                        setPlaceOfSupply("96 - Outside India / Export");
+                      } else {
+                        setCustomerState("Kerala");
+                        setPlaceOfSupply("Kerala");
+                      }
+                    }}
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-semibold text-slate-800"
+                  >
+                    <option value="India">India</option>
+                    <option value="United Arab Emirates">United Arab Emirates (UAE)</option>
+                    <option value="United States">United States (USA)</option>
+                    <option value="United Kingdom">United Kingdom (UK)</option>
+                    <option value="Singapore">Singapore</option>
+                    <option value="Germany">Germany</option>
+                    <option value="Australia">Australia</option>
+                    <option value="Other">Other / International</option>
+                  </select>
                 </div>
               </div>
 
+              {/* State & Place of Supply */}
+              <div className="grid grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">State *</label>
+                  {customerCountry === "India" ? (
+                    <select
+                      value={customerState}
+                      onChange={(e) => handleCustomerStateChange(e.target.value)}
+                      className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-semibold text-slate-800"
+                    >
+                      {INDIAN_STATES.filter((s) => s.code !== "96").map((st) => (
+                        <option key={st.code} value={st.name}>
+                          {st.code} - {st.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="e.g. Dubai, California"
+                      value={customerState}
+                      onChange={(e) => setCustomerState(e.target.value)}
+                      className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Place of Supply (GST Routing)
+                  </label>
+                  {customerCountry === "India" ? (
+                    <select
+                      value={placeOfSupply}
+                      onChange={(e) => setPlaceOfSupply(e.target.value)}
+                      className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-semibold text-slate-800"
+                    >
+                      {INDIAN_STATES.map((st) => (
+                        <option key={st.code} value={st.name}>
+                          {st.code} - {st.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={placeOfSupply}
+                      onChange={(e) => setPlaceOfSupply(e.target.value)}
+                      placeholder="Outside India / Export"
+                      className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Contact Details */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Contact Person</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Contact Person</label>
                   <input
                     type="text"
                     value={customerContact}
                     onChange={(e) => setCustomerContact(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Email</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Email</label>
                   <input
                     type="email"
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Phone</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Phone</label>
                   <input
                     type="text"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                   />
                 </div>
               </div>
@@ -523,9 +558,9 @@ const handleCreateParent = async () => {
           )}
 
           {activeType === "vendor" && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Vendor Name *
                 </label>
                 <input
@@ -534,90 +569,82 @@ const handleCreateParent = async () => {
                   placeholder="e.g. ABC Vendor Services"
                   value={vendorName}
                   onChange={(e) => setVendorName(e.target.value)}
-                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">Address</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Address</label>
                 <input
                   type="text"
                   placeholder="Street, City, Pincode"
                   value={vendorAddress}
                   onChange={(e) => setVendorAddress(e.target.value)}
-                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Vendor Type & GSTIN */}
+              <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Vendor Type</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Vendor Type *</label>
                   <select
                     value={vendorType}
                     onChange={(e) => setVendorType(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-semibold text-slate-800"
                   >
-                    <option value="B2B">B2B Vendor</option>
-                    <option value="B2C">B2C Vendor</option>
+                    <option value="B2B">Registered Business (B2B)</option>
+                    <option value="B2C">Unregistered / Service Provider (B2C)</option>
                   </select>
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">GST Registration</label>
-                  <select
-                    value={vendorGstRegStatus}
-                    onChange={(e) => setVendorGstRegStatus(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                  >
-                    <option value="REGISTERED">Registered</option>
-                    <option value="UNREGISTERED">Unregistered</option>
-                  </select>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    {vendorType === "B2C" ? "GST Status" : "GSTIN *"}
+                  </label>
+                  {vendorType === "B2C" ? (
+                    <div className="w-full h-10 border border-slate-200 rounded-xl px-3.5 flex items-center bg-slate-50 text-slate-400 text-xs font-semibold">
+                      Unregistered Vendor
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 32VENDOR1234A1Z5"
+                      value={vendorGstin}
+                      onChange={(e) => handleVendorGstinChange(e.target.value)}
+                      className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 uppercase font-mono font-bold tracking-wider"
+                    />
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                {vendorGstRegStatus === "REGISTERED" ? (
-                  <div>
-                    <label className="block text-xs font-semibold text-[#68756C] mb-1">GSTIN</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 32VENDOR1234A1Z5"
-                      value={vendorGstin}
-                      onChange={(e) => setVendorGstin(e.target.value.toUpperCase())}
-                      className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-xs font-semibold text-[#68756C] mb-1">GSTIN (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="Unregistered"
-                      value={vendorGstin}
-                      onChange={(e) => setVendorGstin(e.target.value.toUpperCase())}
-                      className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
-                    />
-                  </div>
-                )}
+              {/* PAN & State */}
+              <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">PAN No. (Optional)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">PAN Number</label>
                   <input
                     type="text"
                     placeholder="e.g. VENDOR1234A"
                     value={vendorPan}
                     onChange={(e) => setVendorPan(e.target.value.toUpperCase())}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] uppercase"
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 uppercase font-mono font-bold tracking-wider"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#68756C] mb-1">State</label>
-                <input
-                  type="text"
-                  value={vendorState}
-                  onChange={(e) => setVendorState(e.target.value)}
-                  className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-                />
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">State *</label>
+                  <select
+                    value={vendorState}
+                    onChange={(e) => setVendorState(e.target.value)}
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-semibold text-slate-800"
+                  >
+                    {INDIAN_STATES.filter((s) => s.code !== "96").map((st) => (
+                      <option key={st.code} value={st.name}>
+                        {st.code} - {st.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">

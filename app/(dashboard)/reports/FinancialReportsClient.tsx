@@ -603,13 +603,21 @@ export function FinancialReportsClient({
   const totalCurrentYearDep = useMemo(() => depSchedule.reduce((s, d) => s + d.currentYearDep, 0), [depSchedule]);
   const totalNetBlock = useMemo(() => depSchedule.reduce((s, d) => s + d.closingWdv, 0), [depSchedule]);
 
-  // ── 5. P&L SUMMARY (Schedule III Part II) ─────────────────────────────────
+  // ── 5. P&L SUMMARY (Schedule III Part II - Indian Corporate Standards) ────────
+  const totalOpexExDeprFinance = Math.round((totalEmployeeExp + totalOtherOpex) * 100) / 100;
+  const ebitda = Math.round((totalRevenue - totalOpexExDeprFinance) * 100) / 100;
+  const ebitdaMargin = totalRevenue > 0 ? (ebitda / totalRevenue) * 100 : 0;
+
+  const ebit = Math.round((ebitda - totalCurrentYearDep) * 100) / 100;
+  const ebitMargin = totalRevenue > 0 ? (ebit / totalRevenue) * 100 : 0;
+
   const totalOperatingExpenses = Math.round((totalEmployeeExp + totalFinanceExp + totalCurrentYearDep + totalOtherOpex) * 100) / 100;
-  const pbt = Math.round((totalRevenue - totalOperatingExpenses) * 100) / 100;
+  const pbt = Math.round((ebit - totalFinanceExp) * 100) / 100;
   const taxExpense = pbt > 0 ? Math.round(pbt * (effectiveTaxRate / 100) * 100) / 100 : 0;
   const pat = Math.round((pbt - taxExpense) * 100) / 100;
   const grossMargin = totalRevenue > 0 ? ((totalRevenue - totalOtherOpex) / totalRevenue) * 100 : 0;
-  const netMargin = totalRevenue > 0 ? (pat / totalRevenue) * 100 : 0;
+  const patMargin = totalRevenue > 0 ? (pat / totalRevenue) * 100 : 0;
+  const netMargin = patMargin;
 
   // ── 6. DYNAMIC TAX SLABS & STATUTORY GST COMPUTATION ───────────────────────
   // Under Section 170 of CGST Act, Total Output GST is derived directly from valid sales invoices
@@ -1376,28 +1384,40 @@ export function FinancialReportsClient({
 
             {/* KPI Cards (Hidden when printing) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:hidden">
-              <KpiCard label="Revenue from Operations" value={formatCurrency(totalRevenue)} color="text-[#166534]" sub={`${validInvoices.length} Invoices Billed`} icon="📈" />
-              <KpiCard label="Operating Expenses" value={formatCurrency(totalOperatingExpenses)} color="text-[#B45309]" sub={`${validExpenses.length} Expense Disbursements`} icon="💳" />
               <KpiCard
-                label="Profit Before Tax (PBT)"
-                value={formatCurrency(pbt)}
-                color={pbt >= 0 ? "text-[#166534]" : "text-[#B94B4B]"}
-                sub={pbt >= 0 ? "Operating Surplus" : "Operating Deficit"}
+                label="Revenue from Operations"
+                value={formatCurrency(totalRevenue)}
+                color="text-emerald-700"
+                sub={`${validInvoices.length} Invoices Billed`}
+                icon="📈"
+              />
+              <KpiCard
+                label="EBITDA"
+                value={formatCurrency(ebitda)}
+                color={ebitda >= 0 ? "text-emerald-700" : "text-rose-600"}
+                sub={`EBITDA Margin: ${ebitdaMargin.toFixed(1)}%`}
+                icon="⚡"
+              />
+              <KpiCard
+                label="EBIT (Operating Profit)"
+                value={formatCurrency(ebit)}
+                color={ebit >= 0 ? "text-emerald-700" : "text-rose-600"}
+                sub={`EBIT Margin: ${ebitMargin.toFixed(1)}%`}
                 icon="⚖️"
               />
               <KpiCard
-                label="Net Profit Margin"
-                value={`${netMargin.toFixed(1)}%`}
-                sub={`Gross Margin: ${grossMargin.toFixed(1)}%`}
-                color={netMargin >= 0 ? "text-[#166534]" : "text-[#B94B4B]"}
-                icon="📊"
+                label="PAT (Net Profit After Tax)"
+                value={formatCurrency(pat)}
+                color={pat >= 0 ? "text-emerald-700" : "text-rose-600"}
+                sub={`PAT Margin: ${patMargin.toFixed(1)}%`}
+                icon="🏛️"
               />
             </div>
 
-            {/* Schedule III P&L Ledger Container */}
+            {/* Schedule III P&L Vertical Statement Container */}
             <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
               <div className="bg-[#F8FAF8] px-4 py-3 border-b border-[#DCE4DE] flex justify-between items-center text-[11px] font-extrabold text-[#374151] uppercase tracking-wider">
-                <span>Particulars / Nature of Line Item</span>
+                <span>Particulars / Nature of Line Item (Schedule III Part II)</span>
                 <span>Amount for Period (₹)</span>
               </div>
 
@@ -1420,17 +1440,17 @@ export function FinancialReportsClient({
                   <SubtotalRow label="Total Revenue from Operations (I)" amount={totalRevenue} green bg="bg-[#F0FDF4]/70" />
                 </div>
 
-                {/* II. Expenses */}
+                {/* II. Operating Expenses (Excluding D&A and Finance Costs) */}
                 <div className="p-3 sm:p-4 space-y-3">
                   <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider flex justify-between items-center">
-                    <span>II. EXPENSES</span>
+                    <span>II. OPERATING EXPENSES (COGS & DIRECT/INDIRECT OPEX)</span>
                     <span className="text-[10px] text-[#6B7280] font-mono font-normal">Schedule 2</span>
                   </div>
 
                   {/* (a) Employee Benefit Expense */}
                   <div className="space-y-1">
                     <div className="text-xs font-bold text-[#374151] px-2 flex justify-between">
-                      <span>(a) Employee Benefit Expense</span>
+                      <span>(a) Employee Benefit Expense (Salaries, Allowances & Staff Welfare)</span>
                       <span className="font-mono tabular-nums font-bold text-[#374151]">{formatCurrency(totalEmployeeExp)}</span>
                     </div>
                     {employeeExpenses.length > 0 ? (
@@ -1442,36 +1462,10 @@ export function FinancialReportsClient({
                     )}
                   </div>
 
-                  {/* (b) Finance Costs */}
+                  {/* (b) Other Operating Expenses */}
                   <div className="space-y-1">
                     <div className="text-xs font-bold text-[#374151] px-2 flex justify-between">
-                      <span>(b) Finance Costs &amp; Bank Charges</span>
-                      <span className="font-mono tabular-nums font-bold text-[#374151]">{formatCurrency(totalFinanceExp)}</span>
-                    </div>
-                    {financeExpenses.length > 0 ? (
-                      financeExpenses.map((exp) => (
-                        <LedgerRow key={exp.id} label={exp.category?.name ?? "Finance Charge"} amount={Number(exp.netAmount ?? 0)} indent={2} />
-                      ))
-                    ) : (
-                      <div className="text-[11px] text-[#9CA3AF] italic px-6 py-1">No finance charges or interest expense.</div>
-                    )}
-                  </div>
-
-                  {/* (c) Depreciation & Amortisation */}
-                  <div className="space-y-1">
-                    <div className="text-xs font-bold text-[#374151] px-2 flex justify-between items-center">
-                      <span>
-                        (c) Depreciation &amp; Amortisation Expense
-                        <span className="text-[10px] font-normal text-[#6B7280] ml-2">({depMethod} Method)</span>
-                      </span>
-                      <span className="font-mono tabular-nums font-bold text-[#374151]">{formatCurrency(totalCurrentYearDep)}</span>
-                    </div>
-                  </div>
-
-                  {/* (d) Other Operating Expenses */}
-                  <div className="space-y-1">
-                    <div className="text-xs font-bold text-[#374151] px-2 flex justify-between">
-                      <span>(d) Other Operating Expenses</span>
+                      <span>(b) Other Operating & Administrative Expenses</span>
                       <span className="font-mono tabular-nums font-bold text-[#374151]">{formatCurrency(totalOtherOpex)}</span>
                     </div>
                     {otherOpexByCategory.length > 0 ? (
@@ -1483,24 +1477,72 @@ export function FinancialReportsClient({
                     )}
                   </div>
 
-                  <SubtotalRow label="Total Operating Expenses (II)" amount={totalOperatingExpenses} red bg="bg-[#FEF2F2]/60" />
+                  <SubtotalRow label="Total Operating Costs (excluding D&A & Finance)" amount={totalOpexExDeprFinance} red bg="bg-[#FEF2F2]/60" />
                 </div>
 
-                {/* III. Profit Before Tax & Net Profit Transferred */}
+                {/* III. EBITDA */}
+                <div className="p-3 sm:p-4 bg-emerald-50/40 space-y-1 border-y border-emerald-200/60">
+                  <div className="flex justify-between items-center py-2 px-2 text-xs sm:text-sm font-black text-emerald-900 uppercase">
+                    <div>
+                      <span>III. EARNINGS BEFORE INTEREST, TAX, DEPRECIATION & AMORTISATION (EBITDA) [I - II]</span>
+                      <span className="text-[11px] font-bold text-emerald-700 ml-2">({ebitdaMargin.toFixed(1)}% Margin)</span>
+                    </div>
+                    <span className="font-mono font-black text-sm sm:text-base text-emerald-800">{formatCurrency(ebitda)}</span>
+                  </div>
+                </div>
+
+                {/* IV. Depreciation & Amortisation */}
+                <div className="p-3 sm:p-4 space-y-2">
+                  <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider flex justify-between items-center">
+                    <span>IV. DEPRECIATION & AMORTISATION EXPENSE</span>
+                    <span className="text-[10px] text-[#6B7280] font-mono font-normal">Schedule 3</span>
+                  </div>
+                  <div className="text-xs font-semibold text-[#374151] px-2 flex justify-between items-center">
+                    <span>
+                      Depreciation on Fixed Assets & Equipment ({depMethod} as per Schedule II)
+                    </span>
+                    <span className="font-mono tabular-nums font-bold text-slate-800">{formatCurrency(totalCurrentYearDep)}</span>
+                  </div>
+                </div>
+
+                {/* V. EBIT (Operating Profit) */}
+                <div className="p-3 sm:p-4 bg-slate-50 space-y-1 border-y border-slate-200">
+                  <div className="flex justify-between items-center py-2 px-2 text-xs sm:text-sm font-black text-slate-900 uppercase">
+                    <div>
+                      <span>V. EARNINGS BEFORE INTEREST & TAX (EBIT / OPERATING PROFIT) [III - IV]</span>
+                      <span className="text-[11px] font-bold text-slate-600 ml-2">({ebitMargin.toFixed(1)}% Margin)</span>
+                    </div>
+                    <span className="font-mono font-black text-sm sm:text-base text-slate-900">{formatCurrency(ebit)}</span>
+                  </div>
+                </div>
+
+                {/* VI. Finance Costs */}
+                <div className="p-3 sm:p-4 space-y-2">
+                  <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider flex justify-between items-center">
+                    <span>VI. FINANCE COSTS & BANK CHARGES</span>
+                    <span className="text-[10px] text-[#6B7280] font-mono font-normal">Schedule 4</span>
+                  </div>
+                  <div className="text-xs font-semibold text-[#374151] px-2 flex justify-between items-center">
+                    <span>Interest & Bank Processing Fees</span>
+                    <span className="font-mono tabular-nums font-bold text-slate-800">{formatCurrency(totalFinanceExp)}</span>
+                  </div>
+                </div>
+
+                {/* VII. Profit Before Tax (PBT), Tax & PAT */}
                 <div className="p-3 sm:p-4 space-y-2 bg-[#FAFBF9]">
                   <LedgerRow
-                    label="III. PROFIT BEFORE EXCEPTIONAL ITEMS & TAX (I - II)"
+                    label="VII. PROFIT BEFORE TAX (PBT) [V - VI]"
                     amount={pbt}
                     bold
                     green={pbt >= 0}
                     red={pbt < 0}
                   />
                   <div className="flex justify-between py-2 px-3 text-xs text-[#6B7280] italic">
-                    <span>IV. Tax Expense / Provisions ({effectiveTaxRate}% Corporate Tax Rate)</span>
+                    <span>VIII. Tax Expense / Provisions ({effectiveTaxRate}% Corporate Tax Rate)</span>
                     <span className="font-mono font-medium">{formatCurrency(taxExpense)}</span>
                   </div>
                   <GrandTotalRow
-                    label="V. NET PROFIT TRANSFERRED TO RESERVES & SURPLUS (PAT)"
+                    label="IX. PROFIT AFTER TAX (PAT) / NET SURPLUS FOR THE YEAR"
                     amount={pat}
                     highlight={pat >= 0 ? "emerald" : "amber"}
                   />

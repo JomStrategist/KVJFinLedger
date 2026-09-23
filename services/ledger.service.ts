@@ -18,6 +18,9 @@ export interface AccountDescriptor {
   normalBalance: "DEBIT" | "CREDIT";
   gstin?: string;
   pan?: string;
+  currentBalance?: number;
+  currentBalanceType?: "Dr" | "Cr";
+  transactionCount?: number;
 }
 
 export interface LedgerEntry {
@@ -148,6 +151,90 @@ export class LedgerService {
     // 7. Capital & Fixed Asset Accounts
     accounts.push({ id: "asset_fixed", name: "Fixed Assets & Equipment", type: "FIXED_ASSET", group: "Fixed Assets", normalBalance: "DEBIT" });
     accounts.push({ id: "eq_capital", name: "Owner Capital Account", type: "CAPITAL", group: "Capital & Equity", normalBalance: "CREDIT" });
+    accounts.push({ id: "eq_drawings", name: "Owner Drawings / Personal Withdrawals", type: "CAPITAL", group: "Capital & Equity", normalBalance: "DEBIT" });
+
+    // Fetch quick summary balances for all accounts to power Card View
+    try {
+      const [allInvoices, allPayments, allExpenses, allTransfers] = await Promise.all([
+        prisma.taxInvoice.findMany({
+          where: { status: { in: ["CONFIRMED", "PAID", "PARTIALLY_PAID"] } },
+          select: { id: true, customerId: true, netAmount: true, totalGST: true, totalCGST: true, totalSGST: true, totalIGST: true, tdsAmount: true, items: { select: { incomeCategoryId: true, taxableAmount: true } } }
+        }),
+        prisma.invoicePayment.findMany({
+          select: { paymentAmount: true, taxInvoice: { select: { customerId: true } } }
+        }),
+        prisma.expense.findMany({
+          where: { status: "APPROVED" },
+          select: { id: true, vendorId: true, categoryId: true, netAmount: true, totalInputGST: true, inputCGST: true, inputSGST: true, inputIGST: true, tdsAmount: true, isAsset: true, paymentStatus: true, items: { select: { categoryId: true, taxableAmount: true } } }
+        }),
+        prisma.bankTransfer.findMany({
+          select: { fromAccount: true, toAccount: true, amount: true, description: true }
+        })
+      ]);
+
+      // Calculate balance map
+      const balanceMap: Record<string, { balance: number; count: number }> = {};
+
+      for (const inv of allInvoices) {
+        const cKey = `customer_${inv.customerId}`;
+        if (!balanceMap[cKey]) balanceMap[cKey] = { balance: 0, count: 0 };
+        balanceMap[cKey].balance += Number(inv.netAmount || 0);
+        balanceMap[cKey].count += 1;
+      }
+
+      for (const p of allPayments) {
+        const cKey = `customer_${p.taxInvoice?.customerId}`;
+        if (balanceMap[cKey]) {
+          balanceMap[cKey].balance -= Number(p.paymentAmount || 0);
+          balanceMap[cKey].count += 1;
+        }
+      }
+
+      for (const exp of allExpenses) {
+        if (exp.vendorId) {
+          const vKey = `vendor_${exp.vendorId}`;
+          if (!balanceMap[vKey]) balanceMap[vKey] = { balance: 0, count: 0 };
+          const net = Number(exp.netAmount || 0);
+          balanceMap[vKey].balance += net;
+          if (exp.paymentStatus === "PAID") {
+            balanceMap[vKey].balance -= net;
+          }
+          balanceMap[vKey].count += 1;
+        }
+
+        if (exp.categoryId) {
+          const catKey = `cat_${exp.categoryId}`;
+          if (!balanceMap[catKey]) balanceMap[catKey] = { balance: 0, count: 0 };
+          balanceMap[catKey].balance += Number(exp.netAmount || 0);
+          balanceMap[catKey].count += 1;
+        }
+      }
+
+      for (const t of allTransfers) {
+        if (t.toAccount === "OWNER_DRAWINGS") {
+          const dKey = "eq_drawings";
+          if (!balanceMap[dKey]) balanceMap[dKey] = { balance: 0, count: 0 };
+          balanceMap[dKey].balance += Number(t.amount || 0);
+          balanceMap[dKey].count += 1;
+        }
+      }
+
+      // Assign to accounts
+      for (const acc of accounts) {
+        const b = balanceMap[acc.id];
+        if (b) {
+          acc.currentBalance = Math.abs(b.balance);
+          acc.currentBalanceType = b.balance >= 0 ? (acc.normalBalance === "DEBIT" ? "Dr" : "Cr") : (acc.normalBalance === "DEBIT" ? "Cr" : "Dr");
+          acc.transactionCount = b.count;
+        } else {
+          acc.currentBalance = 0;
+          acc.currentBalanceType = acc.normalBalance === "DEBIT" ? "Dr" : "Cr";
+          acc.transactionCount = 0;
+        }
+      }
+    } catch (e) {
+      console.error("Error computing account card balances:", e);
+    }
 
     return accounts;
   }
@@ -169,6 +256,7 @@ export class LedgerService {
     let invoices: any[] = [];
     let expenses: any[] = [];
     let payments: any[] = [];
+    let bankTransfers: any[] = [];
 
     if (account.type === "CUSTOMER") {
       const custId = account.id.replace("customer_", "");
@@ -491,6 +579,23 @@ export class LedgerService {
             sourceId: exp.id,
           });
         }
+      }
+    } else if (account.id === "eq_drawings") {
+      const drawingsTransfers = await prisma.bankTransfer.findMany({
+        where: { toAccount: "OWNER_DRAWINGS" },
+        orderBy: { date: "asc" }
+      });
+      for (const t of drawingsTransfers) {
+        rawLedgerItems.push({
+          date: new Date(t.date),
+          voucherType: "Drawings Voucher",
+          voucherNo: t.reference || `DRW-${t.id.slice(-4)}`,
+          particulars: `To Bank / Cash (Drawings - ${t.description || "Personal Use"})`,
+          debit: Number(t.amount || 0),
+          credit: 0,
+          sourceType: "BANK_TRANSFER",
+          sourceId: t.id,
+        });
       }
     }
 
