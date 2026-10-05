@@ -97,7 +97,6 @@ const navItems = [
       { name: "Expense Breakdown", href: "/reports?subtab=expense_ops", icon: "📉" },
       { name: "Fixed Assets & Depreciation", href: "/reports?subtab=schedule", icon: "🏢" },
       { name: "Financial Ratios", href: "/reports?subtab=ratios", icon: "📐" },
-      { name: "CA Diagnostic Insights", href: "/reports?subtab=insights", icon: "💡" },
     ],
   },
   {

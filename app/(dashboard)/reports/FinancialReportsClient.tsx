@@ -11,7 +11,6 @@ import {
   ExecutiveOverviewView,
   FinancialRatiosView,
   ComparativeTablesView,
-  CaInsightsView,
   RevenueOpsView,
   ExpenseOpsView,
 } from "./ReportsBiComponents";
@@ -140,8 +139,7 @@ export type SubTab =
   | "schedule"
   | "overview"
   | "ratios"
-  | "comparative"
-  | "insights";
+  | "comparative";
 
 export interface MasterCategoryConfig {
   id: MasterCategory;
@@ -197,7 +195,6 @@ export const MASTER_CATEGORIES: MasterCategoryConfig[] = [
       { id: "overview", label: "Executive BI Overview", icon: "✨" },
       { id: "ratios", label: "Financial Ratios", icon: "📐" },
       { id: "comparative", label: "Horizontal & Vertical", icon: "📑" },
-      { id: "insights", label: "CA Diagnostic Insights", icon: "💡" },
     ],
   },
 ];
@@ -207,7 +204,7 @@ export function getCategoryForSubTab(subTab: string): MasterCategory {
   if (subTab === "gst" || subTab === "tds") return "compliance";
   if (subTab === "receivables" || subTab === "payables" || subTab === "revenue_ops" || subTab === "expense_ops") return "operations";
   if (subTab === "assets" || subTab === "schedule") return "assets";
-  if (subTab === "overview" || subTab === "ratios" || subTab === "comparative" || subTab === "insights") return "bi_ratios";
+  if (subTab === "overview" || subTab === "ratios" || subTab === "comparative") return "bi_ratios";
   return "statements";
 }
 
@@ -535,6 +532,7 @@ export function FinancialReportsClient({
   const [activeSubTab, setActiveSubTab] = useState<SubTab>(() => {
     if (initialSubTab) {
       if (initialSubTab === "assets") return "schedule";
+      if (initialSubTab === "insights") return "overview";
       return initialSubTab as SubTab;
     }
     return "pnl";
@@ -542,7 +540,11 @@ export function FinancialReportsClient({
 
   useEffect(() => {
     if (initialSubTab) {
-      const targetSub = initialSubTab === "assets" ? "schedule" : (initialSubTab as SubTab);
+      const targetSub = initialSubTab === "assets" 
+        ? "schedule" 
+        : initialSubTab === "insights" 
+        ? "overview" 
+        : (initialSubTab as SubTab);
       setActiveSubTab(targetSub);
       setActiveMasterCategory(getCategoryForSubTab(targetSub));
     }
@@ -3038,10 +3040,6 @@ export function FinancialReportsClient({
 
         {activeSubTab === "comparative" && (
           <ComparativeTablesView analysisData={initialAnalysisData} financialYear={fy} />
-        )}
-
-        {activeSubTab === "insights" && (
-          <CaInsightsView analysisData={initialAnalysisData} financialYear={fy} />
         )}
 
         {/* Print-Only Signature Block */}
