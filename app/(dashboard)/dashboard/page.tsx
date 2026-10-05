@@ -118,7 +118,7 @@ export default async function DashboardPage({
       {/* Row 1: Primary Financial KPIs (4 Columns Grid) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* 1. Invoice Revenue */}
-        <div className="glass-card glass-card-hover p-5 rounded-2xl border border-emerald-200/80 shadow-sm space-y-3 relative overflow-hidden group">
+        <div className="glass-card glass-card-hover p-5 rounded-2xl border border-emerald-200/80 shadow-xs space-y-3 relative overflow-hidden group">
           <div className="flex items-center justify-between z-10 relative">
             <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Invoice Revenue</span>
             <div className="p-2.5 rounded-xl bg-emerald-100/90 text-emerald-700 shadow-xs group-hover:scale-105 transition-transform">
@@ -134,26 +134,22 @@ export default async function DashboardPage({
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100 z-10 relative text-xs">
-            <div className="flex items-center gap-1 text-emerald-700 font-extrabold bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-              <span>↑ +12.5%</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100/90 z-10 relative text-xs gap-2">
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/80 whitespace-nowrap shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
               <span>Tax Invoices</span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">Confirmed</span>
             </div>
+            <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap truncate text-right">
+              Confirmed Billings
+            </span>
           </div>
 
-          {/* Background Sparkline Wave */}
-          <div className="absolute right-0 bottom-2 opacity-15 pointer-events-none">
-            <svg className="w-32 h-12 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 100 40">
-              <path strokeWidth="2" d="M0,35 Q25,5 50,20 T100,10" />
-            </svg>
-          </div>
+          {/* Ambient Corner Glow (replaces colliding wave SVG) */}
+          <div className="absolute -right-4 -bottom-4 w-28 h-28 rounded-full bg-emerald-500/5 blur-xl pointer-events-none group-hover:bg-emerald-500/10 transition-all" />
         </div>
 
         {/* 2. Expenses */}
-        <div className="glass-card glass-card-hover p-5 rounded-2xl border border-orange-200/80 shadow-sm space-y-3 relative overflow-hidden group">
+        <div className="glass-card glass-card-hover p-5 rounded-2xl border border-orange-200/80 shadow-xs space-y-3 relative overflow-hidden group">
           <div className="flex items-center justify-between z-10 relative">
             <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Expenses</span>
             <div className="p-2.5 rounded-xl bg-orange-100/90 text-orange-700 shadow-xs group-hover:scale-105 transition-transform">
@@ -169,26 +165,22 @@ export default async function DashboardPage({
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100 z-10 relative text-xs">
-            <div className="flex items-center gap-1 text-orange-700 font-extrabold bg-orange-500/10 px-2 py-0.5 rounded-lg border border-orange-500/20">
-              <span>↑ +8.3%</span>
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100/90 z-10 relative text-xs gap-2">
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-orange-700 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-200/80 whitespace-nowrap shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"></span>
+              <span>Operational</span>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
-              <span>Categorised</span>
-              <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-[10px]">Outflows</span>
-            </div>
+            <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap truncate text-right">
+              Recorded Outflows
+            </span>
           </div>
 
-          {/* Background Sparkline Wave */}
-          <div className="absolute right-0 bottom-2 opacity-15 pointer-events-none">
-            <svg className="w-32 h-12 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 100 40">
-              <path strokeWidth="2" d="M0,25 Q25,35 50,15 T100,5" />
-            </svg>
-          </div>
+          {/* Ambient Corner Glow */}
+          <div className="absolute -right-4 -bottom-4 w-28 h-28 rounded-full bg-orange-500/5 blur-xl pointer-events-none group-hover:bg-orange-500/10 transition-all" />
         </div>
 
         {/* 3. Net Profit */}
-        <div className="glass-card glass-card-hover p-5 rounded-2xl border border-blue-200/80 shadow-sm space-y-3 relative overflow-hidden group">
+        <div className="glass-card glass-card-hover p-5 rounded-2xl border border-blue-200/80 shadow-xs space-y-3 relative overflow-hidden group">
           <div className="flex items-center justify-between z-10 relative">
             <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Net Profit</span>
             <div className="p-2.5 rounded-xl bg-blue-100/90 text-blue-700 shadow-xs group-hover:scale-105 transition-transform">
@@ -204,26 +196,22 @@ export default async function DashboardPage({
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100 z-10 relative text-xs">
-            <div className="flex items-center gap-1 text-emerald-700 font-extrabold bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
-              <span>↑ +14.7%</span>
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100/90 z-10 relative text-xs gap-2">
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200/80 whitespace-nowrap shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+              <span>Operating Margin</span>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
-              <span>Income − Expenses</span>
-              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold text-[10px] font-tabular">{kpis.profitMargin.toFixed(0)}% Margin</span>
-            </div>
+            <span className="text-[11px] font-bold text-blue-800 font-tabular whitespace-nowrap text-right bg-blue-100/80 px-2 py-0.5 rounded-md shrink-0">
+              {kpis.profitMargin.toFixed(1)}%
+            </span>
           </div>
 
-          {/* Background Sparkline Wave */}
-          <div className="absolute right-0 bottom-2 opacity-15 pointer-events-none">
-            <svg className="w-32 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 100 40">
-              <path strokeWidth="2" d="M0,38 Q25,20 50,25 T100,5" />
-            </svg>
-          </div>
+          {/* Ambient Corner Glow */}
+          <div className="absolute -right-4 -bottom-4 w-28 h-28 rounded-full bg-blue-500/5 blur-xl pointer-events-none group-hover:bg-blue-500/10 transition-all" />
         </div>
 
         {/* 4. Receivables */}
-        <div className="glass-card glass-card-hover p-5 rounded-2xl border border-purple-200/80 shadow-sm space-y-3 relative overflow-hidden group">
+        <div className="glass-card glass-card-hover p-5 rounded-2xl border border-purple-200/80 shadow-xs space-y-3 relative overflow-hidden group">
           <div className="flex items-center justify-between z-10 relative">
             <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Receivables</span>
             <div className="p-2.5 rounded-xl bg-purple-100/90 text-purple-700 shadow-xs group-hover:scale-105 transition-transform">
@@ -239,79 +227,84 @@ export default async function DashboardPage({
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100 z-10 relative text-xs">
-            <div className="flex items-center gap-1 text-rose-700 font-extrabold bg-rose-500/10 px-2 py-0.5 rounded-lg border border-rose-500/20">
-              <span>↑ +5.9%</span>
+          <div className="flex items-center justify-between pt-3 border-t border-slate-100/90 z-10 relative text-xs gap-2">
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200/80 whitespace-nowrap shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0"></span>
+              <span>Receivables</span>
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
-              <span>Unpaid Balances</span>
-              <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold text-[10px]">Pending</span>
-            </div>
+            <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap truncate text-right">
+              Unpaid Invoices
+            </span>
           </div>
 
-          {/* Background Sparkline Wave */}
-          <div className="absolute right-0 bottom-2 opacity-15 pointer-events-none">
-            <svg className="w-32 h-12 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 100 40">
-              <path strokeWidth="2" d="M0,20 Q25,35 50,10 T100,28" />
-            </svg>
-          </div>
+          {/* Ambient Corner Glow */}
+          <div className="absolute -right-4 -bottom-4 w-28 h-28 rounded-full bg-purple-500/5 blur-xl pointer-events-none group-hover:bg-purple-500/10 transition-all" />
         </div>
       </div>
 
       {/* Row 2: Secondary Quick Metric Row (3 Columns Grid) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Profit Margin */}
-        <div className="glass-card glass-card-hover p-4.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+        <div className="glass-card glass-card-hover p-4.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shrink-0 text-base">
               🏆
             </div>
-            <div>
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Profit Margin</span>
+            <div className="min-w-0">
+              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">Profit Margin</span>
               <strong className="text-xl font-black font-tabular text-emerald-700 mt-0.5 block tracking-tight">
                 {kpis.profitMargin.toFixed(1)}%
               </strong>
             </div>
           </div>
-          <span className="text-[11px] font-bold text-emerald-800 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full flex items-center gap-1 cursor-pointer hover:bg-emerald-500/20 transition-all">
-            Net Profit Rate <span className="text-xs">›</span>
-          </span>
+          <Link
+            href="/reports?subtab=pnl"
+            className="text-[11px] font-bold text-emerald-800 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full flex items-center gap-1 hover:bg-emerald-500/20 transition-all shrink-0 whitespace-nowrap"
+          >
+            P&amp;L Report <span className="text-xs">→</span>
+          </Link>
         </div>
 
         {/* Active Proformas */}
-        <div className="glass-card glass-card-hover p-4.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 border border-blue-500/20">
+        <div className="glass-card glass-card-hover p-4.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 border border-blue-500/20 shrink-0 text-base">
               📄
             </div>
-            <div>
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Active Proformas</span>
+            <div className="min-w-0">
+              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">Active Proformas</span>
               <strong className="text-xl font-black font-tabular text-blue-900 mt-0.5 block tracking-tight">
                 {kpis.activeProformaCount} {kpis.activeProformaCount === 1 ? "Quote" : "Quotes"}
               </strong>
             </div>
           </div>
-          <span className="text-[11px] font-bold text-blue-800 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full flex items-center gap-1 cursor-pointer hover:bg-blue-500/20 transition-all">
-            Pending Conversion <span className="text-xs">›</span>
-          </span>
+          <Link
+            href="/proforma-invoices"
+            className="text-[11px] font-bold text-blue-800 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full flex items-center gap-1 hover:bg-blue-500/20 transition-all shrink-0 whitespace-nowrap"
+          >
+            Quotes <span className="text-xs">→</span>
+          </Link>
         </div>
 
         {/* Proforma Value */}
-        <div className="glass-card glass-card-hover p-4.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-600 border border-indigo-500/20">
+        <div className="glass-card glass-card-hover p-4.5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 shrink-0 text-base">
               🪙
             </div>
-            <div>
-              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Proforma Value</span>
-              <strong className="text-xl font-black font-tabular text-indigo-900 mt-0.5 block tracking-tight">
+            <div className="min-w-0">
+              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block truncate">Proforma Value</span>
+              <strong className="text-xl font-black font-tabular text-indigo-900 mt-0.5 block tracking-tight truncate">
                 {formatCurrency(kpis.activeProformaValue)}
               </strong>
             </div>
           </div>
-          <span className="text-[11px] font-bold text-indigo-800 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full flex items-center gap-1 cursor-pointer hover:bg-indigo-500/20 transition-all">
-            Pipeline Total <span className="text-xs">›</span>
-          </span>
+          <Link
+            href="/proforma-invoices"
+            className="text-[11px] font-bold text-indigo-800 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full flex items-center gap-1 hover:bg-indigo-500/20 transition-all shrink-0 whitespace-nowrap"
+          >
+            Pipeline <span className="text-xs">→</span>
+          </Link>
         </div>
       </div>
 
@@ -421,7 +414,7 @@ export default async function DashboardPage({
           </div>
           <Link
             href="/reports"
-            className="px-4 py-1.5 text-xs font-bold border border-theme-border text-theme-text rounded-lg hover:bg-theme-surface-hover transition-colors shadow-xs"
+            className="px-4 py-1.5 text-xs font-bold border border-theme-border text-theme-text rounded-lg hover:bg-theme-surface-hover transition-colors shadow-xs whitespace-nowrap shrink-0"
           >
             View All Reports
           </Link>

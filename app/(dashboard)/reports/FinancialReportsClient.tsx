@@ -279,7 +279,7 @@ function LedgerRow({
         }`}
       >
         {/* Left Section: Chevron + Code + Label + Note + Details Pill */}
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0 max-w-[70%] sm:max-w-[75%]">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-1 min-w-0 pr-1 sm:pr-2">
           {/* Left-side Expandable Chevron Dropdown Toggle */}
           {hasChildren ? (
             <button
@@ -312,7 +312,7 @@ function LedgerRow({
           </span>
 
           {note && (
-            <span className="text-[11px] text-slate-500 font-normal shrink-0">
+            <span className="text-[11px] text-slate-500 font-normal inline-block">
               • {note}
             </span>
           )}
@@ -328,7 +328,7 @@ function LedgerRow({
         <div className="border-b border-dotted border-slate-300 flex-1 mx-1 hidden sm:block opacity-60 min-w-[20px]" />
 
         {/* Right Section: Amount */}
-        <div className={`tabular-nums font-mono text-right shrink-0 min-w-[120px] ${bold ? "font-bold text-sm text-slate-900" : "font-semibold text-xs sm:text-[13px]"} ${textColor}`}>
+        <div className={`tabular-nums font-mono text-right shrink-0 min-w-[85px] sm:min-w-[110px] ${bold ? "font-bold text-sm text-slate-900" : "font-semibold text-xs sm:text-[13px]"} ${textColor}`}>
           {amount !== undefined && amount !== null ? (amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)) : "—"}
         </div>
       </div>
@@ -358,9 +358,9 @@ function SubtotalRow({
 }) {
   const textColor = green ? "text-emerald-700" : red ? "text-rose-600" : "text-slate-900";
   return (
-    <div className={`py-3 px-3.5 flex justify-between items-center text-xs sm:text-[13px] font-bold border-t border-b border-slate-200 ${bg} my-1.5 rounded-lg shadow-2xs`}>
-      <span className="uppercase tracking-wider text-xs font-extrabold text-slate-800">{label}</span>
-      <span className={`tabular-nums font-mono text-xs sm:text-sm font-bold ${textColor}`}>
+    <div className={`py-3 px-3.5 flex justify-between items-center text-xs sm:text-[13px] font-bold border-t border-b border-slate-200 ${bg} my-1.5 rounded-lg shadow-2xs gap-3`}>
+      <span className="uppercase tracking-wider text-xs font-extrabold text-slate-800 min-w-0 flex-1">{label}</span>
+      <span className={`tabular-nums font-mono text-xs sm:text-sm font-bold shrink-0 text-right ${textColor}`}>
         {amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)}
       </span>
     </div>
@@ -391,9 +391,9 @@ function GrandTotalRow({
       : "text-[#111827]";
 
   return (
-    <div className={`py-3.5 px-4 sm:px-5 flex justify-between items-center text-xs sm:text-sm font-extrabold ${bg} my-3 rounded-xl border border-[#DCE4DE]`}>
-      <span className="tracking-wider uppercase font-black text-xs sm:text-sm">{label}</span>
-      <span className={`tabular-nums font-mono text-sm sm:text-base font-black ${fontColor} border-b-2 border-current pb-0.5`}>
+    <div className={`py-3.5 px-4 sm:px-5 flex justify-between items-center text-xs sm:text-sm font-extrabold ${bg} my-3 rounded-xl border border-[#DCE4DE] gap-3`}>
+      <span className="tracking-wider uppercase font-black text-xs sm:text-sm min-w-0 flex-1">{label}</span>
+      <span className={`tabular-nums font-mono text-sm sm:text-base font-black ${fontColor} border-b-2 border-current pb-0.5 shrink-0 text-right`}>
         {amount < 0 ? `(${formatCurrency(Math.abs(amount))})` : formatCurrency(amount)}
       </span>
     </div>
@@ -439,7 +439,7 @@ function KpiCard({
     <div className="bg-white border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 shadow-2xs hover:shadow-md transition-all relative overflow-hidden group flex flex-col justify-between min-w-0">
       <div>
         <div className="flex items-center justify-between gap-1.5 min-w-0">
-          <span className="text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider block truncate min-w-0">
+          <span className="text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider block line-clamp-2 leading-tight min-w-0" title={label}>
             {label}
           </span>
           {icon && <span className="text-base sm:text-lg opacity-75 group-hover:scale-110 transition-transform shrink-0">{icon}</span>}
@@ -1708,7 +1708,7 @@ export function FinancialReportsClient({
           const currentSubTabs = MASTER_CATEGORIES.find((c) => c.id === activeMasterCategory)?.subTabs || [];
           if (currentSubTabs.length <= 1) return null;
           return (
-            <div className="flex items-center gap-1.5 overflow-x-auto p-1.5 bg-slate-100/80 rounded-xl border border-slate-200/80">
+            <div className="flex items-center gap-1.5 overflow-x-auto p-1.5 bg-slate-100/80 rounded-xl border border-slate-200/80 no-scrollbar scroll-smooth">
               {currentSubTabs.map((st) => {
                 const isSubActive = activeSubTab === st.id;
                 return (
@@ -1866,36 +1866,36 @@ export function FinancialReportsClient({
 
                 {/* III. EBITDA */}
                 <div className="p-3 sm:p-4 bg-emerald-50/40 space-y-1 border-y border-emerald-200/60">
-                  <div className="flex justify-between items-center py-2 px-2 text-xs sm:text-sm font-black text-emerald-900 uppercase">
-                    <div>
-                      <span>III. EARNINGS BEFORE INTEREST, TAX, DEPRECIATION & AMORTISATION (EBITDA) [I - II]</span>
-                      <span className="text-[11px] font-bold text-emerald-700 ml-2">({ebitdaMargin.toFixed(1)}% Margin)</span>
+                  <div className="flex justify-between items-center py-2 px-2 text-xs sm:text-sm font-black text-emerald-900 uppercase gap-3">
+                    <div className="min-w-0 flex-1">
+                      <span>III. EARNINGS BEFORE INTEREST, TAX, DEPRECIATION &amp; AMORTISATION (EBITDA) [I - II]</span>
+                      <span className="text-[11px] font-bold text-emerald-700 ml-2 whitespace-nowrap">({ebitdaMargin.toFixed(1)}% Margin)</span>
                     </div>
-                    <span className="font-mono font-black text-sm sm:text-base text-emerald-800">{formatCurrency(ebitda)}</span>
+                    <span className="font-mono font-black text-sm sm:text-base text-emerald-800 shrink-0 text-right">{formatCurrency(ebitda)}</span>
                   </div>
                 </div>
 
                 {/* IV. Depreciation & Amortisation */}
                 <div className="p-3 sm:p-4 space-y-2">
-                  <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider flex justify-between items-center">
-                    <span>IV. DEPRECIATION & AMORTISATION EXPENSE</span>
+                  <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider flex justify-between items-center gap-2">
+                    <span>IV. DEPRECIATION &amp; AMORTISATION EXPENSE</span>
                   </div>
-                  <div className="text-xs font-semibold text-[#374151] px-2 flex justify-between items-center">
-                    <span>
-                      Depreciation on Fixed Assets & Equipment ({depMethod})
+                  <div className="text-xs font-semibold text-[#374151] px-2 flex justify-between items-center gap-3">
+                    <span className="min-w-0 flex-1">
+                      Depreciation on Fixed Assets &amp; Equipment ({depMethod})
                     </span>
-                    <span className="font-mono tabular-nums font-bold text-slate-800">{formatCurrency(totalCurrentYearDep)}</span>
+                    <span className="font-mono tabular-nums font-bold text-slate-800 shrink-0 text-right">{formatCurrency(totalCurrentYearDep)}</span>
                   </div>
                 </div>
 
                 {/* V. EBIT (Operating Profit) */}
                 <div className="p-3 sm:p-4 bg-slate-50 space-y-1 border-y border-slate-200">
-                  <div className="flex justify-between items-center py-2 px-2 text-xs sm:text-sm font-black text-slate-900 uppercase">
-                    <div>
-                      <span>V. EARNINGS BEFORE INTEREST & TAX (EBIT / OPERATING PROFIT) [III - IV]</span>
-                      <span className="text-[11px] font-bold text-slate-600 ml-2">({ebitMargin.toFixed(1)}% Margin)</span>
+                  <div className="flex justify-between items-center py-2 px-2 text-xs sm:text-sm font-black text-slate-900 uppercase gap-3">
+                    <div className="min-w-0 flex-1">
+                      <span>V. EARNINGS BEFORE INTEREST &amp; TAX (EBIT / OPERATING PROFIT) [III - IV]</span>
+                      <span className="text-[11px] font-bold text-slate-600 ml-2 whitespace-nowrap">({ebitMargin.toFixed(1)}% Margin)</span>
                     </div>
-                    <span className="font-mono font-black text-sm sm:text-base text-slate-900">{formatCurrency(ebit)}</span>
+                    <span className="font-mono font-black text-sm sm:text-base text-slate-900 shrink-0 text-right">{formatCurrency(ebit)}</span>
                   </div>
                 </div>
 
