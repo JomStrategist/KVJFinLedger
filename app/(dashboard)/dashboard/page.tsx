@@ -287,7 +287,7 @@ export default async function DashboardPage({
             <div>
               <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Active Proformas</span>
               <strong className="text-xl font-black font-tabular text-blue-900 mt-0.5 block tracking-tight">
-                {kpis.activeProformaCount} Quotes
+                {kpis.activeProformaCount} {kpis.activeProformaCount === 1 ? "Quote" : "Quotes"}
               </strong>
             </div>
           </div>

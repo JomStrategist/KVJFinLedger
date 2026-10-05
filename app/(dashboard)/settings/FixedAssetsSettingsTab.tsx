@@ -349,39 +349,37 @@ export function FixedAssetsSettingsTab({
         </div>
 
         <div className="overflow-x-auto border border-slate-200 rounded-xl">
-          <table className="w-full text-left border-collapse min-w-[650px] text-xs">
+          <table className="w-full text-left border-collapse min-w-[600px] text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-black text-slate-600 uppercase tracking-wider">
                 <th className="py-3 px-4">Asset Class / Category</th>
-                <th className="py-3 px-4 text-center">Useful Life (Years)</th>
-                <th className="py-3 px-4 text-right">WDV Rate (%)</th>
-                <th className="py-3 px-4 text-right">SLM Rate (%)</th>
-                <th className="py-3 px-4 text-center">Standard Compliance</th>
+                <th className="py-3 px-4 text-center">Useful Life (Yrs)</th>
+                <th className="py-3 px-4 text-center">Method</th>
+                <th className="py-3 px-4 text-right">Rate (%)</th>
+                <th className="py-3 px-4 text-center">Compliance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {Object.entries(categoryRates).map(([catKey, rateInfo]) => {
+                // The effective rate is based on the current default method
+                const catMethod = defaultMethod;
+                const activeRate = catMethod === "WDV" ? rateInfo.wdvRate : rateInfo.slmRate;
                 return (
                   <tr key={catKey} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3 px-4 font-bold text-slate-800">{catKey}</td>
                     <td className="py-3 px-4 text-center font-mono font-semibold text-slate-600">
                       {rateInfo.usefulLifeYears || "—"} Yrs
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          value={rateInfo.wdvRate}
-                          onChange={(e) =>
-                            handleCategoryRateChange(catKey, "wdvRate", parseFloat(e.target.value) || 0)
-                          }
-                          className="w-18 h-[32px] bg-slate-50 border border-slate-200 rounded-lg text-right font-mono font-bold text-xs px-2 text-emerald-800 focus:bg-white focus:ring-1 focus:ring-emerald-600 outline-none"
-                        />
-                        <span className="font-bold text-slate-400">%</span>
-                      </div>
+                    <td className="py-3 px-4 text-center">
+                      <select
+                        value={catMethod}
+                        onChange={(e) => handleMethodChange(e.target.value as "WDV" | "SLM")}
+                        className="h-[30px] bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 px-2 focus:bg-white focus:ring-1 focus:ring-emerald-600 outline-none cursor-pointer"
+                        title="Depreciation method for this category"
+                      >
+                        <option value="WDV">WDV</option>
+                        <option value="SLM">SLM</option>
+                      </select>
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="inline-flex items-center gap-1">
@@ -390,11 +388,15 @@ export function FixedAssetsSettingsTab({
                           step="0.01"
                           min="0"
                           max="100"
-                          value={rateInfo.slmRate}
+                          value={activeRate}
                           onChange={(e) =>
-                            handleCategoryRateChange(catKey, "slmRate", parseFloat(e.target.value) || 0)
+                            handleCategoryRateChange(
+                              catKey,
+                              catMethod === "WDV" ? "wdvRate" : "slmRate",
+                              parseFloat(e.target.value) || 0
+                            )
                           }
-                          className="w-18 h-[32px] bg-slate-50 border border-slate-200 rounded-lg text-right font-mono font-bold text-xs px-2 text-slate-800 focus:bg-white focus:ring-1 focus:ring-emerald-600 outline-none"
+                          className="w-18 h-[32px] bg-slate-50 border border-slate-200 rounded-lg text-right font-mono font-bold text-xs px-2 text-emerald-800 focus:bg-white focus:ring-1 focus:ring-emerald-600 outline-none"
                         />
                         <span className="font-bold text-slate-400">%</span>
                       </div>
@@ -410,6 +412,7 @@ export function FixedAssetsSettingsTab({
             </tbody>
           </table>
         </div>
+
       </div>
 
       {/* SECTION 3: COMPANY FIXED ASSET REGISTER & INDIVIDUAL OVERRIDES */}
@@ -484,9 +487,15 @@ export function FixedAssetsSettingsTab({
                         ₹{formatINR(cost)}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black ${effectiveMethod === "WDV" ? "bg-emerald-100 text-emerald-800" : "bg-blue-100 text-blue-800"}`}>
-                          {effectiveMethod}
-                        </span>
+                        <select
+                          value={effectiveMethod}
+                          onChange={(e) => handleSaveAssetRate(asset.id, currentRate, e.target.value as "WDV" | "SLM")}
+                          className="h-[30px] bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-700 px-2 focus:bg-white focus:ring-1 focus:ring-emerald-600 outline-none cursor-pointer"
+                          title="Override depreciation method for this asset"
+                        >
+                          <option value="WDV">WDV</option>
+                          <option value="SLM">SLM</option>
+                        </select>
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5">
@@ -499,7 +508,7 @@ export function FixedAssetsSettingsTab({
                             onBlur={(e) => {
                               const val = parseFloat(e.target.value);
                               if (!isNaN(val) && val !== currentRate) {
-                                handleSaveAssetRate(asset.id, val);
+                                handleSaveAssetRate(asset.id, val, effectiveMethod);
                               }
                             }}
                             className="w-16 h-[30px] bg-slate-50 border border-slate-200 rounded-lg text-right font-mono font-bold text-xs px-2 text-emerald-800 focus:bg-white focus:ring-1 focus:ring-emerald-600 outline-none"

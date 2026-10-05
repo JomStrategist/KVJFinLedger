@@ -366,14 +366,14 @@ export function ExpenseModal({
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-xs font-bold text-slate-700">
-                      Vendor <span className="text-[10px] text-slate-400 font-normal">(Optional for Salary/Petty)</span>
+                      Party / Payee <span className="text-[10px] text-slate-400 font-normal">(Vendor, Employee, or Internal)</span>
                     </label>
                     <button
                       type="button"
                       onClick={() => setIsAddVendorOpen(true)}
                       className="text-[11px] font-bold text-emerald-700 hover:underline cursor-pointer"
                     >
-                      + Add Vendor
+                      + Add Party
                     </button>
                   </div>
                   <select
@@ -393,7 +393,7 @@ export function ExpenseModal({
                     }}
                     className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium text-slate-800"
                   >
-                    <option value="">— No Vendor / Internal (Salary, Refreshments, Fees) —</option>
+                    <option value="">— Internal / Self (Salary, Petty Cash, Fees) —</option>
                     <option value="ADD_NEW" className="font-bold text-emerald-700">+ Add New Vendor...</option>
                     {vendorList.map((v) => (
                       <option key={v.id} value={v.id}>

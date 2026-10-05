@@ -92,7 +92,7 @@ const navItems = [
       { name: "Financial Statements", href: "/reports?subtab=pnl", icon: "📊" },
       { name: "Tax & Statutory", href: "/reports?subtab=gst", icon: "📑" },
       { name: "Working Capital", href: "/reports?subtab=receivables", icon: "💼" },
-      { name: "Customer Analytics", href: "/reports?subtab=receivables", icon: "🏢" },
+      { name: "Customer Analytics", href: "/reports?subtab=payables", icon: "🏢" },
       { name: "Product Performance", href: "/reports?subtab=revenue_ops", icon: "🏷️" },
       { name: "Expense Breakdown", href: "/reports?subtab=expense_ops", icon: "📉" },
       { name: "Fixed Assets & Depreciation", href: "/reports?subtab=schedule", icon: "🏢" },
@@ -175,8 +175,11 @@ export function Sidebar({
   }, [pathname]);
 
   const isSubItemActive = (href: string) => {
-    const currentHref = (isPending || optimisticHref) && optimisticHref ? optimisticHref : (typeof window !== "undefined" ? window.location.pathname + window.location.search : pathname);
-    return currentHref === href || (pathname === "/reports" && currentHref.includes(href.split("?")[1]));
+    const currentHref = (isPending || optimisticHref) && optimisticHref ? optimisticHref : pathname;
+    // Match full path including query string: compare against href exactly
+    const currentSearch = typeof window !== "undefined" ? window.location.search : "";
+    const fullCurrent = currentHref + currentSearch;
+    return fullCurrent === href || currentHref + (typeof window !== "undefined" ? window.location.search : "") === href;
   };
 
   const isItemActive = (href: string) => {

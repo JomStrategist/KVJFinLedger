@@ -1115,35 +1115,76 @@ export function FinancialReportsClient({
   const collectionEfficiency = totalBilled > 0 ? (actualCustomerCollections / totalBilled) * 100 : 0;
 
   // ── 9. TRADE PAYABLES & EXPENSE DISBURSEMENTS ──────────────────────────────
-  // Business Policy: All purchases and expenses are settled immediately on-time via Bank.
-  // Zero trade payables are carried for expenses; every expense is deducted directly from Bank upon purchase.
+  // Accrual Basis: Expenses are accrued in full on the date of the transaction.
+  // Trade Payables = Outstanding balance (netAmount - paidAmount) for PARTIAL / UNPAID expenses.
+  // Cash Disbursements = Only the amounts actually paid (paidAmount) — reflects true cash outflow.
   const { totalPayables, actualExpenseDisbursements, expenseDisbursementsList, totalEmployeePayables, totalVendorPayables } = useMemo(() => {
     let disbursedSum = 0;
+    let vendorPayableSum = 0;
+    let employeePayableSum = 0;
     const disbursedList: any[] = [];
 
     for (const exp of validExpenses) {
       const netAmt = Number(exp.netAmount || exp.grossAmount || 0);
-      disbursedSum += netAmt;
+      const paymentStatus = exp.paymentStatus || "UNPAID";
+      // Actual cash paid: PAID = full netAmt, PARTIALLY_PAID = paidAmount, UNPAID = 0
+      const paidAmt =
+        paymentStatus === "PAID"
+          ? netAmt
+          : paymentStatus === "PARTIALLY_PAID"
+          ? Math.min(Number(exp.paidAmount || 0), netAmt)
+          : 0;
+      const outstandingAmt = Math.max(0, netAmt - paidAmt);
+
+      disbursedSum += paidAmt;
+
+      // Classify outstanding payables by type
+      const catName = (exp.category?.name || "").toLowerCase();
+      const isSalaryExp =
+        /salary|salari|payroll|staff|employee|wage|stipend/i.test(catName);
+
+      if (outstandingAmt > 0) {
+        if (isSalaryExp) {
+          employeePayableSum += outstandingAmt;
+        } else {
+          vendorPayableSum += outstandingAmt;
+        }
+      }
+
       const days = daysBetween(exp.expenseDate || exp.createdAt);
       disbursedList.push({
         ...exp,
         daysOld: days,
-        amountPaid: netAmt,
+        amountPaid: paidAmt,
+        outstandingAmount: outstandingAmt,
         paymentDate: exp.expenseDate || exp.createdAt,
-        settlementStatus: "PAID VIA BANK",
+        settlementStatus:
+          paymentStatus === "PAID"
+            ? "PAID VIA BANK"
+            : paymentStatus === "PARTIALLY_PAID"
+            ? `PARTIAL — ₹${paidAmt.toLocaleString("en-IN")} PAID`
+            : "UNPAID — PAYABLE",
       });
     }
 
-    disbursedList.sort((a, b) => new Date(b.expenseDate || b.createdAt || 0).getTime() - new Date(a.expenseDate || a.createdAt || 0).getTime());
+    disbursedList.sort(
+      (a, b) =>
+        new Date(b.expenseDate || b.createdAt || 0).getTime() -
+        new Date(a.expenseDate || a.createdAt || 0).getTime()
+    );
+
+    const totalVendorPay = Math.round(vendorPayableSum * 100) / 100;
+    const totalEmpPay = Math.round(employeePayableSum * 100) / 100;
 
     return {
-      totalPayables: 0, // No Payables in Expense (settled on-time upon purchase)
-      actualExpenseDisbursements: disbursedSum,
+      totalPayables: Math.round((totalVendorPay + totalEmpPay) * 100) / 100,
+      actualExpenseDisbursements: Math.round(disbursedSum * 100) / 100,
       expenseDisbursementsList: disbursedList,
-      totalEmployeePayables: 0,
-      totalVendorPayables: 0,
+      totalEmployeePayables: totalEmpPay,
+      totalVendorPayables: totalVendorPay,
     };
   }, [validExpenses]);
+
 
   // ── 10. BALANCE SHEET DOUBLE-ENTRY FORMULATION ─────────────────────────────
   // Opening Balance segregation:

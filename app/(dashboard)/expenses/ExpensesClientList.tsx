@@ -218,7 +218,7 @@ export function ExpensesClientList({
             <thead>
               <tr className="border-b border-[#D9E3DC] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
                 <th className="py-3 px-2">DATE</th>
-                <th className="py-3 px-3">VENDOR</th>
+                <th className="py-3 px-3">PARTY / PAYEE</th>
                 <th className="py-3 px-3">ITEM</th>
                 <th className="py-3 px-3">CATEGORY</th>
                 <th className="py-3 px-3">GST</th>
@@ -245,16 +245,28 @@ export function ExpensesClientList({
                     year: "numeric",
                   });
 
-                  const vendorName = expense.vendor?.name || "—";
+                  const vendorName = expense.vendor?.name || "Internal";
                   const firstItem = expense.items?.[0];
-                  const itemName = firstItem?.description || firstItem?.product?.name || expense.notes || "Business Expense";
+                  // Clean item name: use product name or first description only — avoid note duplication
+                  const rawItemName =
+                    firstItem?.product?.name ||
+                    firstItem?.description ||
+                    (expense.notes ? expense.notes.split(",")[0].trim() : null) ||
+                    "Business Expense";
+                  const itemName = rawItemName.length > 38 ? rawItemName.slice(0, 38) + "…" : rawItemName;
                   const categoryName = expense.category?.name || firstItem?.category?.name || "Operating Expense";
 
-                  const totalGst = Number(expense.totalGST || 0);
-                  const gstRate = Number(firstItem?.gstRate || 18);
-                  const gstText = totalGst > 0 
-                    ? `${gstRate}% · ₹${totalGst.toLocaleString("en-IN", { minimumFractionDigits: 0 })} · ITC` 
-                    : "—";
+                  // GST: prefer stored totalGST; if zero/null, compute from items
+                  let totalGst = Number(expense.totalGST || 0);
+                  let gstRate = Number(firstItem?.gstRate || 0);
+                  if (totalGst === 0 && gstRate > 0) {
+                    const taxable = Number(firstItem?.taxableAmount || firstItem?.totalAmount || 0);
+                    totalGst = taxable > 0 ? Math.round(taxable * (gstRate / 100) * 100) / 100 : 0;
+                  }
+                  const gstText =
+                    totalGst > 0
+                      ? `${gstRate > 0 ? gstRate + "% · " : ""}₹${totalGst.toLocaleString("en-IN", { minimumFractionDigits: 0 })} · ITC`
+                      : "—";
 
                   const tdsAmount = Number(expense.tdsAmount || 0);
                   const tdsRate = Number(expense.tdsRate || firstItem?.tdsRate || 2);
@@ -344,13 +356,25 @@ export function ExpensesClientList({
 
                       {/* ACTION */}
                       <td className="py-4 px-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditModal(expense)}
-                          className="bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
-                        >
-                          Edit
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {(expense.paymentStatus === "PARTIALLY_PAID" || expense.paymentStatus === "UNPAID") && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(expense)}
+                              className="inline-flex items-center gap-1 bg-amber-50 border border-amber-300 rounded-lg px-2.5 py-1.5 text-[10px] font-extrabold text-amber-800 hover:bg-amber-100 transition-colors shadow-2xs whitespace-nowrap"
+                              title="Record payment for outstanding balance"
+                            >
+                              💳 Pay Balance
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(expense)}
+                            className="bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs"
+                          >
+                            Edit
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
