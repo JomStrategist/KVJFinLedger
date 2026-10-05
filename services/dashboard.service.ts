@@ -175,7 +175,7 @@ export class DashboardService {
     for (const inv of invoices) {
       if (inv.status === "CANCELLED" || inv.status === "PAID") continue;
 
-      const invoiceTotal = Number(inv.netAmount || inv.grossAmount || (inv as any).totalAmount || 0);
+      const invoiceTotal = Number(inv.grossAmount || (inv as any).totalAmount || inv.netAmount || 0);
       const paidAmount = (inv.payments || []).reduce((sum: number, p: any) => sum + Number(p.paymentAmount || 0), 0);
 
       const balanceRemaining = invoiceTotal - paidAmount;

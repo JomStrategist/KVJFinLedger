@@ -8,6 +8,7 @@ import { createExpenseAction, updateExpenseAction } from "./actions";
 import { createVendorAction } from "../vendors/actions";
 import { createExpenseCategoryAction } from "./category-actions";
 import { AddMasterRecordModal } from "../masters/AddMasterRecordModal";
+import { formatCurrency } from "@/lib/utils/currency";
 
 export function ExpenseForm({ 
   initialData, 
@@ -522,10 +523,10 @@ export function ExpenseForm({
         </div>
       </div>
 
-      {/* Row of 3 Cards: Paid By | Employee | Payment Status */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Row: Paid By | Employee (only when applicable) | Payment Status */}
+      <div className={`grid grid-cols-1 ${paidBy === "EMPLOYEE" ? "md:grid-cols-3" : "md:grid-cols-2"} gap-4 transition-all duration-200`}>
         {/* Paid By Card */}
-        <div className="bg-theme-surface rounded-xl shadow-sm border border-theme-border p-5 flex flex-col justify-between">
+        <div className="bg-theme-surface rounded-xl shadow-xs border border-theme-border p-5 flex flex-col justify-between">
           <div>
             <label className="block text-xs font-bold text-theme-text uppercase tracking-wider mb-2">
               PAID BY
@@ -533,7 +534,7 @@ export function ExpenseForm({
             <select
               value={paidBy}
               onChange={(e) => handlePaidByChange(e.target.value as "COMPANY" | "EMPLOYEE")}
-              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-theme-primary focus:border-transparent bg-theme-surface text-theme-text"
+              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-theme-primary focus:border-transparent bg-theme-surface text-theme-text cursor-pointer"
             >
               <option value="COMPANY">Company</option>
               <option value="EMPLOYEE">Employee</option>
@@ -541,46 +542,45 @@ export function ExpenseForm({
           </div>
           <p className="text-xs text-theme-text-muted mt-3">
             {paidBy === "COMPANY"
-              ? "Company payment is recorded against the bank."
-              : "Employee paid personally and the company may need to reimburse the employee."}
+              ? "Disbursed directly from corporate bank account."
+              : "Paid personally by employee (pending company reimbursement)."}
           </p>
         </div>
 
-        {/* Employee Card */}
-        <div className={`bg-theme-surface rounded-xl shadow-sm border border-theme-border p-5 flex flex-col justify-between ${paidBy === "COMPANY" ? "opacity-80" : ""}`}>
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-bold text-theme-text uppercase tracking-wider">
-                EMPLOYEE
-              </label>
-              {paidBy === "EMPLOYEE" && (
-                <span className="text-[10px] uppercase font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded">
+        {/* Employee Card - Only rendered when Paid By === 'EMPLOYEE' */}
+        {paidBy === "EMPLOYEE" && (
+          <div className="bg-theme-surface rounded-xl shadow-xs border border-theme-border p-5 flex flex-col justify-between animate-in fade-in duration-200">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-bold text-theme-text uppercase tracking-wider">
+                  EMPLOYEE NAME
+                </label>
+                <span className="text-[10px] uppercase font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
                   Required
                 </span>
-              )}
+              </div>
+              <select
+                value={employeeId}
+                required={paidBy === "EMPLOYEE"}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-theme-primary focus:border-transparent bg-theme-surface text-theme-text cursor-pointer"
+              >
+                <option value="">Select Employee...</option>
+                {employees.map((emp: any) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name || emp.email}
+                  </option>
+                ))}
+              </select>
             </div>
-            <select
-              value={employeeId}
-              disabled={paidBy === "COMPANY"}
-              required={paidBy === "EMPLOYEE"}
-              onChange={(e) => setEmployeeId(e.target.value)}
-              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-theme-primary focus:border-transparent bg-theme-surface text-theme-text disabled:bg-theme-surface-hover disabled:cursor-not-allowed"
-            >
-              <option value="">Select Employee</option>
-              {employees.map((emp: any) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name} ({emp.email})
-                </option>
-              ))}
-            </select>
+            <p className="text-xs text-theme-text-muted mt-3">
+              Employee ledger to credit for out-of-pocket disbursement.
+            </p>
           </div>
-          <p className="text-xs text-theme-text-muted mt-3">
-            Used when an employee has paid personally.
-          </p>
-        </div>
+        )}
 
         {/* Payment Status Card */}
-        <div className="bg-theme-surface rounded-xl shadow-sm border border-theme-border p-5 flex flex-col justify-between">
+        <div className="bg-theme-surface rounded-xl shadow-xs border border-theme-border p-5 flex flex-col justify-between">
           <div>
             <label className="block text-xs font-bold text-theme-text uppercase tracking-wider mb-2">
               PAYMENT STATUS
@@ -588,7 +588,7 @@ export function ExpenseForm({
             <select
               value={paymentStatus}
               onChange={(e) => setPaymentStatus(e.target.value as any)}
-              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-theme-primary focus:border-transparent bg-theme-surface text-theme-text"
+              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-theme-primary focus:border-transparent bg-theme-surface text-theme-text cursor-pointer"
             >
               <option value="PAID">Paid</option>
               <option value="UNPAID">Unpaid</option>
@@ -597,7 +597,7 @@ export function ExpenseForm({
 
             {paymentStatus === "PARTIALLY_PAID" && (
               <div className="mt-3 pt-3 border-t border-theme-border space-y-2">
-                <label className="block text-xs font-bold text-amber-700 uppercase tracking-wider">
+                <label className="block text-xs font-bold text-amber-800 uppercase tracking-wider">
                   Amount Paid Now (₹) *
                 </label>
                 <input
@@ -607,12 +607,12 @@ export function ExpenseForm({
                   placeholder="e.g. 5000"
                   value={paidAmount}
                   onChange={(e) => setPaidAmount(e.target.value)}
-                  className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-amber-500 bg-white text-theme-text"
+                  className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-amber-500 bg-white text-theme-text font-mono"
                 />
                 <div className="flex justify-between items-center text-xs text-amber-800 font-medium">
                   <span>Balance Payable:</span>
-                  <span className="font-bold">
-                    ₹{Math.max(0, Number(calc.netAmount || 0) - (parseFloat(paidAmount) || 0)).toLocaleString("en-IN")}
+                  <span className="font-bold font-mono">
+                    {formatCurrency(Math.max(0, Number(calc.netAmount || 0) - (parseFloat(paidAmount) || 0)))}
                   </span>
                 </div>
               </div>
@@ -620,8 +620,8 @@ export function ExpenseForm({
           </div>
           <p className="text-xs text-theme-text-muted mt-3">
             {paidBy === "EMPLOYEE"
-              ? "Employee-paid items can remain payable until reimbursement."
-              : "Payment status recorded for company books."}
+              ? "Employee-paid items remain payable until reimbursement."
+              : "Spot bank settlement or credit purchase."}
           </p>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { AddMasterRecordModal } from "./AddMasterRecordModal";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils/currency";
 import { toggleCategoryStatusAction } from "./actions";
+import { BankAccountsMasterTab } from "../settings/BankAccountsMasterTab";
 
 export function MastersClient({
   customers = [],
@@ -26,7 +27,7 @@ export function MastersClient({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState<"customers" | "vendors" | "products" | "categories">("customers");
+  const [activeTab, setActiveTab] = useState<"customers" | "vendors" | "products" | "categories" | "bank_accounts">("customers");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ACTIVE");
   const [financialTypeFilter, setFinancialTypeFilter] = useState<string>("ALL");
@@ -89,33 +90,36 @@ export function MastersClient({
             Maintain customers, vendors, products/services and categories in a clean table workflow.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setEditingRecord(null);
-            setIsAddModalOpen(true);
-          }}
-          className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent rounded-xl text-xs font-bold text-white bg-[#177B55] hover:bg-[#136f4e] shadow-xs transition-colors gap-1.5 shrink-0 cursor-pointer"
-        >
-          <span>+</span> Add Record
-        </button>
+        {activeTab !== "bank_accounts" && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditingRecord(null);
+              setIsAddModalOpen(true);
+            }}
+            className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent rounded-xl text-xs font-bold text-white bg-[#177B55] hover:bg-[#136f4e] shadow-xs transition-colors gap-1.5 shrink-0 cursor-pointer"
+          >
+            <span>+</span> Add Record
+          </button>
+        )}
       </div>
 
       {/* Main Container Card */}
       <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 space-y-5">
         {/* Navigation Tabs */}
-        <div className="flex gap-6 border-b border-[#D9E3DC]">
+        <div className="flex flex-wrap gap-6 border-b border-[#D9E3DC]">
           {[
             { id: "customers", label: `Customers (${filteredCustomers.length})` },
             { id: "vendors", label: `Vendors (${filteredVendors.length})` },
             { id: "products", label: `Products & Services (${filteredProducts.length})` },
             { id: "categories", label: `Categories (${filteredCategories.length})` },
+            { id: "bank_accounts", label: "Bank Accounts" },
           ].map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id as any)}
-              className={`pb-3 text-xs font-bold transition-all border-b-2 ${
+              className={`pb-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
                 activeTab === tab.id
                   ? "border-[#177B55] text-[#177B55]"
                   : "border-transparent text-[#68756C] hover:text-[#17211B]"
@@ -127,7 +131,8 @@ export function MastersClient({
         </div>
 
         {/* Filters Row */}
-        <div className="flex flex-wrap items-center gap-3">
+        {activeTab !== "bank_accounts" && (
+          <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[240px]">
             <input
               type="text"
@@ -167,6 +172,7 @@ export function MastersClient({
             <option value="ALL">All Status</option>
           </select>
         </div>
+        )}
 
         {/* 1. Customers Table */}
         {activeTab === "customers" && (
@@ -479,6 +485,13 @@ export function MastersClient({
                 )}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* 5. Bank Accounts Table */}
+        {activeTab === "bank_accounts" && (
+          <div className="pt-2">
+            <BankAccountsMasterTab />
           </div>
         )}
       </div>

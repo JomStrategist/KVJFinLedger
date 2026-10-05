@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { AccountDescriptor, LedgerStatement } from "@/services/ledger.service";
+import { formatCurrency } from "@/lib/utils/currency";
 
 interface Props {
   accountList: AccountDescriptor[];
@@ -66,6 +67,41 @@ export default function LedgerClient({
     fetchStatement(accountId, fromDate, toDate);
   };
 
+  const handleQuickPeriod = (preset: "CURRENT_MONTH" | "LAST_MONTH" | "THIS_FY" | "ALL") => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+
+    const fmt = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+
+    let start = "";
+    let end = "";
+
+    if (preset === "CURRENT_MONTH") {
+      start = fmt(new Date(year, month, 1));
+      end = fmt(new Date(year, month + 1, 0));
+    } else if (preset === "LAST_MONTH") {
+      start = fmt(new Date(year, month - 1, 1));
+      end = fmt(new Date(year, month, 0));
+    } else if (preset === "THIS_FY") {
+      const fyStartYear = month >= 3 ? year : year - 1;
+      start = fmt(new Date(fyStartYear, 3, 1));
+      end = fmt(new Date(fyStartYear + 1, 2, 31));
+    } else if (preset === "ALL") {
+      start = "";
+      end = "";
+    }
+
+    setFromDate(start);
+    setToDate(end);
+    fetchStatement(accountId, start, end);
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -95,10 +131,6 @@ export default function LedgerClient({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return `₹${(amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   // Group accounts by category
@@ -161,47 +193,41 @@ export default function LedgerClient({
   return (
     <div className="space-y-6 pb-16">
       {/* Top Header & View Switcher */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 glass-card p-6 rounded-3xl shadow-lg border border-slate-200/80 print:hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs print:hidden">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Financial Ledgers & Statements</h1>
-            <span className="bg-emerald-500/10 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/20">
-              Indian CA Compliant
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Account Ledgers & Statements</h1>
+            <span className="bg-emerald-50 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-emerald-200">
+              Double-Entry Compliant
             </span>
           </div>
-          <p className="text-sm text-slate-500 mt-1 font-medium">
-            Real-time double entry ledger accounts, running balances, and official Schedule III statement view.
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">
+            Schedule III statement view, running balances, and Dr / Cr ledger transactions.
           </p>
         </div>
 
         {/* View Mode Toggle Pill & Actions */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-slate-100/90 p-1 rounded-2xl flex items-center border border-slate-200 shadow-inner">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200">
             <button
               onClick={() => setViewMode("STATEMENT")}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 viewMode === "STATEMENT"
-                  ? "bg-white text-slate-900 shadow-sm"
+                  ? "bg-white text-slate-900 shadow-2xs"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
               Statement View
             </button>
             <button
               onClick={() => setViewMode("CARDS")}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 viewMode === "CARDS"
-                  ? "bg-white text-slate-900 shadow-sm"
+                  ? "bg-white text-slate-900 shadow-2xs"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-              Card Grid View
+              All Accounts Grid
             </button>
           </div>
 
@@ -209,59 +235,18 @@ export default function LedgerClient({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleExportCSV}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200 shadow-xs transition-all"
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs transition-all cursor-pointer"
               >
-                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
                 CSV
               </button>
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 px-4 py-2.5 rounded-xl shadow-md transition-all"
+                className="flex items-center gap-1.5 text-xs font-bold text-white bg-[#0D7A53] hover:bg-[#09593C] px-3.5 py-1.5 rounded-xl shadow-2xs transition-all cursor-pointer"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
                 Print
               </button>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Quick Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
-        <div className="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Sundry Debtors (Receivables)</div>
-          <div className="text-2xl font-black font-tabular text-emerald-600 mt-1 tracking-tight">
-            {formatCurrency(totalDebtors)}
-            <span className="text-xs font-bold ml-1.5 text-slate-500">[Dr]</span>
-          </div>
-        </div>
-
-        <div className="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Sundry Creditors (Payables)</div>
-          <div className="text-2xl font-black font-tabular text-rose-600 mt-1 tracking-tight">
-            {formatCurrency(totalCreditors)}
-            <span className="text-xs font-bold ml-1.5 text-slate-500">[Cr]</span>
-          </div>
-        </div>
-
-        <div className="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Liquid Cash & Bank</div>
-          <div className="text-2xl font-black font-tabular text-slate-900 mt-1 tracking-tight">
-            {formatCurrency(totalLiquidCash)}
-            <span className="text-xs font-bold ml-1.5 text-slate-500">[Dr]</span>
-          </div>
-        </div>
-
-        <div className="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Owner Drawings / Withdrawals</div>
-          <div className="text-2xl font-black font-tabular text-amber-600 mt-1 tracking-tight">
-            {formatCurrency(totalDrawings)}
-            <span className="text-xs font-bold ml-1.5 text-slate-500">[Dr]</span>
-          </div>
         </div>
       </div>
 
@@ -270,6 +255,41 @@ export default function LedgerClient({
       {/* ========================================================================= */}
       {viewMode === "CARDS" && (
         <div className="space-y-6">
+          {/* Quick Summary KPI Cards - Only in Grid Mode */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
+            <div className="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Sundry Debtors (Receivables)</div>
+              <div className="text-2xl font-black font-tabular text-emerald-600 mt-1 tracking-tight">
+                {formatCurrency(totalDebtors)}
+                <span className="text-xs font-bold ml-1.5 text-slate-500">[Dr]</span>
+              </div>
+            </div>
+
+            <div className="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Sundry Creditors (Payables)</div>
+              <div className="text-2xl font-black font-tabular text-rose-600 mt-1 tracking-tight">
+                {formatCurrency(totalCreditors)}
+                <span className="text-xs font-bold ml-1.5 text-slate-500">[Cr]</span>
+              </div>
+            </div>
+
+            <div className="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Liquid Cash & Bank</div>
+              <div className="text-2xl font-black font-tabular text-slate-900 mt-1 tracking-tight">
+                {formatCurrency(totalLiquidCash)}
+                <span className="text-xs font-bold ml-1.5 text-slate-500">[Dr]</span>
+              </div>
+            </div>
+
+            <div className="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+              <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Owner Drawings / Withdrawals</div>
+              <div className="text-2xl font-black font-tabular text-amber-600 mt-1 tracking-tight">
+                {formatCurrency(totalDrawings)}
+                <span className="text-xs font-bold ml-1.5 text-slate-500">[Dr]</span>
+              </div>
+            </div>
+          </div>
+
           {/* Filter Pills & Search Bar */}
           <div className="glass-card p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Category Pills */}
@@ -379,7 +399,28 @@ export default function LedgerClient({
       {viewMode === "STATEMENT" && (
         <div className="space-y-6">
           {/* Account Selector & Date Filter Panel */}
-          <div className="glass-card p-5 rounded-2xl shadow-md border border-slate-200/80 space-y-4 print:hidden">
+          <div className="bg-white p-5 rounded-2xl shadow-2xs border border-slate-200/90 space-y-4 print:hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <span className="text-xs font-bold text-slate-700">Quick Period Presets:</span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { label: "This Month", key: "CURRENT_MONTH" as const },
+                  { label: "Last Month", key: "LAST_MONTH" as const },
+                  { label: "Current FY", key: "THIS_FY" as const },
+                  { label: "All Records", key: "ALL" as const },
+                ].map((preset) => (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    onClick={() => handleQuickPeriod(preset.key)}
+                    className="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-[#0D7A53] hover:text-white transition-all cursor-pointer"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <form onSubmit={handleDateSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Account Selector */}
               <div className="md:col-span-2">
@@ -392,7 +433,7 @@ export default function LedgerClient({
                     setAccountId(e.target.value);
                     fetchStatement(e.target.value, fromDate, toDate);
                   }}
-                  className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none"
+                  className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-[#0D7A53] focus:bg-white transition-all outline-none"
                 >
                   {Object.entries(groupedAccounts).map(([groupName, accs]) => (
                     <optgroup key={groupName} label={`── ${groupName.toUpperCase()} ──`}>
@@ -415,7 +456,7 @@ export default function LedgerClient({
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none font-medium"
+                  className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-[#0D7A53] focus:bg-white transition-all outline-none font-medium"
                 />
               </div>
 
@@ -429,11 +470,11 @@ export default function LedgerClient({
                     type="date"
                     value={toDate}
                     onChange={(e) => setToDate(e.target.value)}
-                    className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all outline-none font-medium"
+                    className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-[#0D7A53] focus:bg-white transition-all outline-none font-medium"
                   />
                   <button
                     type="submit"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs shrink-0"
+                    className="bg-[#0D7A53] hover:bg-[#09593C] text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-2xs shrink-0 cursor-pointer"
                   >
                     Apply
                   </button>
