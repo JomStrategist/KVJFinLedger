@@ -48,6 +48,11 @@ export interface AppSettings {
   termsAndConditions: string;
   bankDetails: string;
   upiId: string;
+
+  // 7. FIXED ASSET & DEPRECIATION SETTINGS
+  defaultDepreciationMethod?: "WDV" | "SLM";
+  assetCategoryRates?: Record<string, { wdvRate: number; slmRate: number; usefulLifeYears?: number }>;
+  assetCustomRates?: Record<string, { rate: number; method: "WDV" | "SLM" }>;
 }
 
 export const defaultSettings: AppSettings = {
@@ -95,7 +100,19 @@ export const defaultSettings: AppSettings = {
   invoiceFooter: '',
   termsAndConditions: '',
   bankDetails: '',
-  upiId: ''
+  upiId: '',
+
+  defaultDepreciationMethod: 'WDV',
+  assetCategoryRates: {
+    'Computers & IT Equipment': { wdvRate: 40, slmRate: 33.33, usefulLifeYears: 3 },
+    'Vehicles & Automobiles': { wdvRate: 15, slmRate: 10, usefulLifeYears: 10 },
+    'Furniture & Fixtures': { wdvRate: 10, slmRate: 10, usefulLifeYears: 10 },
+    'Plant & Machinery': { wdvRate: 15, slmRate: 6.67, usefulLifeYears: 15 },
+    'Buildings & Premises': { wdvRate: 10, slmRate: 1.67, usefulLifeYears: 60 },
+    'Electrical & Office Equipment': { wdvRate: 15, slmRate: 10, usefulLifeYears: 10 },
+    'General Fixed Assets': { wdvRate: 15, slmRate: 10, usefulLifeYears: 10 },
+  },
+  assetCustomRates: {},
 };
 
 const SETTINGS_KEY = 'billing_erp_settings';

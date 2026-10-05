@@ -562,7 +562,29 @@ export function FinancialReportsClient({
   const [selectedQuarter, setSelectedQuarter] = useState<string | null>(
     filters.period === "ALL" ? null : filters.period
   );
-  const [depMethod, setDepMethod] = useState<"WDV" | "SLM">("WDV");
+  const [depMethod, setDepMethod] = useState<"WDV" | "SLM">(
+    settings?.defaultDepreciationMethod || "WDV"
+  );
+
+  useEffect(() => {
+    if (settings?.defaultDepreciationMethod) {
+      setDepMethod(settings.defaultDepreciationMethod);
+    }
+  }, [settings?.defaultDepreciationMethod]);
+
+  const availableFYList = useMemo(() => {
+    const configuredFYs = Object.keys(settings?.incomeTaxRates || {});
+    const baseFYs = ["FY 2026–27", "FY 2025–26", "FY 2024–25"];
+    const combined = Array.from(new Set([...configuredFYs, ...baseFYs]));
+    combined.sort((a, b) => {
+      const getYear = (s: string) => {
+        const m = s.match(/\d{4}/);
+        return m ? parseInt(m[0], 10) : 0;
+      };
+      return getYear(b) - getYear(a);
+    });
+    return combined;
+  }, [settings?.incomeTaxRates]);
 
   // Income Tax Rate (%) per Financial Year
   const [overrideTaxRates, setOverrideTaxRates] = useState<Record<string, number>>({});
@@ -805,9 +827,24 @@ export function FinancialReportsClient({
       );
 
       const isCustomRecorded = Boolean(recordedDep);
-      const effectiveMethod = (recordedDep?.method as "WDV" | "SLM") || depMethod;
-      const defaultRate = effectiveMethod === "WDV" ? getWdvRate(catName) : getSlmRate(catName);
-      const customRate = Number(recordedDep?.rate ?? exp.depreciationRate ?? 0);
+      const settingCustomAsset = settings?.assetCustomRates?.[exp.id];
+      const settingCategoryRate = settings?.assetCategoryRates?.[catName];
+
+      const effectiveMethod =
+        (recordedDep?.method as "WDV" | "SLM") ||
+        settingCustomAsset?.method ||
+        depMethod;
+
+      let categoryConfiguredRate: number | undefined;
+      if (settingCategoryRate) {
+        const pctVal = effectiveMethod === "WDV" ? settingCategoryRate.wdvRate : settingCategoryRate.slmRate;
+        if (pctVal !== undefined && pctVal > 0) {
+          categoryConfiguredRate = pctVal / 100;
+        }
+      }
+
+      const defaultRate = categoryConfiguredRate ?? (effectiveMethod === "WDV" ? getWdvRate(catName) : getSlmRate(catName));
+      const customRate = Number(recordedDep?.rate ?? settingCustomAsset?.rate ?? exp.depreciationRate ?? 0);
       const rate = customRate > 0 ? customRate / 100 : defaultRate;
 
       let accDep: number;
@@ -851,7 +888,7 @@ export function FinancialReportsClient({
         effectiveDate: recordedDep?.effectiveDate,
       };
     }),
-    [assetExpenses, depMethod, localDepreciations, fy]
+    [assetExpenses, depMethod, localDepreciations, fy, settings]
   );
   const totalGrossBlock = useMemo(() => depSchedule.reduce((s, d) => s + d.grossCost, 0), [depSchedule]);
   const totalAccDep = useMemo(() => depSchedule.reduce((s, d) => s + d.accDep, 0), [depSchedule]);
@@ -1588,9 +1625,11 @@ export function FinancialReportsClient({
                 onChange={(e) => handleFilterChange("financialYear", e.target.value)}
                 className="w-full h-[40px] bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:bg-white transition-all outline-none cursor-pointer"
               >
-                <option value="FY 2026–27">FY 2026–27 (Current)</option>
-                <option value="FY 2025–26">FY 2025–26 (Previous)</option>
-                <option value="FY 2024–25">FY 2024–25</option>
+                {availableFYList.map((fYear) => (
+                  <option key={fYear} value={fYear}>
+                    {fYear} {fYear === "FY 2026–27" ? "(Current)" : fYear === "FY 2025–26" ? "(Previous)" : ""}
+                  </option>
+                ))}
                 <option value="ALL">All Financial Years</option>
               </select>
             </div>
