@@ -486,6 +486,8 @@ model Expense {
 
   status            ExpenseStatus @default(DRAFT)
   paymentStatus     PaymentStatus @default(UNPAID)
+  paidAmount        Float?        @default(0)
+  balancePayable    Float?        @default(0)
 
   subtotal          Float
   discountAmount    Float @default(0)
@@ -605,6 +607,7 @@ model FinancialTransaction {
   netAmount       Float
 
   paymentStatus   PaymentStatus @default(UNPAID)
+  paidAmount      Float?        @default(0)
 
   sourceType      String
   sourceId        String

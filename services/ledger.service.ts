@@ -165,7 +165,7 @@ export class LedgerService {
         }),
         prisma.expense.findMany({
           where: { status: "APPROVED" },
-          select: { id: true, vendorId: true, categoryId: true, netAmount: true, totalInputGST: true, inputCGST: true, inputSGST: true, inputIGST: true, tdsAmount: true, isAsset: true, paymentStatus: true, items: { select: { categoryId: true, taxableAmount: true } } }
+          select: { id: true, vendorId: true, categoryId: true, netAmount: true, totalInputGST: true, inputCGST: true, inputSGST: true, inputIGST: true, tdsAmount: true, isAsset: true, paymentStatus: true, paidAmount: true, balancePayable: true, items: { select: { categoryId: true, taxableAmount: true } } }
         }),
         prisma.bankTransfer.findMany({
           select: { fromAccount: true, toAccount: true, amount: true, description: true }
@@ -198,6 +198,8 @@ export class LedgerService {
           balanceMap[vKey].balance += net;
           if (exp.paymentStatus === "PAID") {
             balanceMap[vKey].balance -= net;
+          } else if (exp.paymentStatus === "PARTIALLY_PAID") {
+            balanceMap[vKey].balance -= Number(exp.paidAmount || 0);
           }
           balanceMap[vKey].count += 1;
         }
@@ -309,7 +311,7 @@ export class LedgerService {
           orderBy: { paymentDate: "asc" }
         }),
         prisma.expense.findMany({
-          where: { status: "APPROVED", paymentStatus: "PAID" },
+          where: { status: "APPROVED", paymentStatus: { in: ["PAID", "PARTIALLY_PAID"] } },
           include: { vendor: true, category: true, items: { include: { category: true } } },
           orderBy: { expenseDate: "asc" }
         })
@@ -423,6 +425,17 @@ export class LedgerService {
               sourceType: "EXPENSE",
               sourceId: exp.id,
             });
+          } else if (exp.paymentStatus === "PARTIALLY_PAID" && Number(exp.paidAmount || 0) > 0) {
+            rawLedgerItems.push({
+              date: new Date(exp.expenseDate),
+              voucherType: "Vendor Payment",
+              voucherNo: `PMT-${exp.expenseNumber}-PART`,
+              particulars: "To Bank / Cash Payment (Part Payment)",
+              debit: Number(exp.paidAmount),
+              credit: 0,
+              sourceType: "EXPENSE",
+              sourceId: exp.id,
+            });
           }
         }
       }
@@ -486,6 +499,17 @@ export class LedgerService {
             particulars: `By ${exp.vendor?.name || exp.category?.name || "Business Expense"}`,
             debit: 0,
             credit: Number(exp.netAmount || 0),
+            sourceType: "EXPENSE",
+            sourceId: exp.id,
+          });
+        } else if (exp.paymentStatus === "PARTIALLY_PAID" && Number(exp.paidAmount || 0) > 0) {
+          rawLedgerItems.push({
+            date: new Date(exp.expenseDate),
+            voucherType: "Payment Voucher",
+            voucherNo: `${exp.expenseNumber}-PART`,
+            particulars: `By ${exp.vendor?.name || exp.category?.name || "Business Expense"} (Part Payment)`,
+            debit: 0,
+            credit: Number(exp.paidAmount),
             sourceType: "EXPENSE",
             sourceId: exp.id,
           });

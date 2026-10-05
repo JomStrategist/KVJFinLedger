@@ -7,8 +7,13 @@ import { PaymentStatus } from "@prisma/client";
 function revalidateAllExpenseRoutes(id?: string) {
   revalidatePath("/expenses");
   revalidatePath("/reports");
+  revalidatePath("/reports/balance-sheet");
+  revalidatePath("/reports/payables");
+  revalidatePath("/reports/expenses");
   revalidatePath("/dashboard");
   revalidatePath("/finance");
+  revalidatePath("/profit-loss");
+  revalidatePath("/ledgers");
   if (id) {
     revalidatePath(`/expenses/${id}`);
   }
@@ -54,9 +59,9 @@ export async function cancelExpenseAction(id: string, reason: string) {
   }
 }
 
-export async function updatePaymentStatusAction(id: string, status: PaymentStatus) {
+export async function updatePaymentStatusAction(id: string, status: PaymentStatus, paidAmount?: number) {
   try {
-    await ExpenseService.updatePaymentStatus(id, status);
+    await ExpenseService.updatePaymentStatus(id, status, paidAmount);
     revalidateAllExpenseRoutes(id);
     return { success: true };
   } catch (error: any) {

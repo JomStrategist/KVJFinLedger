@@ -108,6 +108,8 @@ export class DashboardService {
             createdAt: true,
             netAmount: true,
             paymentStatus: true,
+            paidAmount: true,
+            balancePayable: true,
             totalInputGST: true,
             tdsAmount: true,
             vendor: { select: { id: true, name: true } },
@@ -155,9 +157,17 @@ export class DashboardService {
     let outstandingPayables = 0;
     const unpaidExpenses = expenses.filter(e => e.paymentStatus !== "PAID" && e.status !== "CANCELLED");
     if (unpaidExpenses.length > 0) {
-      outstandingPayables = unpaidExpenses.reduce((sum, e) => sum + Number(e.netAmount || 0), 0);
+      outstandingPayables = unpaidExpenses.reduce((sum, e) => {
+        const net = Number(e.netAmount || 0);
+        const paid = e.paymentStatus === "PARTIALLY_PAID" ? Number(e.paidAmount || 0) : 0;
+        return sum + Math.max(0, net - paid);
+      }, 0);
     } else {
-      outstandingPayables = txns.filter(t => t.type === "EXPENSE" && t.paymentStatus !== "PAID").reduce((sum, t) => sum + Number(t.netAmount || 0), 0);
+      outstandingPayables = txns.filter(t => t.type === "EXPENSE" && t.paymentStatus !== "PAID").reduce((sum, t) => {
+        const net = Number(t.netAmount || 0);
+        const paid = t.paymentStatus === "PARTIALLY_PAID" ? Number(t.paidAmount || 0) : 0;
+        return sum + Math.max(0, net - paid);
+      }, 0);
     }
 
     // MA-008: Outstanding Receivables calculated dynamically from confirmed Tax Invoices

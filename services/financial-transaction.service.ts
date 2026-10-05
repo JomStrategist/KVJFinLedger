@@ -58,7 +58,7 @@ export class FinancialTransactionService {
     });
   }
 
-  static async createExpenseTransaction(tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">, data: {
+  static async upsertExpenseTransaction(tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">, data: {
     sourceId: string;
     transactionDate: Date;
     description: string;
@@ -67,13 +67,28 @@ export class FinancialTransactionService {
     totalGST: number | any;
     tdsAmount: number | any;
     netAmount: number | any;
+    paymentStatus?: PaymentStatus;
+    paidAmount?: number | any;
   }) {
     const existing = await tx.financialTransaction.findFirst({
       where: { sourceType: "EXPENSE", sourceId: data.sourceId }
     });
 
     if (existing) {
-      throw new Error("Expense transaction already exists for this source.");
+      return await tx.financialTransaction.update({
+        where: { id: existing.id },
+        data: {
+          transactionDate: data.transactionDate,
+          description: data.description,
+          amount: Number(data.amount),
+          taxableAmount: Number(data.taxableAmount),
+          totalGST: Number(data.totalGST),
+          tdsAmount: Number(data.tdsAmount),
+          netAmount: Number(data.netAmount),
+          paymentStatus: data.paymentStatus || existing.paymentStatus,
+          paidAmount: Number(data.paidAmount ?? existing.paidAmount ?? 0),
+        }
+      });
     }
 
     const transactionNumber = await this.generateTransactionNumber(tx);
@@ -91,9 +106,25 @@ export class FinancialTransactionService {
         totalGST: Number(data.totalGST),
         tdsAmount: Number(data.tdsAmount),
         netAmount: Number(data.netAmount),
-        paymentStatus: "UNPAID",
+        paymentStatus: data.paymentStatus || "UNPAID",
+        paidAmount: Number(data.paidAmount || 0),
       }
     });
+  }
+
+  static async createExpenseTransaction(tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">, data: {
+    sourceId: string;
+    transactionDate: Date;
+    description: string;
+    amount: number | any;
+    taxableAmount: number | any;
+    totalGST: number | any;
+    tdsAmount: number | any;
+    netAmount: number | any;
+    paymentStatus?: PaymentStatus;
+    paidAmount?: number | any;
+  }) {
+    return await this.upsertExpenseTransaction(tx, data);
   }
 
   static async deleteTransactionBySource(tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">, sourceType: string, sourceId: string) {

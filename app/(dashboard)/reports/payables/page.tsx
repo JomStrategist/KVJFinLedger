@@ -23,15 +23,20 @@ export default async function PayablesReportPage({
   const { data: expenses, summary } = await ReportsService.getPayablesReport(filters);
 
   // Flatten data for export
-  const exportData = expenses.map(exp => ({
-    "Vendor": exp.vendor?.name || 'Unknown',
-    "Expense Number": exp.expenseNumber,
-    "Expense Date": exp.expenseDate.toLocaleDateString('en-IN'),
-    "Expense Amount": Number(exp.netAmount),
-    "Paid Amount": 0,
-    "Outstanding Amount": Number(exp.netAmount),
-    "Payment Status": exp.paymentStatus.replace('_', ' ')
-  }));
+  const exportData = expenses.map(exp => {
+    const net = Number(exp.netAmount);
+    const paid = exp.paymentStatus === 'PARTIALLY_PAID' ? Number(exp.paidAmount || 0) : (exp.paymentStatus === 'PAID' ? net : 0);
+    const outstanding = Math.max(0, net - paid);
+    return {
+      "Vendor": exp.vendor?.name || 'Unknown',
+      "Expense Number": exp.expenseNumber,
+      "Expense Date": exp.expenseDate.toLocaleDateString('en-IN'),
+      "Expense Amount": net,
+      "Paid Amount": paid,
+      "Outstanding Amount": outstanding,
+      "Payment Status": exp.paymentStatus.replace('_', ' ')
+    };
+  });
 
   return (
     <div className="p-6 max-w-7xl mx-auto print:p-0">
@@ -112,12 +117,21 @@ export default async function PayablesReportPage({
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-theme-text-muted">
                       {exp.expenseDate.toLocaleDateString('en-IN')}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-theme-text">{formatCurrency(Number(exp.netAmount))}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600">{formatCurrency(0)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-orange-600">{formatCurrency(Number(exp.netAmount))}</td>
+                    {(() => {
+                      const net = Number(exp.netAmount);
+                      const paid = exp.paymentStatus === 'PARTIALLY_PAID' ? Number(exp.paidAmount || 0) : (exp.paymentStatus === 'PAID' ? net : 0);
+                      const outstanding = Math.max(0, net - paid);
+                      return (
+                        <>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-theme-text">{formatCurrency(net)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600">{formatCurrency(paid)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-orange-600">{formatCurrency(outstanding)}</td>
+                        </>
+                      );
+                    })()}
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                        exp.paymentStatus === 'PARTIALLY_PAID' ? 'bg-theme-surface-hover text-blue-800' : 'bg-yellow-100 text-yellow-800'
+                        exp.paymentStatus === 'PARTIALLY_PAID' ? 'bg-amber-100 text-amber-800' : 'bg-yellow-100 text-yellow-800'
                       } print:border print:border-gray-400 print:bg-transparent`}>
                         {exp.paymentStatus.replace('_', ' ')}
                       </span>

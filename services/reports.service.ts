@@ -114,6 +114,10 @@ export class ReportsService {
       
       if (exp.paymentStatus === "PAID") {
         paidExpenses += net;
+      } else if (exp.paymentStatus === "PARTIALLY_PAID") {
+        const paid = Number(exp.paidAmount || 0);
+        paidExpenses += paid;
+        unpaidExpenses += Math.max(0, net - paid);
       } else {
         unpaidExpenses += net;
       }
@@ -247,22 +251,26 @@ export class ReportsService {
 
   static async getPayablesReport(filters?: ReportDateFilter) {
     const { data: expenses } = await this.getExpenseReport({ ...filters, paymentStatus: undefined });
-    const payables = expenses.filter(exp => exp.paymentStatus !== "PAID");
+    const payables = expenses.filter(exp => exp.paymentStatus !== "PAID" && exp.status !== "CANCELLED");
 
     let totalPayables = 0;
+    let paidAmount = 0;
     let outstandingAmount = 0;
 
     for (const exp of payables) {
       const net = Number(exp.netAmount);
+      const paid = exp.paymentStatus === "PARTIALLY_PAID" ? Number(exp.paidAmount || 0) : 0;
+      const outstanding = Math.max(0, net - paid);
       totalPayables += net;
-      outstandingAmount += net;
+      paidAmount += paid;
+      outstandingAmount += outstanding;
     }
 
     return {
       data: payables,
       summary: {
         totalPayables,
-        paidAmount: 0,
+        paidAmount,
         outstandingAmount,
         numberOfUnpaidExpenses: payables.length
       }

@@ -114,6 +114,16 @@ export class ExpenseService {
     return await prisma.$transaction(async (tx) => {
       const expenseNumber = await this.generateExpenseNumber(tx);
 
+      const netAmount = Number(data.netAmount ?? data.grossAmount ?? (Number(data.taxableAmount || 0) + Number(data.totalGST || 0) - Number(data.tdsAmount || 0)));
+      const paymentStatus = (data.paymentStatus || (data.paidBy === "EMPLOYEE" ? "UNPAID" : "PAID")) as PaymentStatus;
+      let paidAmount = 0;
+      if (paymentStatus === "PAID") {
+        paidAmount = netAmount;
+      } else if (paymentStatus === "PARTIALLY_PAID") {
+        paidAmount = Math.min(netAmount, Math.max(0, Number(data.paidAmount || 0)));
+      }
+      const balancePayable = Math.max(0, netAmount - paidAmount);
+
       const expense = await tx.expense.create({
         data: {
           expenseNumber,
@@ -124,7 +134,9 @@ export class ExpenseService {
           paidBy: data.paidBy || "COMPANY",
           employeeId: data.paidBy === "EMPLOYEE" ? data.employeeId || null : null,
           status: data.status || "APPROVED",
-          paymentStatus: "PAID",
+          paymentStatus,
+          paidAmount,
+          balancePayable,
 
           subtotal: Number(data.subtotal ?? data.taxableAmount ?? 0),
           discountAmount: Number(data.discountAmount || 0),
@@ -143,7 +155,7 @@ export class ExpenseService {
           tdsSection: data.tdsSection || (Number(data.tdsRate) === 10 ? "194J" : Number(data.tdsRate) === 2 ? "194C" : "194J"),
 
           grossAmount: Number(data.grossAmount ?? data.taxableAmount ?? 0),
-          netAmount: Number(data.netAmount ?? data.grossAmount ?? 0),
+          netAmount,
           isAsset: Boolean(data.isAsset || data.expenseTreatment === "Fixed Asset"),
           assetType: data.assetType || null,
           depreciationRate: Number(data.depreciationRate || 0),
@@ -177,6 +189,22 @@ export class ExpenseService {
           }
         }
       });
+
+      if (expense.status === "APPROVED") {
+        await FinancialTransactionService.upsertExpenseTransaction(tx, {
+          sourceId: expense.id,
+          transactionDate: expense.expenseDate,
+          description: expense.description || `Expense ${expense.expenseNumber}`,
+          amount: expense.grossAmount,
+          taxableAmount: expense.taxableAmount,
+          totalGST: expense.totalInputGST,
+          tdsAmount: expense.tdsAmount,
+          netAmount: expense.netAmount,
+          paymentStatus: expense.paymentStatus,
+          paidAmount: expense.paidAmount || 0,
+        });
+      }
+
       return expense;
     });
   }
@@ -190,8 +218,18 @@ export class ExpenseService {
       // Delete existing items
       await tx.expenseItem.deleteMany({ where: { expenseId: id } });
 
+      const netAmount = Number(data.netAmount ?? data.grossAmount ?? (Number(data.taxableAmount || 0) + Number(data.totalGST || 0) - Number(data.tdsAmount || 0)));
+      const paymentStatus = (data.paymentStatus || current.paymentStatus || "UNPAID") as PaymentStatus;
+      let paidAmount = 0;
+      if (paymentStatus === "PAID") {
+        paidAmount = netAmount;
+      } else if (paymentStatus === "PARTIALLY_PAID") {
+        paidAmount = Math.min(netAmount, Math.max(0, Number(data.paidAmount ?? current.paidAmount ?? 0)));
+      }
+      const balancePayable = Math.max(0, netAmount - paidAmount);
+
       // Update expense and recreate items
-      return await tx.expense.update({
+      const updatedExpense = await tx.expense.update({
         where: { id },
         data: {
           expenseDate: new Date(data.expenseDate),
@@ -200,7 +238,9 @@ export class ExpenseService {
           categoryId: data.categoryId || null,
           paidBy: data.paidBy || "COMPANY",
           employeeId: data.paidBy === "EMPLOYEE" ? data.employeeId || null : null,
-          paymentStatus: data.paymentStatus || current.paymentStatus,
+          paymentStatus,
+          paidAmount,
+          balancePayable,
 
           subtotal: Number(data.subtotal ?? data.taxableAmount ?? 0),
           discountAmount: Number(data.discountAmount || 0),
@@ -219,7 +259,7 @@ export class ExpenseService {
           tdsSection: data.tdsSection || (Number(data.tdsRate) === 10 ? "194J" : Number(data.tdsRate) === 2 ? "194C" : "194J"),
 
           grossAmount: Number(data.grossAmount ?? data.taxableAmount ?? 0),
-          netAmount: Number(data.netAmount ?? data.grossAmount ?? 0),
+          netAmount,
           isAsset: Boolean(data.isAsset || data.expenseTreatment === "Fixed Asset"),
           assetType: data.assetType || null,
           depreciationRate: Number(data.depreciationRate || 0),
@@ -253,6 +293,23 @@ export class ExpenseService {
           }
         }
       });
+
+      if (updatedExpense.status === "APPROVED") {
+        await FinancialTransactionService.upsertExpenseTransaction(tx, {
+          sourceId: updatedExpense.id,
+          transactionDate: updatedExpense.expenseDate,
+          description: updatedExpense.description || `Expense ${updatedExpense.expenseNumber}`,
+          amount: updatedExpense.grossAmount,
+          taxableAmount: updatedExpense.taxableAmount,
+          totalGST: updatedExpense.totalInputGST,
+          tdsAmount: updatedExpense.tdsAmount,
+          netAmount: updatedExpense.netAmount,
+          paymentStatus: updatedExpense.paymentStatus,
+          paidAmount: updatedExpense.paidAmount || 0,
+        });
+      }
+
+      return updatedExpense;
     });
   }
 
@@ -276,6 +333,8 @@ export class ExpenseService {
         totalGST: updatedExpense.totalInputGST,
         tdsAmount: updatedExpense.tdsAmount,
         netAmount: updatedExpense.netAmount,
+        paymentStatus: updatedExpense.paymentStatus,
+        paidAmount: updatedExpense.paidAmount || 0,
       });
 
       return updatedExpense;
@@ -305,14 +364,46 @@ export class ExpenseService {
     });
   }
 
-  static async updatePaymentStatus(id: string, status: PaymentStatus) {
+  static async updatePaymentStatus(id: string, status: PaymentStatus, paidAmount?: number) {
     const current = await prisma.expense.findUnique({ where: { id } });
     if (!current) throw new Error("Expense not found");
     if (current.status === "CANCELLED") throw new Error("Cannot update payment status of a cancelled expense.");
 
-    return await prisma.expense.update({
-      where: { id },
-      data: { paymentStatus: status }
+    const netAmount = Number(current.netAmount);
+    let resolvedPaidAmount = 0;
+    if (status === "PAID") {
+      resolvedPaidAmount = netAmount;
+    } else if (status === "PARTIALLY_PAID") {
+      resolvedPaidAmount = paidAmount !== undefined ? Math.min(netAmount, Math.max(0, Number(paidAmount))) : Number(current.paidAmount || 0);
+    }
+    const balancePayable = Math.max(0, netAmount - resolvedPaidAmount);
+
+    return await prisma.$transaction(async (tx) => {
+      const updated = await tx.expense.update({
+        where: { id },
+        data: { 
+          paymentStatus: status,
+          paidAmount: resolvedPaidAmount,
+          balancePayable
+        }
+      });
+
+      if (updated.status === "APPROVED") {
+        await FinancialTransactionService.upsertExpenseTransaction(tx, {
+          sourceId: updated.id,
+          transactionDate: updated.expenseDate,
+          description: updated.description || `Expense ${updated.expenseNumber}`,
+          amount: updated.grossAmount,
+          taxableAmount: updated.taxableAmount,
+          totalGST: updated.totalInputGST,
+          tdsAmount: updated.tdsAmount,
+          netAmount: updated.netAmount,
+          paymentStatus: updated.paymentStatus,
+          paidAmount: updated.paidAmount || 0,
+        });
+      }
+
+      return updated;
     });
   }
 }

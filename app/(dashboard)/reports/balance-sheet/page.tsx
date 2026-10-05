@@ -15,52 +15,53 @@ export default async function BalanceSheetPage({
   const asOfDate = asOfFilter ? new Date(asOfFilter) : new Date();
   asOfDate.setHours(23, 59, 59, 999);
 
-  // Cash: Paid Revenue - Paid Expenses via FinancialTransactions
-  const cashTransactions = await prisma.financialTransaction.findMany({
-    where: {
-      paymentStatus: 'PAID',
-      transactionDate: { lte: asOfDate }
-    }
-  });
+  // 1. Inward Cash & Accounts Receivable (Invoices & Payments)
+  const [invoicePayments, taxInvoices, approvedExpenses] = await Promise.all([
+    prisma.invoicePayment.findMany({
+      where: { paymentDate: { lte: asOfDate } }
+    }),
+    prisma.taxInvoice.findMany({
+      where: {
+        status: { not: 'CANCELLED' },
+        invoiceDate: { lte: asOfDate }
+      },
+      include: { payments: true }
+    }),
+    prisma.expense.findMany({
+      where: {
+        status: { not: 'CANCELLED' },
+        expenseDate: { lte: asOfDate }
+      }
+    })
+  ]);
 
-  const cashIn = cashTransactions.filter(t => t.type === 'REVENUE').reduce((sum, t) => sum + Number(t.amount), 0);
-  const cashOut = cashTransactions.filter(t => t.type === 'EXPENSE').reduce((sum, t) => sum + Number(t.amount), 0);
-  const cashEquivalents = cashIn - cashOut;
-
-  // AR: Unpaid/Partially Paid Tax Invoices
-  const taxInvoices = await prisma.taxInvoice.findMany({
-    where: {
-      status: { not: 'CANCELLED' },
-      invoiceDate: { lte: asOfDate }
-    }
-  });
+  const cashIn = invoicePayments.reduce((sum, p) => sum + Number(p.paymentAmount || 0), 0);
   
-  // Need to figure out the paid portion of tax invoices up to this date
-  // Since we only track `FinancialTransaction` status and we don't have partial payments fully modeled yet, 
-  // we'll assume any `TaxInvoice` mapped to a `PAID` FinancialTransaction is fully paid.
-  const paidInvoiceIds = new Set(
-    cashTransactions.filter(t => t.type === 'REVENUE' && t.sourceType === 'TAX_INVOICE').map(t => t.sourceId)
-  );
-  
-  const accountsReceivable = taxInvoices
-    .filter(inv => !paidInvoiceIds.has(inv.id))
-    .reduce((sum, inv) => sum + Number(inv.netAmount), 0);
+  const expenseCashOut = approvedExpenses.reduce((sum, exp) => {
+    if (exp.paymentStatus === "PAID") return sum + Number(exp.netAmount || 0);
+    if (exp.paymentStatus === "PARTIALLY_PAID") return sum + Number(exp.paidAmount || 0);
+    return sum;
+  }, 0);
 
-  // AP: Unpaid Expenses
-  const expenses = await prisma.expense.findMany({
-    where: {
-      status: { not: 'CANCELLED' },
-      expenseDate: { lte: asOfDate }
+  const cashEquivalents = cashIn - expenseCashOut;
+
+  // AR: Unpaid or partially paid portion of invoices
+  const accountsReceivable = taxInvoices.reduce((sum, inv) => {
+    if (inv.status === "PAID") return sum;
+    const paidSum = inv.payments
+      .filter(p => new Date(p.paymentDate) <= asOfDate)
+      .reduce((s, p) => s + Number(p.paymentAmount || 0), 0);
+    return sum + Math.max(0, Number(inv.netAmount || 0) - paidSum);
+  }, 0);
+
+  // AP: Unpaid or partially paid portion of expenses
+  const accountsPayable = approvedExpenses.reduce((sum, exp) => {
+    if (exp.paymentStatus === "PAID") return sum;
+    if (exp.paymentStatus === "PARTIALLY_PAID") {
+      return sum + Math.max(0, Number(exp.netAmount || 0) - Number(exp.paidAmount || 0));
     }
-  });
-
-  const paidExpenseIds = new Set(
-    cashTransactions.filter(t => t.type === 'EXPENSE' && t.sourceType === 'EXPENSE').map(t => t.sourceId)
-  );
-
-  const accountsPayable = expenses
-    .filter(exp => !paidExpenseIds.has(exp.id))
-    .reduce((sum, exp) => sum + Number(exp.netAmount), 0);
+    return sum + Number(exp.netAmount || 0);
+  }, 0);
 
   const totalAssets = cashEquivalents + accountsReceivable;
   const totalLiabilities = accountsPayable;

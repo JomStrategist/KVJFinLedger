@@ -39,6 +39,9 @@ export function ExpenseForm({
   const [paymentStatus, setPaymentStatus] = useState<"PAID" | "UNPAID" | "PARTIALLY_PAID">(
     initialData?.paymentStatus || (initialData?.paidBy === "EMPLOYEE" ? "UNPAID" : "PAID")
   );
+  const [paidAmount, setPaidAmount] = useState<string>(
+    initialData?.paidAmount !== undefined && initialData?.paidAmount !== null && Number(initialData.paidAmount) > 0 ? String(initialData.paidAmount) : ""
+  );
 
   // Additional Settings State
   const [isAdditionalSettingsOpen, setIsAdditionalSettingsOpen] = useState(false);
@@ -212,6 +215,18 @@ export function ExpenseForm({
       paidBy,
       employeeId: paidBy === "EMPLOYEE" ? employeeId : null,
       paymentStatus,
+      paidAmount: paymentStatus === "PAID" 
+        ? Number(calc.netAmount || 0) 
+        : paymentStatus === "PARTIALLY_PAID" 
+        ? Math.min(Number(calc.netAmount || 0), Math.max(0, parseFloat(paidAmount) || 0)) 
+        : 0,
+      balancePayable: Math.max(0, Number(calc.netAmount || 0) - (
+        paymentStatus === "PAID" 
+          ? Number(calc.netAmount || 0) 
+          : paymentStatus === "PARTIALLY_PAID" 
+          ? Math.min(Number(calc.netAmount || 0), Math.max(0, parseFloat(paidAmount) || 0)) 
+          : 0
+      )),
       notes: notes.trim() || null,
       
       subtotal: Number(calc.subtotal ?? calc.taxableAmount ?? 0),
@@ -579,6 +594,29 @@ export function ExpenseForm({
               <option value="UNPAID">Unpaid</option>
               <option value="PARTIALLY_PAID">Partially Paid</option>
             </select>
+
+            {paymentStatus === "PARTIALLY_PAID" && (
+              <div className="mt-3 pt-3 border-t border-theme-border space-y-2">
+                <label className="block text-xs font-bold text-amber-700 uppercase tracking-wider">
+                  Amount Paid Now (₹) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  placeholder="e.g. 5000"
+                  value={paidAmount}
+                  onChange={(e) => setPaidAmount(e.target.value)}
+                  className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-amber-500 bg-white text-theme-text"
+                />
+                <div className="flex justify-between items-center text-xs text-amber-800 font-medium">
+                  <span>Balance Payable:</span>
+                  <span className="font-bold">
+                    ₹{Math.max(0, Number(calc.netAmount || 0) - (parseFloat(paidAmount) || 0)).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
           <p className="text-xs text-theme-text-muted mt-3">
             {paidBy === "EMPLOYEE"

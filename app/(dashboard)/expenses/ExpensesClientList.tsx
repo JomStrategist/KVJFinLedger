@@ -322,12 +322,21 @@ export function ExpensesClientList({
 
                       {/* STATUS */}
                       <td className="py-4 px-3 text-center">
-                        {isPaid ? (
+                        {expense.paymentStatus === "PAID" ? (
                           <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-[#E5F3EC] text-[#0B5F46] tracking-wider">
                             PAID
                           </span>
+                        ) : expense.paymentStatus === "PARTIALLY_PAID" ? (
+                          <div className="inline-flex flex-col items-center">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FFF3D8] text-[#B27A17] tracking-wider">
+                              PARTIAL
+                            </span>
+                            <span className="text-[10px] font-semibold text-slate-500 mt-0.5 whitespace-nowrap">
+                              ₹{(Number(expense.paidAmount) || 0).toLocaleString("en-IN")} / ₹{amount.toLocaleString("en-IN")}
+                            </span>
+                          </div>
                         ) : (
-                          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FFF3D8] text-[#B27A17] tracking-wider">
+                          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FEE2E2] text-[#991B1B] tracking-wider">
                             PAYABLE
                           </span>
                         )}
