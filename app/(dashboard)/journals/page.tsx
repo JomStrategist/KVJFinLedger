@@ -31,13 +31,25 @@ export default async function JournalsPage({
     toDate?: string;
     voucherType?: string;
     search?: string;
+    period?: string;
   }>;
 }) {
   const params = await searchParams;
   const currentMonth = getCurrentMonthBounds();
 
-  const fromDate = params.fromDate !== undefined ? params.fromDate : currentMonth.fromDate;
-  const toDate = params.toDate !== undefined ? params.toDate : currentMonth.toDate;
+  // If period=ALL is explicitly set, skip date filtering entirely
+  const isAllTime = params.period === "ALL";
+
+  const fromDate = isAllTime
+    ? ""
+    : params.fromDate !== undefined
+    ? params.fromDate
+    : currentMonth.fromDate;
+  const toDate = isAllTime
+    ? ""
+    : params.toDate !== undefined
+    ? params.toDate
+    : currentMonth.toDate;
   const voucherType = params.voucherType || "ALL";
   const search = params.search || "";
 
@@ -57,6 +69,7 @@ export default async function JournalsPage({
         initialFromDate={fromDate}
         initialToDate={toDate}
         initialType={voucherType}
+        initialPeriod={isAllTime ? "ALL" : undefined}
       />
     </div>
   );

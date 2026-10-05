@@ -7,6 +7,7 @@ import { JournalVoucher } from "@/services/journal.service";
 
 type DatePreset = "CURRENT_MONTH" | "LAST_MONTH" | "THIS_QUARTER" | "THIS_YEAR" | "ALL" | "CUSTOM";
 
+
 export function JournalsClient({
   initialVouchers,
   initialTotalDebit,
@@ -14,6 +15,7 @@ export function JournalsClient({
   initialFromDate,
   initialToDate,
   initialType,
+  initialPeriod,
 }: {
   initialVouchers: JournalVoucher[];
   initialTotalDebit: number;
@@ -21,6 +23,7 @@ export function JournalsClient({
   initialFromDate: string;
   initialToDate: string;
   initialType?: string;
+  initialPeriod?: DatePreset;
 }) {
   const router = useRouter();
 
@@ -29,14 +32,16 @@ export function JournalsClient({
   const [voucherType, setVoucherType] = useState(initialType || "ALL");
   const [search, setSearch] = useState("");
   const [activePreset, setActivePreset] = useState<DatePreset>(
-    initialFromDate && initialToDate ? "CURRENT_MONTH" : "ALL"
+    initialPeriod ?? (initialFromDate && initialToDate ? "CURRENT_MONTH" : "ALL")
   );
 
-  const applyFilters = (newFrom: string, newTo: string, newType: string) => {
+  const applyFilters = (newFrom: string, newTo: string, newType: string, preset?: DatePreset) => {
     const params = new URLSearchParams();
     if (newFrom) params.set("fromDate", newFrom);
     if (newTo) params.set("toDate", newTo);
     if (newType && newType !== "ALL") params.set("voucherType", newType);
+    // Send period=ALL so the server knows to skip date filtering entirely
+    if (preset === "ALL") params.set("period", "ALL");
     router.push(`/journals?${params.toString()}`);
   };
 
@@ -79,7 +84,7 @@ export function JournalsClient({
     if (preset !== "CUSTOM") {
       setFromDate(start);
       setToDate(end);
-      applyFilters(start, end, voucherType);
+      applyFilters(start, end, voucherType, preset);
     }
   };
 
