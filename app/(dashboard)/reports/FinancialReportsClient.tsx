@@ -6,7 +6,7 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { useSettings } from "@/hooks/useSettings";
 import { recordGstFilingAction, deleteGstFilingAction } from "./gst-actions";
 import { recordTdsDepositAction, markExpenseTdsPaidAction, deleteTdsDepositAction } from "./tds-actions";
-import { AssetDepreciationModal } from "./AssetDepreciationModal";
+import Link from "next/link";
 import {
   ExecutiveOverviewView,
   FinancialRatiosView,
@@ -586,18 +586,13 @@ export function FinancialReportsClient({
     return combined;
   }, [settings?.incomeTaxRates]);
 
-  // Income Tax Rate (%) per Financial Year
-  const [overrideTaxRates, setOverrideTaxRates] = useState<Record<string, number>>({});
-
+  // Effective Corporate Income Tax Rate (%) for selected FY (from Settings)
   const effectiveTaxRate = useMemo(() => {
-    if (overrideTaxRates[fy] !== undefined) return overrideTaxRates[fy];
     return settings?.incomeTaxRates?.[fy] ?? 25;
-  }, [overrideTaxRates, settings?.incomeTaxRates, fy]);
+  }, [settings?.incomeTaxRates, fy]);
 
-  // Asset Depreciation & Live Adjustment Modal State
-  const [localDepreciations, setLocalDepreciations] = useState<any[]>(assetDepreciations || []);
-  const [isDepModalOpen, setIsDepModalOpen] = useState(false);
-  const [selectedAssetForDep, setSelectedAssetForDep] = useState<any | null>(null);
+  // Asset Depreciation Records
+  const localDepreciations = useMemo(() => assetDepreciations || [], [assetDepreciations]);
 
   // GST Filing State
   const [allFilings, setAllFilings] = useState<any[]>(gstFilings);
@@ -1563,54 +1558,16 @@ export function FinancialReportsClient({
               <span className="text-emerald-600">⚡</span> Global Slicers &amp; Period Settings
             </div>
 
-            {/* Accounting Parameters (Tax Rate & Depreciation) */}
-            <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-              {/* Tax Rate Parameter */}
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 shadow-2xs">
-                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tax Rate</span>
-                <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.5"
-                    value={effectiveTaxRate}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value) || 0;
-                      setOverrideTaxRates((prev) => ({ ...prev, [fy]: val }));
-                    }}
-                    className="w-12 h-[26px] bg-white border border-slate-300 rounded-lg text-center text-xs font-mono font-bold text-emerald-800 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                  />
-                  <span className="text-xs font-bold text-slate-500">%</span>
-                </div>
-              </div>
-
-              {/* Depreciation Method Toggle */}
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 shadow-2xs">
-                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">Dep. Method</span>
-                <div className="flex items-center bg-slate-200/70 rounded-lg p-0.5 border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setDepMethod("WDV")}
-                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                      depMethod === "WDV" ? "bg-white text-emerald-800 shadow-2xs font-extrabold" : "text-slate-600 hover:text-slate-900"
-                    }`}
-                    title="Written Down Value (Income Tax Act)"
-                  >
-                    WDV
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDepMethod("SLM")}
-                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                      depMethod === "SLM" ? "bg-white text-emerald-800 shadow-2xs font-extrabold" : "text-slate-600 hover:text-slate-900"
-                    }`}
-                    title="Straight Line Method (SLM)"
-                  >
-                    SLM
-                  </button>
-                </div>
-              </div>
+            {/* Accounting Parameters (Statutory Rates Governed by Settings) */}
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold shadow-2xs">
+                <span className="text-[10px] font-extrabold uppercase text-slate-500 tracking-wider">Tax Rate:</span>
+                <span className="font-mono text-emerald-800 font-extrabold">{effectiveTaxRate}%</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold shadow-2xs">
+                <span className="text-[10px] font-extrabold uppercase text-slate-500 tracking-wider">Dep. Mode:</span>
+                <span className="font-mono text-emerald-800 font-extrabold">{depMethod}</span>
+              </span>
             </div>
           </div>
 
@@ -3015,20 +2972,15 @@ export function FinancialReportsClient({
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDepMethod("WDV")}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer ${depMethod === "WDV" ? "bg-[#177B55] text-white border-[#177B55] shadow-xs" : "border-[#D1D5DB] text-[#4B5563] bg-white hover:bg-[#F9FAFB]"}`}
+                <span className="px-3.5 py-1.5 rounded-xl text-xs font-black border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-2xs">
+                  {depMethod === "WDV" ? "Method: WDV (Income Tax Act)" : "Method: SLM (Companies Act)"}
+                </span>
+                <Link
+                  href="/settings"
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 transition-colors shadow-2xs inline-flex items-center gap-1.5"
                 >
-                  WDV (IT Act)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDepMethod("SLM")}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer ${depMethod === "SLM" ? "bg-[#177B55] text-white border-[#177B55] shadow-xs" : "border-[#D1D5DB] text-[#4B5563] bg-white hover:bg-[#F9FAFB]"}`}
-                >
-                  SLM (Cos. Act)
-                </button>
+                  <span>⚙️</span> Manage in Settings
+                </Link>
               </div>
             </div>
 
@@ -3044,7 +2996,7 @@ export function FinancialReportsClient({
             <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[900px]">
-                  <TableHead cols={["Asset Description", "Category", "Acquisition Date", "Gross Block", "Dep. Rate", "Accumulated Dep.", "Current FY Dep.", "Net Block", "Status & Action"]} />
+                  <TableHead cols={["Asset Description", "Category", "Acquisition Date", "Gross Block", "Dep. Rate", "Accumulated Dep.", "Current FY Dep.", "Net Block", "Depreciation Method"]} />
                   <tbody className="divide-y divide-[#EEF2EF]">
                     {depSchedule.length === 0 ? (
                       <EmptyRow cols={9} msg="No fixed assets recorded for this period. Capitalise capital items through Expenses categorized as ASSET." />
@@ -3060,27 +3012,9 @@ export function FinancialReportsClient({
                           <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#B94B4B] font-bold">({formatCurrency(a.currentYearDep)})</td>
                           <td className="py-3 px-3.5 text-right tabular-nums font-mono font-black text-[#111827]">{formatCurrency(a.closingWdv)}</td>
                           <td className="py-3 px-3.5 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {a.isCustomRecorded ? (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
-                                  ✓ Recorded
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
-                                  ⚡ Auto
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedAssetForDep(a);
-                                  setIsDepModalOpen(true);
-                                }}
-                                className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#177B55] text-white hover:bg-[#126344] transition-colors shadow-2xs cursor-pointer"
-                              >
-                                Adjust / Record
-                              </button>
-                            </div>
+                            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 font-mono">
+                              {a.method} ({a.ratePct})
+                            </span>
                           </td>
                         </tr>
                       ))
@@ -3415,38 +3349,6 @@ export function FinancialReportsClient({
         </div>
       )}
 
-      {/* Asset Depreciation & Live Adjustment Modal */}
-      <AssetDepreciationModal
-        isOpen={isDepModalOpen}
-        onClose={() => {
-          setIsDepModalOpen(false);
-          setSelectedAssetForDep(null);
-        }}
-        asset={selectedAssetForDep}
-        financialYear={fy}
-        onSaveSuccess={(savedRecord) => {
-          setLocalDepreciations((prev) => {
-            const idx = prev.findIndex(
-              (d) =>
-                d.id === savedRecord.id ||
-                (d.expenseId === savedRecord.expenseId && d.financialYear === savedRecord.financialYear)
-            );
-            if (idx >= 0) {
-              const updated = [...prev];
-              updated[idx] = savedRecord;
-              return updated;
-            }
-            return [savedRecord, ...prev];
-          });
-          setIsDepModalOpen(false);
-          setSelectedAssetForDep(null);
-        }}
-        onDeleteSuccess={(deletedId) => {
-          setLocalDepreciations((prev) => prev.filter((d) => d.id !== deletedId));
-          setIsDepModalOpen(false);
-          setSelectedAssetForDep(null);
-        }}
-      />
     </div>
   );
 }
