@@ -147,8 +147,6 @@ export interface MasterCategoryConfig {
   id: MasterCategory;
   label: string;
   icon: string;
-  badge?: string;
-  description: string;
   subTabs: { id: SubTab; label: string; icon: string }[];
 }
 
@@ -157,20 +155,16 @@ export const MASTER_CATEGORIES: MasterCategoryConfig[] = [
     id: "statements",
     label: "Financial Statements",
     icon: "📊",
-    badge: "Schedule III",
-    description: "Statutory Schedule III Financial Statements (P&L, Balance Sheet, Cash Flow)",
     subTabs: [
       { id: "pnl", label: "Profit & Loss", icon: "📊" },
       { id: "bs", label: "Balance Sheet", icon: "⚖️" },
-      { id: "cashflow", label: "Cash Flow (AS-3)", icon: "💵" },
+      { id: "cashflow", label: "Cash Flow", icon: "💵" },
     ],
   },
   {
     id: "compliance",
     label: "Tax & Statutory",
     icon: "🏛️",
-    badge: "GST / TDS",
-    description: "Statutory Tax Ledgers, GSTR-3B Filing & TDS Form 26Q",
     subTabs: [
       { id: "gst", label: "GST Slabs & ITC", icon: "📑" },
       { id: "tds", label: "TDS (Form 26Q)", icon: "🏛️" },
@@ -180,8 +174,6 @@ export const MASTER_CATEGORIES: MasterCategoryConfig[] = [
     id: "operations",
     label: "Working Capital",
     icon: "💼",
-    badge: "Ageing & Ops",
-    description: "Sundry Debtors & Creditors Ageing, Revenue & Expense Head Concentration",
     subTabs: [
       { id: "receivables", label: "Debtors Ageing", icon: "📈" },
       { id: "payables", label: "Creditors & Disbursements", icon: "💳" },
@@ -191,10 +183,8 @@ export const MASTER_CATEGORIES: MasterCategoryConfig[] = [
   },
   {
     id: "assets",
-    label: "Fixed Assets & Dep.",
+    label: "Fixed Assets & Depreciation",
     icon: "🏢",
-    badge: "Schedule II",
-    description: "Fixed Asset Register, Schedule II & IT Act WDV/SLM Depreciation with Live Adjustments",
     subTabs: [
       { id: "schedule", label: "Asset Register & Depreciation", icon: "🏢" },
     ],
@@ -203,8 +193,6 @@ export const MASTER_CATEGORIES: MasterCategoryConfig[] = [
     id: "bi_ratios",
     label: "BI & Ratios",
     icon: "📈",
-    badge: "Analytics",
-    description: "Executive KPIs, 12+ Financial Ratios, Comparative Variance & CA Insights",
     subTabs: [
       { id: "overview", label: "Executive BI Overview", icon: "✨" },
       { id: "ratios", label: "Financial Ratios", icon: "📐" },
@@ -1322,34 +1310,34 @@ export function FinancialReportsClient({
     rows.push([]);
 
     if (activeSubTab === "pnl") {
-      rows.push(["Particulars", "Schedule", "Amount (INR)"]);
-      rows.push(["I. REVENUE FROM OPERATIONS (NET OF STATUTORY TAXES)", "Schedule 1", totalRevenue]);
+      rows.push(["Particulars", "Amount (INR)"]);
+      rows.push(["I. REVENUE FROM OPERATIONS (NET OF STATUTORY TAXES)", totalRevenue]);
       revenueByCategory.forEach(([cat, amt]) => {
-        rows.push([`  ${cat}`, "", amt]);
+        rows.push([`  ${cat}`, amt]);
       });
-      rows.push(["Total Revenue from Operations (I)", "", totalRevenue]);
+      rows.push(["Total Revenue from Operations (I)", totalRevenue]);
       rows.push([]);
-      rows.push(["II. EXPENSES", "Schedule 2", totalOperatingExpenses]);
-      rows.push(["  (a) Employee Benefit Expense", "", totalEmployeeExp]);
+      rows.push(["II. EXPENSES", totalOperatingExpenses]);
+      rows.push(["  (a) Employee Benefit Expense", totalEmployeeExp]);
       employeeExpenses.forEach((exp) => {
-        rows.push([`    ${exp.category?.name ?? "Employee Costs"}`, "", Number(exp.netAmount ?? 0)]);
+        rows.push([`    ${exp.category?.name ?? "Employee Costs"}`, Number(exp.netAmount ?? 0)]);
       });
-      rows.push(["  (b) Finance Costs & Bank Charges", "", totalFinanceExp]);
+      rows.push(["  (b) Finance Costs & Bank Charges", totalFinanceExp]);
       financeExpenses.forEach((exp) => {
-        rows.push([`    ${exp.category?.name ?? "Finance Charge"}`, "", Number(exp.netAmount ?? 0)]);
+        rows.push([`    ${exp.category?.name ?? "Finance Charge"}`, Number(exp.netAmount ?? 0)]);
       });
-      rows.push(["  (c) Depreciation & Amortisation Expense", "", totalCurrentYearDep]);
-      rows.push(["  (d) Other Operating Expenses", "", totalOtherOpex]);
+      rows.push(["  (c) Depreciation & Amortisation Expense", totalCurrentYearDep]);
+      rows.push(["  (d) Other Operating Expenses", totalOtherOpex]);
       otherOpexByCategory.forEach(([cat, amt]) => {
-        rows.push([`    ${cat}`, "", amt]);
+        rows.push([`    ${cat}`, amt]);
       });
-      rows.push(["Total Operating Expenses (II)", "", totalOperatingExpenses]);
+      rows.push(["Total Operating Expenses (II)", totalOperatingExpenses]);
       rows.push([]);
-      rows.push(["III. PROFIT BEFORE EXCEPTIONAL ITEMS & TAX (I - II)", "", pbt]);
-      rows.push([`IV. Tax Expense / Provisions (${effectiveTaxRate}% Tax Rate)`, "", taxExpense]);
-      rows.push(["V. NET PROFIT TRANSFERRED TO RESERVES & SURPLUS (PAT)", "", pat]);
+      rows.push(["III. PROFIT BEFORE EXCEPTIONAL ITEMS & TAX (I - II)", pbt]);
+      rows.push([`IV. Tax Expense / Provisions (${effectiveTaxRate}% Tax Rate)`, taxExpense]);
+      rows.push(["V. NET PROFIT TRANSFERRED TO RESERVES & SURPLUS (PAT)", pat]);
     } else if (activeSubTab === "bs") {
-      rows.push(["Particulars (Schedule III Part I)", "Amount (INR)"]);
+      rows.push(["Particulars", "Amount (INR)"]);
       rows.push(["PART I - EQUITY AND LIABILITIES", ""]);
       rows.push(["I. SHAREHOLDERS' FUNDS", ""]);
       rows.push(["  Capital / Proprietor's Fund", openingCapital]);
@@ -1475,9 +1463,6 @@ export function FinancialReportsClient({
                 Indian Accounting Standards (AS / Ind AS)
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1 font-medium">
-              Statutory Schedule III statements, GST/TDS tax registers, working capital ageing, and schedule II fixed asset depreciation.
-            </p>
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
@@ -1672,7 +1657,7 @@ export function FinancialReportsClient({
                   className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     depMethod === "SLM" ? "bg-white text-emerald-800 shadow-2xs font-extrabold" : "text-slate-500"
                   }`}
-                  title="Straight Line Method (Companies Act Schedule II)"
+                  title="Straight Line Method (SLM)"
                 >
                   SLM
                 </button>
@@ -1699,17 +1684,6 @@ export function FinancialReportsClient({
                 >
                   <span>{cat.icon}</span>
                   <span>{cat.label}</span>
-                  {cat.badge && (
-                    <span
-                      className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
-                        isActive
-                          ? "bg-emerald-800 text-emerald-100"
-                          : "bg-slate-100 text-slate-500"
-                      }`}
-                    >
-                      {cat.badge}
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -1807,10 +1781,10 @@ export function FinancialReportsClient({
               />
             </div>
 
-            {/* Schedule III P&L Vertical Statement Container */}
+            {/* P&L Statement Container */}
             <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
               <div className="bg-[#F8FAF8] px-4 py-3 border-b border-[#DCE4DE] flex justify-between items-center text-[11px] font-extrabold text-[#374151] uppercase tracking-wider">
-                <span>Particulars / Nature of Line Item (Schedule III Part II)</span>
+                <span>Particulars / Nature of Line Item</span>
                 <span>Amount for Period (₹)</span>
               </div>
 
@@ -1819,7 +1793,6 @@ export function FinancialReportsClient({
                 <div className="p-3 sm:p-4 space-y-1">
                   <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider flex justify-between items-center">
                     <span>I. REVENUE FROM OPERATIONS (NET OF STATUTORY TAXES)</span>
-                    <span className="text-[10px] text-[#6B7280] font-mono font-normal">Schedule 1</span>
                   </div>
                   <div className="space-y-0.5">
                     {revenueByCategory.length === 0 ? (
@@ -1837,7 +1810,6 @@ export function FinancialReportsClient({
                 <div className="p-3 sm:p-4 space-y-3">
                   <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider flex justify-between items-center">
                     <span>II. OPERATING EXPENSES (COGS & DIRECT/INDIRECT OPEX)</span>
-                    <span className="text-[10px] text-[#6B7280] font-mono font-normal">Schedule 2</span>
                   </div>
 
                   {/* (a) Employee Benefit Expense */}
@@ -1888,11 +1860,10 @@ export function FinancialReportsClient({
                 <div className="p-3 sm:p-4 space-y-2">
                   <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider flex justify-between items-center">
                     <span>IV. DEPRECIATION & AMORTISATION EXPENSE</span>
-                    <span className="text-[10px] text-[#6B7280] font-mono font-normal">Schedule 3</span>
                   </div>
                   <div className="text-xs font-semibold text-[#374151] px-2 flex justify-between items-center">
                     <span>
-                      Depreciation on Fixed Assets & Equipment ({depMethod} as per Schedule II)
+                      Depreciation on Fixed Assets & Equipment ({depMethod})
                     </span>
                     <span className="font-mono tabular-nums font-bold text-slate-800">{formatCurrency(totalCurrentYearDep)}</span>
                   </div>
@@ -1913,7 +1884,6 @@ export function FinancialReportsClient({
                 <div className="p-3 sm:p-4 space-y-2">
                   <div className="px-2 py-1 text-xs font-black text-[#111827] uppercase tracking-wider flex justify-between items-center">
                     <span>VI. FINANCE COSTS & BANK CHARGES</span>
-                    <span className="text-[10px] text-[#6B7280] font-mono font-normal">Schedule 4</span>
                   </div>
                   <div className="text-xs font-semibold text-[#374151] px-2 flex justify-between items-center">
                     <span>Interest & Bank Processing Fees</span>
@@ -1962,7 +1932,7 @@ export function FinancialReportsClient({
             {/* BALANCE SHEET BODY: SCHEDULE III VERTICAL FORMAT */}
             <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
                 <div className="bg-[#F8FAF8] px-4 py-3 border-b border-[#DCE4DE] flex justify-between items-center text-xs font-black text-[#374151] uppercase tracking-wider">
-                  <span>Particulars (Schedule III Part I)</span>
+                  <span>Particulars</span>
                   <span>Amount (₹)</span>
                 </div>
 
@@ -2722,7 +2692,7 @@ export function FinancialReportsClient({
             {/* Quarterly Summary */}
             <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
               <div className="bg-[#F8FAF8] px-4 py-3 font-black text-[11px] uppercase text-[#374151] tracking-wider border-b border-[#DCE4DE]">
-                Quarterly TDS Schedule ({fy})
+                Quarterly TDS Summary ({fy})
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left min-w-[450px]">
@@ -2773,7 +2743,7 @@ export function FinancialReportsClient({
                 </p>
               </div>
               <span className="text-[11px] font-bold text-[#4B5750] bg-[#F8FAF8] border border-[#DCE4DE] px-3 py-1.5 rounded-xl">
-                Current Assets Schedule
+                Current Assets
               </span>
             </div>
 
@@ -2886,7 +2856,7 @@ export function FinancialReportsClient({
                 </p>
               </div>
               <span className="text-[11px] font-bold text-[#4B5750] bg-[#F8FAF8] border border-[#DCE4DE] px-3 py-1.5 rounded-xl">
-                Current Liabilities Schedule
+                Current Liabilities
               </span>
             </div>
 
@@ -2994,15 +2964,10 @@ export function FinancialReportsClient({
           <div className="space-y-6 text-xs">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-black text-[#111827]">Fixed Asset Schedule</h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-50 text-blue-800 border border-blue-200">
-                    Companies Act Schedule II &amp; IT Act
-                  </span>
-                </div>
+                <h3 className="text-lg font-black text-[#111827]">Fixed Assets &amp; Depreciation</h3>
                 <p className="text-xs text-[#6B7280] mt-0.5">
                   Depreciation computed using{" "}
-                  <strong>{depMethod === "WDV" ? "Written Down Value (WDV) — Income Tax Act" : "Straight Line Method (SLM) — Companies Act Schedule II"}</strong>
+                  <strong>{depMethod === "WDV" ? "Written Down Value (WDV)" : "Straight Line Method (SLM)"}</strong>
                 </p>
               </div>
               <div className="flex items-center gap-2">
