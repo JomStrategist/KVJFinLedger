@@ -1520,108 +1520,17 @@ export function FinancialReportsClient({
         </div>
 
         {/* Global Slicer Bar */}
-        <div className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
-          <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700 uppercase tracking-wider pb-2 border-b border-slate-100">
-            <span className="text-emerald-600">⚡</span> Global Slicers &amp; Period Settings
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
-            {/* Financial Year */}
-            <div>
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
-                Financial Year
-              </label>
-              <select
-                value={filters.financialYear}
-                onChange={(e) => handleFilterChange("financialYear", e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all outline-none"
-              >
-                <option value="FY 2026–27">FY 2026–27 (Current)</option>
-                <option value="FY 2025–26">FY 2025–26 (Previous)</option>
-                <option value="FY 2024–25">FY 2024–25</option>
-                <option value="ALL">All Financial Years</option>
-              </select>
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-3">
+            <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+              <span className="text-emerald-600">⚡</span> Global Slicers &amp; Period Settings
             </div>
 
-            {/* Period / Quarter */}
-            <div>
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
-                Quarter / Period
-              </label>
-              <select
-                value={filters.period}
-                onChange={(e) => handleFilterChange("period", e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all outline-none"
-              >
-                <option value="ALL">Full Financial Year</option>
-                <option value="Q1">Q1 (Apr–Jun)</option>
-                <option value="Q2">Q2 (Jul–Sep)</option>
-                <option value="Q3">Q3 (Oct–Dec)</option>
-                <option value="Q4">Q4 (Jan–Mar)</option>
-              </select>
-            </div>
-
-            {/* Comparison Methodology */}
-            <div>
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
-                Comparison Mode
-              </label>
-              <select
-                value={filters.comparisonType}
-                onChange={(e) => handleFilterChange("comparisonType", e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all outline-none"
-              >
-                <option value="PREV_FY">Previous Financial Year</option>
-                <option value="SAME_PERIOD_PREV_YEAR">Same Period Prev Year</option>
-                <option value="PREV_PERIOD">Previous Period</option>
-                <option value="PREV_QUARTER">Previous Quarter</option>
-                <option value="NONE">No Comparison</option>
-              </select>
-            </div>
-
-            {/* Customer Filter */}
-            <div>
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
-                Customer Filter
-              </label>
-              <select
-                value={filters.customerId}
-                onChange={(e) => handleFilterChange("customerId", e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all outline-none"
-              >
-                <option value="">All Billed Customers</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.legalName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Vendor Filter */}
-            <div>
-              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
-                Vendor Filter
-              </label>
-              <select
-                value={filters.vendorId}
-                onChange={(e) => handleFilterChange("vendorId", e.target.value)}
-                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all outline-none"
-              >
-                <option value="">All Creditor Vendors</option>
-                {vendors.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Tax Rate & Dep. Method Controls */}
-            <div className="flex items-center gap-2 pt-4 sm:pt-0">
-              {/* Tax Rate Pill */}
-              <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 h-[38px] flex items-center justify-between">
-                <span className="text-[10px] font-extrabold text-slate-500 uppercase">Tax Rate</span>
+            {/* Accounting Parameters (Tax Rate & Depreciation) */}
+            <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+              {/* Tax Rate Parameter */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 shadow-2xs">
+                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">Tax Rate</span>
                 <div className="flex items-center gap-1">
                   <input
                     type="number"
@@ -1633,35 +1542,131 @@ export function FinancialReportsClient({
                       const val = parseFloat(e.target.value) || 0;
                       setOverrideTaxRates((prev) => ({ ...prev, [fy]: val }));
                     }}
-                    className="w-10 h-[24px] bg-white border border-slate-300 rounded text-center text-xs font-mono font-bold text-emerald-800 outline-none"
+                    className="w-12 h-[26px] bg-white border border-slate-300 rounded-lg text-center text-xs font-mono font-bold text-emerald-800 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                   />
                   <span className="text-xs font-bold text-slate-500">%</span>
                 </div>
               </div>
 
-              {/* Dep Method Toggle */}
-              <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200 h-[38px]">
-                <button
-                  type="button"
-                  onClick={() => setDepMethod("WDV")}
-                  className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    depMethod === "WDV" ? "bg-white text-emerald-800 shadow-2xs font-extrabold" : "text-slate-500"
-                  }`}
-                  title="Written Down Value (Income Tax Act)"
-                >
-                  WDV
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDepMethod("SLM")}
-                  className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    depMethod === "SLM" ? "bg-white text-emerald-800 shadow-2xs font-extrabold" : "text-slate-500"
-                  }`}
-                  title="Straight Line Method (SLM)"
-                >
-                  SLM
-                </button>
+              {/* Depreciation Method Toggle */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 shadow-2xs">
+                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider whitespace-nowrap">Dep. Method</span>
+                <div className="flex items-center bg-slate-200/70 rounded-lg p-0.5 border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setDepMethod("WDV")}
+                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                      depMethod === "WDV" ? "bg-white text-emerald-800 shadow-2xs font-extrabold" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    title="Written Down Value (Income Tax Act)"
+                  >
+                    WDV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDepMethod("SLM")}
+                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                      depMethod === "SLM" ? "bg-white text-emerald-800 shadow-2xs font-extrabold" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    title="Straight Line Method (SLM)"
+                  >
+                    SLM
+                  </button>
+                </div>
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pt-0.5">
+            {/* Financial Year */}
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1.5">
+                Financial Year
+              </label>
+              <select
+                value={filters.financialYear}
+                onChange={(e) => handleFilterChange("financialYear", e.target.value)}
+                className="w-full h-[40px] bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:bg-white transition-all outline-none cursor-pointer"
+              >
+                <option value="FY 2026–27">FY 2026–27 (Current)</option>
+                <option value="FY 2025–26">FY 2025–26 (Previous)</option>
+                <option value="FY 2024–25">FY 2024–25</option>
+                <option value="ALL">All Financial Years</option>
+              </select>
+            </div>
+
+            {/* Period / Quarter */}
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1.5">
+                Quarter / Period
+              </label>
+              <select
+                value={filters.period}
+                onChange={(e) => handleFilterChange("period", e.target.value)}
+                className="w-full h-[40px] bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:bg-white transition-all outline-none cursor-pointer"
+              >
+                <option value="ALL">Full Financial Year</option>
+                <option value="Q1">Q1 (Apr–Jun)</option>
+                <option value="Q2">Q2 (Jul–Sep)</option>
+                <option value="Q3">Q3 (Oct–Dec)</option>
+                <option value="Q4">Q4 (Jan–Mar)</option>
+              </select>
+            </div>
+
+            {/* Comparison Methodology */}
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1.5">
+                Comparison Mode
+              </label>
+              <select
+                value={filters.comparisonType}
+                onChange={(e) => handleFilterChange("comparisonType", e.target.value)}
+                className="w-full h-[40px] bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:bg-white transition-all outline-none cursor-pointer"
+              >
+                <option value="PREV_FY">Previous Financial Year</option>
+                <option value="SAME_PERIOD_PREV_YEAR">Same Period Prev Year</option>
+                <option value="PREV_PERIOD">Previous Period</option>
+                <option value="PREV_QUARTER">Previous Quarter</option>
+                <option value="NONE">No Comparison</option>
+              </select>
+            </div>
+
+            {/* Customer Filter */}
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1.5">
+                Customer Filter
+              </label>
+              <select
+                value={filters.customerId}
+                onChange={(e) => handleFilterChange("customerId", e.target.value)}
+                className="w-full h-[40px] bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:bg-white transition-all outline-none cursor-pointer truncate"
+              >
+                <option value="">All Customers</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.legalName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Vendor Filter */}
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1.5">
+                Vendor Filter
+              </label>
+              <select
+                value={filters.vendorId}
+                onChange={(e) => handleFilterChange("vendorId", e.target.value)}
+                className="w-full h-[40px] bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 focus:bg-white transition-all outline-none cursor-pointer truncate"
+              >
+                <option value="">All Vendors</option>
+                {vendors.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
