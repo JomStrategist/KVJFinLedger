@@ -31,7 +31,6 @@ export default function LedgerClient({
   const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
   const [selectedType, setSelectedType] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ACTIVE");
-  const [showMoreFilters, setShowMoreFilters] = useState(false);
 
   // Sorting & Pagination
   const [sortField, setSortField] = useState<SortField>("name");
@@ -419,127 +418,135 @@ export default function LedgerClient({
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
         {/* Card 1: Sundry Debtors (Receivables) */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-slate-500">Sundry Debtors (Receivables)</div>
-              <div className="text-2xl font-black font-tabular text-emerald-600 mt-0.5 tracking-tight">
-                {formatCurrency(totalDebtors)}
-                <span className="text-xs font-bold ml-1.5 text-slate-500">[Dr]</span>
+        <div
+          onClick={() => {
+            setSelectedCategory("DEBTORS");
+            setViewMode("TABLE");
+          }}
+          className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-emerald-300 transition-all cursor-pointer relative group flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
               </div>
+              <div className="text-xs font-semibold text-slate-600 truncate">Sundry Debtors (Receivables)</div>
             </div>
+            <span className="w-7 h-7 rounded-full bg-slate-50 group-hover:bg-emerald-50 text-slate-400 group-hover:text-emerald-600 flex items-center justify-center transition-all shrink-0">
+              <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </span>
           </div>
-          <button
-            type="button"
-            title="Filter Sundry Debtors"
-            onClick={() => {
-              setSelectedCategory("DEBTORS");
-              setViewMode("TABLE");
-            }}
-            className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
+          <div className="mt-3.5 flex items-baseline justify-between gap-2">
+            <div className="text-2xl font-black font-tabular text-emerald-600 tracking-tight truncate">
+              {formatCurrency(totalDebtors)}
+            </div>
+            <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60 shrink-0">
+              [Dr]
+            </span>
+          </div>
         </div>
 
         {/* Card 2: Sundry Creditors (Payables) */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-slate-500">Sundry Creditors (Payables)</div>
-              <div className="text-2xl font-black font-tabular text-rose-600 mt-0.5 tracking-tight">
-                {formatCurrency(totalCreditors)}
-                <span className="text-xs font-bold ml-1.5 text-slate-500">[Cr]</span>
+        <div
+          onClick={() => {
+            setSelectedCategory("CREDITORS");
+            setViewMode("TABLE");
+          }}
+          className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-rose-300 transition-all cursor-pointer relative group flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
               </div>
+              <div className="text-xs font-semibold text-slate-600 truncate">Sundry Creditors (Payables)</div>
             </div>
+            <span className="w-7 h-7 rounded-full bg-slate-50 group-hover:bg-rose-50 text-slate-400 group-hover:text-rose-600 flex items-center justify-center transition-all shrink-0">
+              <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </span>
           </div>
-          <button
-            type="button"
-            title="Filter Sundry Creditors"
-            onClick={() => {
-              setSelectedCategory("CREDITORS");
-              setViewMode("TABLE");
-            }}
-            className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
+          <div className="mt-3.5 flex items-baseline justify-between gap-2">
+            <div className="text-2xl font-black font-tabular text-rose-600 tracking-tight truncate">
+              {formatCurrency(totalCreditors)}
+            </div>
+            <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/60 shrink-0">
+              [Cr]
+            </span>
+          </div>
         </div>
 
         {/* Card 3: Total Cash & Bank */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-slate-500">Total Cash & Bank</div>
-              <div className="text-2xl font-black font-tabular text-slate-900 mt-0.5 tracking-tight">
-                {formatCurrency(totalLiquidCash)}
-                <span className="text-xs font-bold ml-1.5 text-slate-500">[Dr]</span>
+        <div
+          onClick={() => {
+            setSelectedCategory("BANK_CASH");
+            setViewMode("TABLE");
+          }}
+          className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-blue-300 transition-all cursor-pointer relative group flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
               </div>
+              <div className="text-xs font-semibold text-slate-600 truncate">Total Cash &amp; Bank</div>
             </div>
+            <span className="w-7 h-7 rounded-full bg-slate-50 group-hover:bg-blue-50 text-slate-400 group-hover:text-blue-600 flex items-center justify-center transition-all shrink-0">
+              <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </span>
           </div>
-          <button
-            type="button"
-            title="Filter Cash & Bank"
-            onClick={() => {
-              setSelectedCategory("BANK_CASH");
-              setViewMode("TABLE");
-            }}
-            className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
+          <div className="mt-3.5 flex items-baseline justify-between gap-2">
+            <div className="text-2xl font-black font-tabular text-slate-900 tracking-tight truncate">
+              {formatCurrency(totalLiquidCash)}
+            </div>
+            <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/60 shrink-0">
+              [Dr]
+            </span>
+          </div>
         </div>
 
         {/* Card 4: Owner Drawings / Withdrawals */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-xs font-medium text-slate-500">Owner Drawings / Withdrawals</div>
-              <div className="text-2xl font-black font-tabular text-amber-600 mt-0.5 tracking-tight">
-                {formatCurrency(totalDrawings)}
-                <span className="text-xs font-bold ml-1.5 text-slate-500">[Dr]</span>
+        <div
+          onClick={() => {
+            setSelectedCategory("CAPITAL");
+            setViewMode("TABLE");
+          }}
+          className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-amber-300 transition-all cursor-pointer relative group flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
               </div>
+              <div className="text-xs font-semibold text-slate-600 truncate">Owner Drawings / Withdrawals</div>
             </div>
+            <span className="w-7 h-7 rounded-full bg-slate-50 group-hover:bg-amber-50 text-slate-400 group-hover:text-amber-600 flex items-center justify-center transition-all shrink-0">
+              <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </span>
           </div>
-          <button
-            type="button"
-            title="View Drawings"
-            onClick={() => {
-              setSelectedCategory("CAPITAL");
-              setViewMode("TABLE");
-            }}
-            className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 hover:bg-amber-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
+          <div className="mt-3.5 flex items-baseline justify-between gap-2">
+            <div className="text-2xl font-black font-tabular text-amber-600 tracking-tight truncate">
+              {formatCurrency(totalDrawings)}
+            </div>
+            <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60 shrink-0">
+              [Dr]
+            </span>
+          </div>
         </div>
       </div>
 
@@ -619,17 +626,26 @@ export default function LedgerClient({
               </select>
             </div>
 
-            {/* More Filters button */}
-            <button
-              type="button"
-              onClick={() => setShowMoreFilters(!showMoreFilters)}
-              className="h-11 px-4 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
-            >
-              <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-              <span>More Filters</span>
-            </button>
+            {/* Clear Filters button (when filters active) */}
+            {(searchQuery || selectedGroup !== "ALL" || selectedType !== "ALL" || statusFilter !== "ACTIVE") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedGroup("ALL");
+                  setSelectedType("ALL");
+                  setStatusFilter("ACTIVE");
+                  setCurrentPage(1);
+                }}
+                className="h-11 px-3.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                title="Reset all filters to defaults"
+              >
+                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span>Clear Filters</span>
+              </button>
+            )}
           </div>
 
           {/* ========================================================================= */}
@@ -1036,7 +1052,7 @@ export default function LedgerClient({
                     setAccountId(e.target.value);
                     fetchStatement(e.target.value, fromDate, toDate);
                   }}
-                  className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-[#0D7A53] focus:bg-white transition-all outline-none"
+                  className="w-full h-11 bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-[#0D7A53] focus:bg-white transition-all outline-none cursor-pointer"
                 >
                   {Object.entries(groupedAccounts).map(([groupName, accs]) => (
                     <optgroup key={groupName} label={`── ${groupName.toUpperCase()} ──`}>
@@ -1059,7 +1075,7 @@ export default function LedgerClient({
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-[#0D7A53] focus:bg-white transition-all outline-none font-medium"
+                  className="w-full h-11 bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 text-xs text-slate-800 focus:ring-2 focus:ring-[#0D7A53] focus:bg-white transition-all outline-none font-medium"
                 />
               </div>
 
@@ -1073,11 +1089,11 @@ export default function LedgerClient({
                     type="date"
                     value={toDate}
                     onChange={(e) => setToDate(e.target.value)}
-                    className="w-full bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-[#0D7A53] focus:bg-white transition-all outline-none font-medium"
+                    className="w-full h-11 bg-slate-50/80 border border-slate-200/90 rounded-xl px-3.5 text-xs text-slate-800 focus:ring-2 focus:ring-[#0D7A53] focus:bg-white transition-all outline-none font-medium"
                   />
                   <button
                     type="submit"
-                    className="bg-[#0D7A53] hover:bg-[#09593C] text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-2xs shrink-0 cursor-pointer"
+                    className="h-11 bg-[#0D7A53] hover:bg-[#09593C] text-white font-bold text-xs px-5 rounded-xl transition-all shadow-2xs shrink-0 cursor-pointer flex items-center justify-center"
                   >
                     Apply
                   </button>
@@ -1091,7 +1107,7 @@ export default function LedgerClient({
             <div className={`space-y-6 transition-opacity duration-200 ${isLoading ? "opacity-40 pointer-events-none" : "opacity-100"}`}>
               {/* Account Statement Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 print:hidden">
-                <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
                   <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Opening Balance</div>
                   <div className="text-2xl font-black font-tabular text-slate-900 mt-1 tracking-tight">
                     {formatCurrency(statement.openingBalance)}
@@ -1099,21 +1115,21 @@ export default function LedgerClient({
                   </div>
                 </div>
 
-                <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
                   <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Period Debit (Dr)</div>
                   <div className="text-2xl font-black font-tabular text-emerald-600 mt-1 tracking-tight">
                     {formatCurrency(statement.totalDebit)}
                   </div>
                 </div>
 
-                <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
                   <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Total Period Credit (Cr)</div>
                   <div className="text-2xl font-black font-tabular text-rose-600 mt-1 tracking-tight">
                     {formatCurrency(statement.totalCredit)}
                   </div>
                 </div>
 
-                <div className="glass-card glass-card-hover p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
                   <div className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Closing Net Balance</div>
                   <div className="text-2xl font-black font-tabular text-slate-900 mt-1 tracking-tight">
                     {formatCurrency(statement.closingBalance)}
