@@ -136,16 +136,27 @@ export function Sidebar({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
+  const [currentSearch, setCurrentSearch] = useState("");
+
+  const [isPending, startTransition] = React.useTransition();
+  const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
+
   useEffect(() => {
     setIsMounted(true);
     const stored = localStorage.getItem("sidebarCollapsed");
     if (stored === "true") {
       setIsCollapsed(true);
     }
+    if (typeof window !== "undefined") {
+      setCurrentSearch(window.location.search);
+    }
   }, []);
 
-  const [isPending, startTransition] = React.useTransition();
-  const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCurrentSearch(window.location.search);
+    }
+  }, [pathname, optimisticHref]);
 
   useEffect(() => {
     setOptimisticHref(null);
@@ -175,11 +186,14 @@ export function Sidebar({
   }, [pathname]);
 
   const isSubItemActive = (href: string) => {
+    if (!isMounted) return false;
     const currentHref = (isPending || optimisticHref) && optimisticHref ? optimisticHref : pathname;
-    // Match full path including query string: compare against href exactly
-    const currentSearch = typeof window !== "undefined" ? window.location.search : "";
     const fullCurrent = currentHref + currentSearch;
-    return fullCurrent === href || currentHref + (typeof window !== "undefined" ? window.location.search : "") === href;
+    if (fullCurrent === href) return true;
+    if (currentHref === "/reports" && (!currentSearch || currentSearch === "") && href === "/reports?subtab=overview") {
+      return true;
+    }
+    return false;
   };
 
   const isItemActive = (href: string) => {
