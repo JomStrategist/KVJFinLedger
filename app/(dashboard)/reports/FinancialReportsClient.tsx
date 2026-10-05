@@ -552,6 +552,14 @@ export function FinancialReportsClient({
     return "pnl";
   });
 
+  useEffect(() => {
+    if (initialSubTab) {
+      const targetSub = initialSubTab === "assets" ? "schedule" : (initialSubTab as SubTab);
+      setActiveSubTab(targetSub);
+      setActiveMasterCategory(getCategoryForSubTab(targetSub));
+    }
+  }, [initialSubTab]);
+
   // Global Filters & Slicers State
   const [filters, setFilters] = useState({
     financialYear: initialFilters.financialYear || "FY 2026–27",

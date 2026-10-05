@@ -81,10 +81,24 @@ const navItems = [
     name: "Reports",
     href: "/reports",
     icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="11" width="4.5" height="10" rx="1.5" fill="#3B82F6" />
+        <rect x="9.75" y="4" width="4.5" height="17" rx="1.5" fill="#10B981" />
+        <rect x="16.5" y="8" width="4.5" height="13" rx="1.5" fill="#EF4444" />
       </svg>
-    )
+    ),
+    subItems: [
+      { name: "Executive Dashboard", href: "/reports?subtab=overview", icon: "🏛️" },
+      { name: "Financial Statements", href: "/reports?subtab=pnl", icon: "📊" },
+      { name: "Tax & Statutory", href: "/reports?subtab=gst", icon: "📑" },
+      { name: "Working Capital", href: "/reports?subtab=receivables", icon: "💼" },
+      { name: "Customer Analytics", href: "/reports?subtab=receivables", icon: "🏢" },
+      { name: "Product Performance", href: "/reports?subtab=revenue_ops", icon: "🏷️" },
+      { name: "Expense Breakdown", href: "/reports?subtab=expense_ops", icon: "📉" },
+      { name: "Fixed Assets & Dep.", href: "/reports?subtab=schedule", icon: "🏢" },
+      { name: "Financial Ratios", href: "/reports?subtab=ratios", icon: "📐" },
+      { name: "CA Diagnostic Insights", href: "/reports?subtab=insights", icon: "💡" },
+    ],
   },
   {
     name: "Opening / Closing",
@@ -153,6 +167,19 @@ export function Sidebar({
     });
   };
 
+  const [reportsExpanded, setReportsExpanded] = useState(true);
+
+  useEffect(() => {
+    if (pathname.startsWith("/reports")) {
+      setReportsExpanded(true);
+    }
+  }, [pathname]);
+
+  const isSubItemActive = (href: string) => {
+    const currentHref = (isPending || optimisticHref) && optimisticHref ? optimisticHref : (typeof window !== "undefined" ? window.location.pathname + window.location.search : pathname);
+    return currentHref === href || (pathname === "/reports" && currentHref.includes(href.split("?")[1]));
+  };
+
   const isItemActive = (href: string) => {
     const currentHref = (isPending || optimisticHref) && optimisticHref ? optimisticHref : pathname;
     if (href === "/dashboard") return currentHref === "/dashboard";
@@ -162,6 +189,7 @@ export function Sidebar({
     if (href === "/expenses") return currentHref.startsWith("/expenses") || currentHref.startsWith("/expense-categories");
     if (href === "/opening-closing") return currentHref.startsWith("/opening-closing");
     if (href === "/users") return currentHref.startsWith("/users");
+    if (href === "/reports") return currentHref.startsWith("/reports");
     return currentHref.startsWith(href);
   };
 
@@ -240,29 +268,95 @@ export function Sidebar({
           <ul className="space-y-1">
             {filteredNavItems.map((item) => {
               const active = isItemActive(item.href);
+              const hasSubItems = Boolean((item as any).subItems && (item as any).subItems.length > 0);
+              const isExpanded = hasSubItems && reportsExpanded;
+
               return (
                 <li key={item.name} className="relative group">
-                  <Link
-                    href={item.href}
-                    prefetch={true}
-                    onClick={(e) => handleLinkClick(e, item.href)}
-                    className={`flex items-center rounded-xl text-xs font-bold transition-all duration-200 ${
-                      isCollapsed ? "justify-center p-2.5" : "px-3.5 py-2.5"
-                    } ${
-                      active
-                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/70 border border-emerald-400/40"
-                        : "text-[#9EB5A9] hover:bg-white/[0.06] hover:text-white"
-                    }`}
-                  >
-                    <span className={`${active ? "text-white" : "text-[#80998C] group-hover:text-white"} flex-shrink-0 transition-colors`}>
-                      {item.icon}
-                    </span>
-                    
-                    {/* Expanded text */}
-                    {!isCollapsed && (
-                      <span className="ml-3 truncate tracking-normal font-sans font-semibold text-[13px]">{item.name}</span>
-                    )}
-                  </Link>
+                  {hasSubItems ? (
+                    <div>
+                      {/* Main Accordion Header */}
+                      <div
+                        onClick={() => {
+                          if (isCollapsed) {
+                            setIsCollapsed(false);
+                            setReportsExpanded(true);
+                          } else {
+                            setReportsExpanded(!reportsExpanded);
+                          }
+                        }}
+                        className={`flex items-center justify-between rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                          isCollapsed ? "justify-center p-2.5" : "px-3.5 py-2.5"
+                        } ${
+                          active
+                            ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/70 border border-emerald-400/40"
+                            : "text-[#9EB5A9] hover:bg-white/[0.06] hover:text-white"
+                        }`}
+                      >
+                        <div className="flex items-center min-w-0">
+                          <span className="flex-shrink-0 transition-colors">
+                            {item.icon}
+                          </span>
+                          {!isCollapsed && (
+                            <span className="ml-3 truncate tracking-normal font-sans font-semibold text-[13px]">{item.name}</span>
+                          )}
+                        </div>
+                        {!isCollapsed && (
+                          <span className="ml-2 text-slate-400 text-[10px] select-none">
+                            {isExpanded ? "▲" : "▼"}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Sub-Items Indented List */}
+                      {!isCollapsed && isExpanded && (
+                        <ul className="mt-1 space-y-0.5 pl-2 animate-in fade-in duration-150">
+                          {((item as any).subItems as Array<{ name: string; href: string; icon: string }>).map((sub) => {
+                            const isSubActive = isSubItemActive(sub.href);
+                            return (
+                              <li key={sub.name}>
+                                <Link
+                                  href={sub.href}
+                                  prefetch={true}
+                                  onClick={(e) => handleLinkClick(e, sub.href)}
+                                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12px] transition-all duration-150 ${
+                                    isSubActive
+                                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                                      : "text-[#8EA699] hover:text-white hover:bg-white/[0.05] font-medium"
+                                  }`}
+                                >
+                                  <span className="text-sm shrink-0">{sub.icon}</span>
+                                  <span className="truncate">{sub.name}</span>
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      prefetch={true}
+                      onClick={(e) => handleLinkClick(e, item.href)}
+                      className={`flex items-center rounded-xl text-xs font-bold transition-all duration-200 ${
+                        isCollapsed ? "justify-center p-2.5" : "px-3.5 py-2.5"
+                      } ${
+                        active
+                          ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/70 border border-emerald-400/40"
+                          : "text-[#9EB5A9] hover:bg-white/[0.06] hover:text-white"
+                      }`}
+                    >
+                      <span className={`${active ? "text-white" : "text-[#80998C] group-hover:text-white"} flex-shrink-0 transition-colors`}>
+                        {item.icon}
+                      </span>
+                      
+                      {/* Expanded text */}
+                      {!isCollapsed && (
+                        <span className="ml-3 truncate tracking-normal font-sans font-semibold text-[13px]">{item.name}</span>
+                      )}
+                    </Link>
+                  )}
 
                   {/* Tooltip for Collapsed Sidebar */}
                   {isCollapsed && (
@@ -363,23 +457,75 @@ export function Sidebar({
           <ul className="space-y-1">
             {filteredNavItems.map((item) => {
               const active = isItemActive(item.href);
+              const hasSubItems = Boolean((item as any).subItems && (item as any).subItems.length > 0);
+              const isExpanded = hasSubItems && reportsExpanded;
+
               return (
                 <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    prefetch={true}
-                    onClick={(e) => handleLinkClick(e, item.href)}
-                    className={`flex items-center px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
-                      active
-                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/70 border border-emerald-400/40"
-                        : "text-[#9EB5A9] hover:bg-white/[0.06] hover:text-white"
-                    }`}
-                  >
-                    <span className={`${active ? "text-white" : "text-[#80998C]"} flex-shrink-0`}>
-                      {item.icon}
-                    </span>
-                    <span className="ml-3 font-sans font-semibold text-[13px]">{item.name}</span>
-                  </Link>
+                  {hasSubItems ? (
+                    <div>
+                      <div
+                        onClick={() => setReportsExpanded(!reportsExpanded)}
+                        className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                          active
+                            ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/70 border border-emerald-400/40"
+                            : "text-[#9EB5A9] hover:bg-white/[0.06] hover:text-white"
+                        }`}
+                      >
+                        <div className="flex items-center min-w-0">
+                          <span className="flex-shrink-0">
+                            {item.icon}
+                          </span>
+                          <span className="ml-3 font-sans font-semibold text-[13px]">{item.name}</span>
+                        </div>
+                        <span className="text-slate-400 text-[10px]">
+                          {isExpanded ? "▲" : "▼"}
+                        </span>
+                      </div>
+
+                      {/* Mobile Sub-Items */}
+                      {isExpanded && (
+                        <ul className="mt-1 space-y-0.5 pl-2">
+                          {((item as any).subItems as Array<{ name: string; href: string; icon: string }>).map((sub) => {
+                            const isSubActive = isSubItemActive(sub.href);
+                            return (
+                              <li key={sub.name}>
+                                <Link
+                                  href={sub.href}
+                                  prefetch={true}
+                                  onClick={(e) => handleLinkClick(e, sub.href)}
+                                  className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12px] transition-all duration-150 ${
+                                    isSubActive
+                                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                                      : "text-[#8EA699] hover:text-white hover:bg-white/[0.05] font-medium"
+                                  }`}
+                                >
+                                  <span className="text-sm shrink-0">{sub.icon}</span>
+                                  <span className="truncate">{sub.name}</span>
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      prefetch={true}
+                      onClick={(e) => handleLinkClick(e, item.href)}
+                      className={`flex items-center px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+                        active
+                          ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-950/70 border border-emerald-400/40"
+                          : "text-[#9EB5A9] hover:bg-white/[0.06] hover:text-white"
+                      }`}
+                    >
+                      <span className={`${active ? "text-white" : "text-[#80998C]"} flex-shrink-0`}>
+                        {item.icon}
+                      </span>
+                      <span className="ml-3 font-sans font-semibold text-[13px]">{item.name}</span>
+                    </Link>
+                  )}
                 </li>
               );
             })}
