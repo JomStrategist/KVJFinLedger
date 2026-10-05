@@ -613,17 +613,10 @@ export function FinancialReportsClient({
   const [tdsChallanSerial, setTdsChallanSerial] = useState("00124");
   const [isTdsPending, startTdsTransition] = useTransition();
 
-  // Synchronize category and sub-tab selection
-  const handleSelectMasterCategory = (catId: MasterCategory) => {
-    setActiveMasterCategory(catId);
-    const cat = MASTER_CATEGORIES.find((c) => c.id === catId);
-    if (cat && !cat.subTabs.some((st) => st.id === activeSubTab)) {
-      setActiveSubTab(cat.subTabs[0].id);
-    }
-  };
-
+  // Synchronize sub-tab selection
   const handleSelectSubTab = (subTabId: SubTab) => {
     setActiveSubTab(subTabId);
+    setActiveMasterCategory(getCategoryForSubTab(subTabId));
   };
 
   // Filter Change Handler (Updates local state & triggers server revalidation with query params)
@@ -1667,51 +1660,33 @@ export function FinancialReportsClient({
           </div>
         </div>
 
-        {/* Master Category Sub-Tabs (Tier 1) */}
-        <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-            {MASTER_CATEGORIES.map((cat) => {
-              const isActive = activeMasterCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => handleSelectMasterCategory(cat.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
-                    isActive
-                      ? "bg-emerald-700 text-white shadow-sm shadow-emerald-700/20"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
-                  }`}
-                >
-                  <span>{cat.icon}</span>
-                  <span>{cat.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Secondary Category Sub-Tabs (Tier 2) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto p-1.5 bg-slate-100/80 rounded-xl border border-slate-200/80">
-          {MASTER_CATEGORIES.find((c) => c.id === activeMasterCategory)?.subTabs.map((st) => {
-            const isSubActive = activeSubTab === st.id;
-            return (
-              <button
-                key={st.id}
-                type="button"
-                onClick={() => handleSelectSubTab(st.id)}
-                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  isSubActive
-                    ? "bg-white text-emerald-900 shadow-2xs font-extrabold border border-slate-200"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
-                }`}
-              >
-                <span>{st.icon}</span>
-                <span>{st.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Category Sub-Tabs */}
+        {(() => {
+          const currentSubTabs = MASTER_CATEGORIES.find((c) => c.id === activeMasterCategory)?.subTabs || [];
+          if (currentSubTabs.length <= 1) return null;
+          return (
+            <div className="flex items-center gap-1.5 overflow-x-auto p-1.5 bg-slate-100/80 rounded-xl border border-slate-200/80">
+              {currentSubTabs.map((st) => {
+                const isSubActive = activeSubTab === st.id;
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => handleSelectSubTab(st.id)}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      isSubActive
+                        ? "bg-white text-emerald-900 shadow-2xs font-extrabold border border-slate-200"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                    }`}
+                  >
+                    <span>{st.icon}</span>
+                    <span>{st.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Main Card */}
