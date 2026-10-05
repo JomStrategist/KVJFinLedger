@@ -521,6 +521,7 @@ model Expense {
   updatedAt         DateTime @updatedAt
 
   items             ExpenseItem[]
+  depreciations     AssetDepreciation[]
 }
 
 model ExpenseItem {
@@ -680,6 +681,22 @@ model TdsDeposit {
   notes           String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+}
+
+model AssetDepreciation {
+  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+  expenseId           String    @db.ObjectId
+  expense             Expense   @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  financialYear       String    // e.g. "FY 2026–27"
+  method              String    @default("WDV") // "WDV" or "SLM"
+  rate                Float     @default(0)     // e.g. 40.0, 15.0
+  depreciationAmount  Float     // Exact written-off amount for this period
+  effectiveDate       DateTime  @default(now())
+  remarks             String?   // Audit / Board resolution remarks
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([expenseId, financialYear])
 }
 
 

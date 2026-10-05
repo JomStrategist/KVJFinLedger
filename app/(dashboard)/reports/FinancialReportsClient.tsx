@@ -1,10 +1,20 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useState, useMemo, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils/currency";
 import { useSettings } from "@/hooks/useSettings";
 import { recordGstFilingAction, deleteGstFilingAction } from "./gst-actions";
 import { recordTdsDepositAction, markExpenseTdsPaidAction, deleteTdsDepositAction } from "./tds-actions";
+import { AssetDepreciationModal } from "./AssetDepreciationModal";
+import {
+  ExecutiveOverviewView,
+  FinancialRatiosView,
+  ComparativeTablesView,
+  CaInsightsView,
+  RevenueOpsView,
+  ExpenseOpsView,
+} from "./ReportsBiComponents";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY HELPERS & INDIAN TAX LAWS CONSTANTS
@@ -35,6 +45,13 @@ const AGE_COLORS: Record<AgeBucket, string> = {
 
 // Indian Financial Year Date Range (1st April to 31st March)
 function getFyDateRange(fyString: string): { start: Date; end: Date; label: string } {
+  if (fyString === "ALL") {
+    return {
+      start: new Date(Date.UTC(2000, 0, 1)),
+      end: new Date(Date.UTC(2099, 11, 31, 23, 59, 59)),
+      label: "All Financial Years",
+    };
+  }
   const match = fyString.match(/20(\d{2})/);
   const startYear = match ? parseInt(`20${match[1]}`, 10) : 2026;
   return {
@@ -98,24 +115,115 @@ function fmtDate(d: string | Date | null | undefined): string {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
+
 function pct(num: number, den: number, dec = 1): string {
   if (!den) return "0.0%";
   return ((num / den) * 100).toFixed(dec) + "%";
 }
 
-type Tab = "pnl" | "bs" | "cashflow" | "gst" | "tds" | "receivables" | "payables" | "assets";
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "pnl",         label: "Profit & Loss",        icon: "📊" },
-  { id: "bs",          label: "Balance Sheet",       icon: "⚖️" },
-  { id: "cashflow",    label: "Cash Flow",           icon: "💵" },
-  { id: "gst",         label: "GST & Tax Slabs",     icon: "📑" },
-  { id: "tds",         label: "TDS (Form 26Q)",      icon: "🏛️" },
-  { id: "receivables", label: "Receivables (Debtors)", icon: "📈" },
-  { id: "payables",    label: "Payables (Disbursements)", icon: "💳" },
-  { id: "assets",      label: "Fixed Assets Schedule", icon: "🏢" },
+// ─────────────────────────────────────────────────────────────────────────────
+// 5 MASTER CATEGORY SUB-TABS ARCHITECTURE
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type MasterCategory = "statements" | "compliance" | "operations" | "assets" | "bi_ratios";
+
+export type SubTab =
+  | "pnl"
+  | "bs"
+  | "cashflow"
+  | "gst"
+  | "tds"
+  | "receivables"
+  | "payables"
+  | "revenue_ops"
+  | "expense_ops"
+  | "schedule"
+  | "overview"
+  | "ratios"
+  | "comparative"
+  | "insights";
+
+export interface MasterCategoryConfig {
+  id: MasterCategory;
+  label: string;
+  icon: string;
+  badge?: string;
+  description: string;
+  subTabs: { id: SubTab; label: string; icon: string }[];
+}
+
+export const MASTER_CATEGORIES: MasterCategoryConfig[] = [
+  {
+    id: "statements",
+    label: "Financial Statements",
+    icon: "📊",
+    badge: "Schedule III",
+    description: "Statutory Schedule III Financial Statements (P&L, Balance Sheet, Cash Flow)",
+    subTabs: [
+      { id: "pnl", label: "Profit & Loss", icon: "📊" },
+      { id: "bs", label: "Balance Sheet", icon: "⚖️" },
+      { id: "cashflow", label: "Cash Flow (AS-3)", icon: "💵" },
+    ],
+  },
+  {
+    id: "compliance",
+    label: "Tax & Statutory",
+    icon: "🏛️",
+    badge: "GST / TDS",
+    description: "Statutory Tax Ledgers, GSTR-3B Filing & TDS Form 26Q",
+    subTabs: [
+      { id: "gst", label: "GST Slabs & ITC", icon: "📑" },
+      { id: "tds", label: "TDS (Form 26Q)", icon: "🏛️" },
+    ],
+  },
+  {
+    id: "operations",
+    label: "Working Capital",
+    icon: "💼",
+    badge: "Ageing & Ops",
+    description: "Sundry Debtors & Creditors Ageing, Revenue & Expense Head Concentration",
+    subTabs: [
+      { id: "receivables", label: "Debtors Ageing", icon: "📈" },
+      { id: "payables", label: "Creditors & Disbursements", icon: "💳" },
+      { id: "revenue_ops", label: "Revenue Concentration", icon: "🎯" },
+      { id: "expense_ops", label: "OPEX Breakdown", icon: "📉" },
+    ],
+  },
+  {
+    id: "assets",
+    label: "Fixed Assets & Dep.",
+    icon: "🏢",
+    badge: "Schedule II",
+    description: "Fixed Asset Register, Schedule II & IT Act WDV/SLM Depreciation with Live Adjustments",
+    subTabs: [
+      { id: "schedule", label: "Asset Register & Depreciation", icon: "🏢" },
+    ],
+  },
+  {
+    id: "bi_ratios",
+    label: "BI & Ratios",
+    icon: "📈",
+    badge: "Analytics",
+    description: "Executive KPIs, 12+ Financial Ratios, Comparative Variance & CA Insights",
+    subTabs: [
+      { id: "overview", label: "Executive BI Overview", icon: "✨" },
+      { id: "ratios", label: "Financial Ratios", icon: "📐" },
+      { id: "comparative", label: "Horizontal & Vertical", icon: "📑" },
+      { id: "insights", label: "CA Diagnostic Insights", icon: "💡" },
+    ],
+  },
 ];
 
-const FY_OPTIONS = ["FY 2026–27", "FY 2025–26", "FY 2024–25"];
+export function getCategoryForSubTab(subTab: string): MasterCategory {
+  if (subTab === "bs" || subTab === "cashflow" || subTab === "pnl") return "statements";
+  if (subTab === "gst" || subTab === "tds") return "compliance";
+  if (subTab === "receivables" || subTab === "payables" || subTab === "revenue_ops" || subTab === "expense_ops") return "operations";
+  if (subTab === "assets" || subTab === "schedule") return "assets";
+  if (subTab === "overview" || subTab === "ratios" || subTab === "comparative" || subTab === "insights") return "bi_ratios";
+  return "statements";
+}
+
+const FY_OPTIONS = ["FY 2026–27", "FY 2025–26", "FY 2024–25", "ALL"];
 
 // Indian FY quarters (April start)
 const QUARTERS = [
@@ -124,6 +232,7 @@ const QUARTERS = [
   { id: "Q3", label: "Q3 Oct–Dec", months: [9, 10, 11] },
   { id: "Q4", label: "Q4 Jan–Mar", months: [0, 1, 2] },
 ];
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REUSABLE UI PRIMITIVES (SCHEDULE III CORPORATE STANDARDS)
@@ -397,23 +506,66 @@ function EmptyRow({ cols, msg = "No data recorded." }: { cols: number; msg?: str
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface FinancialReportsClientProps {
+  invoices?: any[];
+  expenses?: any[];
+  openingBalances?: any[];
+  gstFilings?: any[];
+  tdsDeposits?: any[];
+  assetDepreciations?: any[];
+  customers?: Array<{ id: string; legalName: string }>;
+  vendors?: Array<{ id: string; name: string }>;
+  categories?: Array<{ id: string; name: string; financialType: string }>;
+  initialAnalysisData?: any;
+  initialFilters?: any;
+  initialSubTab?: string;
+}
+
 export function FinancialReportsClient({
   invoices = [],
   expenses = [],
   openingBalances = [],
   gstFilings = [],
   tdsDeposits = [],
-}: {
-  invoices?: any[];
-  expenses?: any[];
-  openingBalances?: any[];
-  gstFilings?: any[];
-  tdsDeposits?: any[];
-}) {
+  assetDepreciations = [],
+  customers = [],
+  vendors = [],
+  categories = [],
+  initialAnalysisData = null,
+  initialFilters = {},
+  initialSubTab,
+}: FinancialReportsClientProps) {
+  const router = useRouter();
   const { settings } = useSettings();
-  const [activeTab, setActiveTab] = useState<Tab>("pnl");
-  const [fy, setFy] = useState("FY 2026–27");
-  const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null);
+  const [isNavPending, startNavTransition] = useTransition();
+
+  const [activeMasterCategory, setActiveMasterCategory] = useState<MasterCategory>(() => {
+    if (initialSubTab) return getCategoryForSubTab(initialSubTab);
+    return "statements";
+  });
+
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>(() => {
+    if (initialSubTab) {
+      if (initialSubTab === "assets") return "schedule";
+      return initialSubTab as SubTab;
+    }
+    return "pnl";
+  });
+
+  // Global Filters & Slicers State
+  const [filters, setFilters] = useState({
+    financialYear: initialFilters.financialYear || "FY 2026–27",
+    period: initialFilters.period || "ALL",
+    comparisonType: initialFilters.comparisonType || "PREV_FY",
+    customerId: initialFilters.customerId || "",
+    vendorId: initialFilters.vendorId || "",
+    categoryId: initialFilters.categoryId || "",
+  });
+
+  const [fy, setFy] = useState(filters.financialYear);
+  const [selectedQuarter, setSelectedQuarter] = useState<string | null>(
+    filters.period === "ALL" ? null : filters.period
+  );
   const [depMethod, setDepMethod] = useState<"WDV" | "SLM">("WDV");
 
   // Income Tax Rate (%) per Financial Year
@@ -423,6 +575,11 @@ export function FinancialReportsClient({
     if (overrideTaxRates[fy] !== undefined) return overrideTaxRates[fy];
     return settings?.incomeTaxRates?.[fy] ?? 25;
   }, [overrideTaxRates, settings?.incomeTaxRates, fy]);
+
+  // Asset Depreciation & Live Adjustment Modal State
+  const [localDepreciations, setLocalDepreciations] = useState<any[]>(assetDepreciations || []);
+  const [isDepModalOpen, setIsDepModalOpen] = useState(false);
+  const [selectedAssetForDep, setSelectedAssetForDep] = useState<any | null>(null);
 
   // GST Filing State
   const [allFilings, setAllFilings] = useState<any[]>(gstFilings);
@@ -443,31 +600,103 @@ export function FinancialReportsClient({
   const [tdsChallanSerial, setTdsChallanSerial] = useState("00124");
   const [isTdsPending, startTdsTransition] = useTransition();
 
+  // Synchronize category and sub-tab selection
+  const handleSelectMasterCategory = (catId: MasterCategory) => {
+    setActiveMasterCategory(catId);
+    const cat = MASTER_CATEGORIES.find((c) => c.id === catId);
+    if (cat && !cat.subTabs.some((st) => st.id === activeSubTab)) {
+      setActiveSubTab(cat.subTabs[0].id);
+    }
+  };
+
+  const handleSelectSubTab = (subTabId: SubTab) => {
+    setActiveSubTab(subTabId);
+  };
+
+  // Filter Change Handler (Updates local state & triggers server revalidation with query params)
+  const handleFilterChange = (key: string, value: string) => {
+    const updated = { ...filters, [key]: value };
+    setFilters(updated);
+    if (key === "financialYear") {
+      setFy(value);
+    }
+    if (key === "period") {
+      setSelectedQuarter(value === "ALL" ? null : value);
+    }
+
+    const query = new URLSearchParams();
+    Object.entries(updated).forEach(([k, v]) => {
+      if (v && v !== "ALL") query.set(k, v);
+    });
+    if (activeSubTab) query.set("subtab", activeSubTab);
+    const queryString = query.toString();
+    const newUrl = queryString ? `/reports?${queryString}` : "/reports";
+    startNavTransition(() => {
+      router.push(newUrl);
+    });
+  };
+
+  const handleClearFilters = () => {
+    const reset = {
+      financialYear: "FY 2026–27",
+      period: "ALL",
+      comparisonType: "PREV_FY",
+      customerId: "",
+      vendorId: "",
+      categoryId: "",
+    };
+    setFilters(reset);
+    setFy("FY 2026–27");
+    setSelectedQuarter(null);
+    startNavTransition(() => {
+      router.push("/reports");
+    });
+  };
+
   // Filter range by financial year
   const { start: fyStart, end: fyEnd } = useMemo(() => getFyDateRange(fy), [fy]);
 
-  // ── 1. FY FILTERED DATASETS ────────────────────────────────────────────────
+  // ── 1. FY & SLICER FILTERED DATASETS ──────────────────────────────────────
   const fyOpeningBalances = useMemo(
-    () => openingBalances.filter((ob) => ob.financialYear === fy),
+    () => openingBalances.filter((ob) => fy === "ALL" || ob.financialYear === fy),
     [openingBalances, fy]
   );
 
   const validInvoices = useMemo(
-    () => invoices.filter((inv) => {
-      if (["CANCELLED"].includes(inv.status ?? "")) return false;
-      const invDate = new Date(inv.invoiceDate || inv.createdAt);
-      return invDate >= fyStart && invDate <= fyEnd;
-    }),
-    [invoices, fyStart, fyEnd]
+    () =>
+      invoices.filter((inv) => {
+        if (["CANCELLED"].includes(inv.status ?? "")) return false;
+        if (filters.customerId && inv.customerId !== filters.customerId) return false;
+        if (fy !== "ALL") {
+          const invDate = new Date(inv.invoiceDate || inv.createdAt);
+          if (invDate < fyStart || invDate > fyEnd) return false;
+          if (selectedQuarter) {
+            const q = QUARTERS.find((x) => x.id === selectedQuarter);
+            if (q && !q.months.includes(invDate.getMonth())) return false;
+          }
+        }
+        return true;
+      }),
+    [invoices, fy, fyStart, fyEnd, selectedQuarter, filters.customerId]
   );
 
   const validExpenses = useMemo(
-    () => expenses.filter((exp) => {
-      if (["CANCELLED", "REJECTED"].includes(exp.status ?? "")) return false;
-      const expDate = new Date(exp.expenseDate || exp.createdAt);
-      return expDate >= fyStart && expDate <= fyEnd;
-    }),
-    [expenses, fyStart, fyEnd]
+    () =>
+      expenses.filter((exp) => {
+        if (["CANCELLED", "REJECTED"].includes(exp.status ?? "")) return false;
+        if (filters.vendorId && exp.vendorId !== filters.vendorId) return false;
+        if (filters.categoryId && exp.categoryId !== filters.categoryId) return false;
+        if (fy !== "ALL") {
+          const expDate = new Date(exp.expenseDate || exp.createdAt);
+          if (expDate < fyStart || expDate > fyEnd) return false;
+          if (selectedQuarter) {
+            const q = QUARTERS.find((x) => x.id === selectedQuarter);
+            if (q && !q.months.includes(expDate.getMonth())) return false;
+          }
+        }
+        return true;
+      }),
+    [expenses, fy, fyStart, fyEnd, selectedQuarter, filters.vendorId, filters.categoryId]
   );
 
   // Helper to extract true GST and Sales Revenue for an invoice
@@ -566,24 +795,48 @@ export function FinancialReportsClient({
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   }, [otherOpex]);
 
-  // ── 4. DEPRECIATION SCHEDULE ──────────────────────────────────────────────
+  // ── 4. DEPRECIATION SCHEDULE (INTEGRATED WITH RECORDED ASSET DEPRECIATION) ──
   const depSchedule = useMemo(() =>
     assetExpenses.map((exp) => {
       const cost = getExpenseOperatingCost(exp);
       const catName = exp.assetType ?? exp.category?.name ?? exp.notes ?? "Fixed Asset";
       const purchaseDate = new Date(exp.expenseDate ?? TODAY);
       const yearsHeld = Math.max(0.5, (TODAY.getTime() - purchaseDate.getTime()) / (365.25 * 86_400_000));
-      const customRate = Number(exp.depreciationRate || 0);
-      const defaultRate = depMethod === "WDV" ? getWdvRate(catName) : getSlmRate(catName);
+      
+      // Check if user has explicitly recorded a depreciation entry for this expense & FY
+      const recordedDep = localDepreciations.find(
+        (d) => d.expenseId === exp.id && (fy === "ALL" || d.financialYear === fy)
+      );
+
+      const isCustomRecorded = Boolean(recordedDep);
+      const effectiveMethod = (recordedDep?.method as "WDV" | "SLM") || depMethod;
+      const defaultRate = effectiveMethod === "WDV" ? getWdvRate(catName) : getSlmRate(catName);
+      const customRate = Number(recordedDep?.rate ?? exp.depreciationRate ?? 0);
       const rate = customRate > 0 ? customRate / 100 : defaultRate;
-      const accDep = depMethod === "WDV"
-        ? cost * (1 - Math.pow(1 - rate, yearsHeld))
-        : Math.min(cost, cost * rate * yearsHeld);
-      const closingWdv = Math.max(0, cost - accDep);
-      const prevYearWdv = depMethod === "WDV"
-        ? Math.max(0, cost * Math.pow(1 - rate, Math.max(0, yearsHeld - 1)))
-        : Math.max(0, cost - Math.min(cost, cost * rate * Math.max(0, yearsHeld - 1)));
-      const currentYearDep = Math.max(0, prevYearWdv - closingWdv);
+
+      let accDep: number;
+      let closingWdv: number;
+      let currentYearDep: number;
+
+      if (isCustomRecorded) {
+        currentYearDep = Number(recordedDep.depreciationAmount);
+        const priorYearsHeld = Math.max(0, yearsHeld - 1);
+        const priorAccDep = effectiveMethod === "WDV"
+          ? cost * (1 - Math.pow(1 - rate, priorYearsHeld))
+          : Math.min(cost, cost * rate * priorYearsHeld);
+        accDep = Math.min(cost, priorAccDep + currentYearDep);
+        closingWdv = Math.max(0, cost - accDep);
+      } else {
+        accDep = effectiveMethod === "WDV"
+          ? cost * (1 - Math.pow(1 - rate, yearsHeld))
+          : Math.min(cost, cost * rate * yearsHeld);
+        closingWdv = Math.max(0, cost - accDep);
+        const prevYearWdv = effectiveMethod === "WDV"
+          ? Math.max(0, cost * Math.pow(1 - rate, Math.max(0, yearsHeld - 1)))
+          : Math.max(0, cost - Math.min(cost, cost * rate * Math.max(0, yearsHeld - 1)));
+        currentYearDep = Math.max(0, prevYearWdv - closingWdv);
+      }
+
       return {
         id: exp.id,
         name: exp.notes ?? exp.vendor?.name ?? catName,
@@ -591,12 +844,18 @@ export function FinancialReportsClient({
         purchaseDate: exp.expenseDate,
         grossCost: cost,
         ratePct: `${(rate * 100).toFixed(rate * 100 % 1 === 0 ? 0 : 2)}%`,
+        rateVal: rate * 100,
+        method: effectiveMethod,
         accDep: Math.round(accDep),
         currentYearDep: Math.round(currentYearDep),
         closingWdv: Math.round(closingWdv),
+        isCustomRecorded,
+        recordedRecordId: recordedDep?.id,
+        remarks: recordedDep?.remarks,
+        effectiveDate: recordedDep?.effectiveDate,
       };
     }),
-    [assetExpenses, depMethod]
+    [assetExpenses, depMethod, localDepreciations, fy]
   );
   const totalGrossBlock = useMemo(() => depSchedule.reduce((s, d) => s + d.grossCost, 0), [depSchedule]);
   const totalAccDep = useMemo(() => depSchedule.reduce((s, d) => s + d.accDep, 0), [depSchedule]);
@@ -1046,7 +1305,7 @@ export function FinancialReportsClient({
 
   const handleExportExcel = () => {
     let rows: (string | number)[][] = [];
-    const activeTabLabel = TABS.find((t) => t.id === activeTab)?.label ?? activeTab;
+    const activeTabLabel = MASTER_CATEGORIES.flatMap((c) => c.subTabs).find((t) => t.id === activeSubTab)?.label ?? activeSubTab;
     const cleanFileName = `KVJ_Analytics_${activeTabLabel.replace(/[^a-zA-Z0-9]/g, "_")}_${fy.replace(/[^a-zA-Z0-9]/g, "_")}`;
 
     rows.push(["KVJ ANALYTICS"]);
@@ -1054,7 +1313,7 @@ export function FinancialReportsClient({
     rows.push([`Financial Year: ${fy}`]);
     rows.push([]);
 
-    if (activeTab === "pnl") {
+    if (activeSubTab === "pnl") {
       rows.push(["Particulars", "Schedule", "Amount (INR)"]);
       rows.push(["I. REVENUE FROM OPERATIONS (NET OF STATUTORY TAXES)", "Schedule 1", totalRevenue]);
       revenueByCategory.forEach(([cat, amt]) => {
@@ -1081,7 +1340,7 @@ export function FinancialReportsClient({
       rows.push(["III. PROFIT BEFORE EXCEPTIONAL ITEMS & TAX (I - II)", "", pbt]);
       rows.push([`IV. Tax Expense / Provisions (${effectiveTaxRate}% Tax Rate)`, "", taxExpense]);
       rows.push(["V. NET PROFIT TRANSFERRED TO RESERVES & SURPLUS (PAT)", "", pat]);
-    } else if (activeTab === "bs") {
+    } else if (activeSubTab === "bs") {
       rows.push(["Particulars (Schedule III Part I)", "Amount (INR)"]);
       rows.push(["PART I - EQUITY AND LIABILITIES", ""]);
       rows.push(["I. SHAREHOLDERS' FUNDS", ""]);
@@ -1108,7 +1367,7 @@ export function FinancialReportsClient({
       rows.push(["  TDS Tax Asset Balance (Form 26Q)", tdsReceivable]);
       rows.push(["TOTAL CURRENT ASSETS", totalCurrentAssets]);
       rows.push(["TOTAL ASSETS", totalAssets]);
-    } else if (activeTab === "cashflow") {
+    } else if (activeSubTab === "cashflow") {
       const opCash = pbt + totalCurrentYearDep - totalReceivables + totalVendorPayables;
       const invCash = -totalGrossBlock;
       const finCash = openingCapital;
@@ -1133,7 +1392,7 @@ export function FinancialReportsClient({
       rows.push([]);
       rows.push(["NET INCREASE IN CASH & CASH EQUIVALENTS (A+B+C)", totalNetCash]);
       rows.push(["CLOSING CASH & BANK BALANCE", closingBankCashBalance]);
-    } else if (activeTab === "receivables") {
+    } else if (activeSubTab === "receivables") {
       rows.push(["Customer Name", "Invoice No", "Date", "Status", "Amount (INR)"]);
       validInvoices.forEach((inv) => {
         rows.push([
@@ -1145,7 +1404,7 @@ export function FinancialReportsClient({
         ]);
       });
       rows.push(["TOTAL RECEIVABLES", "", "", "", totalBilled]);
-    } else if (activeTab === "payables") {
+    } else if (activeSubTab === "payables") {
       rows.push(["Vendor Name", "Category", "Date", "TDS Amount", "Net Amount (INR)"]);
       validExpenses.forEach((exp) => {
         rows.push([
@@ -1157,7 +1416,7 @@ export function FinancialReportsClient({
         ]);
       });
       rows.push(["TOTAL PAYABLES", "", "", "", totalOperatingExpenses]);
-    } else if (activeTab === "assets") {
+    } else if (activeSubTab === "schedule") {
       rows.push(["Asset Name", "Category", "Purchase Date", "Gross Cost", "Rate %", "Acc. Dep", "Current Dep", "Net Block"]);
       depSchedule.forEach((a) => {
         rows.push([a.name, a.category, a.purchaseDate, a.grossCost, `${a.ratePct}%`, a.accDep, a.currentYearDep, a.closingWdv]);
@@ -1197,152 +1456,278 @@ export function FinancialReportsClient({
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 font-sans">
-      {/* Sleek Top Bar & Toolbar (Hidden when printing) */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 print:hidden">
-        {/* Segmented Tab Navigation Bar */}
-        <div className="overflow-x-auto pb-1 max-w-full">
-          <div className="flex items-center gap-1.5 min-w-max bg-[#F3F6F4] p-1.5 rounded-2xl border border-[#E2E8E4]">
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.id;
+      {/* Sleek Top Bar & Global Slicer Bar (Hidden when printing) */}
+      <div className="space-y-4 print:hidden">
+        {/* Top Header Row with Title, Slogan, and Global Quick Controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Reports &amp; Financial Statements</h1>
+              <span className="bg-gradient-to-r from-emerald-500/15 to-teal-500/15 text-emerald-800 text-xs font-extrabold px-3 py-1 rounded-full border border-emerald-500/30 shadow-2xs">
+                Indian Accounting Standards (AS / Ind AS)
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-1 font-medium">
+              Statutory Schedule III statements, GST/TDS tax registers, working capital ageing, and schedule II fixed asset depreciation.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            {/* Clear All Filters Button */}
+            {(filters.financialYear !== "FY 2026–27" ||
+              filters.period !== "ALL" ||
+              filters.customerId ||
+              filters.vendorId ||
+              filters.categoryId) && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-2 rounded-xl border border-rose-200 transition-all cursor-pointer shadow-2xs"
+              >
+                ✕ Reset Filters
+              </button>
+            )}
+
+            {/* Export Dropdown Menu */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setExportMenuOpen((prev) => !prev)}
+                className="h-[38px] px-4 text-xs font-extrabold rounded-xl border border-emerald-600 bg-emerald-700 text-white hover:bg-emerald-800 shadow-2xs cursor-pointer flex items-center gap-2 transition-all"
+              >
+                <span>Export &amp; Print</span>
+                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                </svg>
+              </button>
+
+              {exportMenuOpen && (
+                <div className="absolute right-0 mt-1.5 w-56 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden py-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExportMenuOpen(false);
+                      window.print();
+                    }}
+                    className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-emerald-50 hover:text-emerald-800 flex items-center gap-2.5 cursor-pointer"
+                  >
+                    <span>🖨️</span> Print Statutory Report (PDF)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportExcel}
+                    className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-emerald-50 hover:text-emerald-800 flex items-center gap-2.5 cursor-pointer border-t border-slate-100"
+                  >
+                    <span>📊</span> Export Current View (.csv)
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Global Slicer Bar */}
+        <div className="bg-white p-4.5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-3">
+          <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700 uppercase tracking-wider pb-2 border-b border-slate-100">
+            <span className="text-emerald-600">⚡</span> Global Slicers &amp; Period Settings
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
+            {/* Financial Year */}
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
+                Financial Year
+              </label>
+              <select
+                value={filters.financialYear}
+                onChange={(e) => handleFilterChange("financialYear", e.target.value)}
+                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all outline-none"
+              >
+                <option value="FY 2026–27">FY 2026–27 (Current)</option>
+                <option value="FY 2025–26">FY 2025–26 (Previous)</option>
+                <option value="FY 2024–25">FY 2024–25</option>
+                <option value="ALL">All Financial Years</option>
+              </select>
+            </div>
+
+            {/* Period / Quarter */}
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
+                Quarter / Period
+              </label>
+              <select
+                value={filters.period}
+                onChange={(e) => handleFilterChange("period", e.target.value)}
+                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all outline-none"
+              >
+                <option value="ALL">Full Financial Year</option>
+                <option value="Q1">Q1 (Apr–Jun)</option>
+                <option value="Q2">Q2 (Jul–Sep)</option>
+                <option value="Q3">Q3 (Oct–Dec)</option>
+                <option value="Q4">Q4 (Jan–Mar)</option>
+              </select>
+            </div>
+
+            {/* Comparison Methodology */}
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
+                Comparison Mode
+              </label>
+              <select
+                value={filters.comparisonType}
+                onChange={(e) => handleFilterChange("comparisonType", e.target.value)}
+                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all outline-none"
+              >
+                <option value="PREV_FY">Previous Financial Year</option>
+                <option value="SAME_PERIOD_PREV_YEAR">Same Period Prev Year</option>
+                <option value="PREV_PERIOD">Previous Period</option>
+                <option value="PREV_QUARTER">Previous Quarter</option>
+                <option value="NONE">No Comparison</option>
+              </select>
+            </div>
+
+            {/* Customer Filter */}
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
+                Customer Filter
+              </label>
+              <select
+                value={filters.customerId}
+                onChange={(e) => handleFilterChange("customerId", e.target.value)}
+                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all outline-none"
+              >
+                <option value="">All Billed Customers</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.legalName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Vendor Filter */}
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase text-slate-500 tracking-wider mb-1">
+                Vendor Filter
+              </label>
+              <select
+                value={filters.vendorId}
+                onChange={(e) => handleFilterChange("vendorId", e.target.value)}
+                className="w-full bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-bold px-3 py-2 text-slate-800 focus:ring-2 focus:ring-emerald-600 focus:bg-white transition-all outline-none"
+              >
+                <option value="">All Creditor Vendors</option>
+                {vendors.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Tax Rate & Dep. Method Controls */}
+            <div className="flex items-center gap-2 pt-4 sm:pt-0">
+              {/* Tax Rate Pill */}
+              <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 h-[38px] flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-slate-500 uppercase">Tax Rate</span>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={effectiveTaxRate}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setOverrideTaxRates((prev) => ({ ...prev, [fy]: val }));
+                    }}
+                    className="w-10 h-[24px] bg-white border border-slate-300 rounded text-center text-xs font-mono font-bold text-emerald-800 outline-none"
+                  />
+                  <span className="text-xs font-bold text-slate-500">%</span>
+                </div>
+              </div>
+
+              {/* Dep Method Toggle */}
+              <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200 h-[38px]">
+                <button
+                  type="button"
+                  onClick={() => setDepMethod("WDV")}
+                  className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    depMethod === "WDV" ? "bg-white text-emerald-800 shadow-2xs font-extrabold" : "text-slate-500"
+                  }`}
+                  title="Written Down Value (Income Tax Act)"
+                >
+                  WDV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDepMethod("SLM")}
+                  className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    depMethod === "SLM" ? "bg-white text-emerald-800 shadow-2xs font-extrabold" : "text-slate-500"
+                  }`}
+                  title="Straight Line Method (Companies Act Schedule II)"
+                >
+                  SLM
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Master Category Sub-Tabs (Tier 1) */}
+        <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+            {MASTER_CATEGORIES.map((cat) => {
+              const isActive = activeMasterCategory === cat.id;
               return (
                 <button
-                  key={tab.id}
+                  key={cat.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  onClick={() => handleSelectMasterCategory(cat.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
                     isActive
-                      ? "bg-[#177B55] text-white shadow-sm"
-                      : "text-[#4B5750] hover:text-[#17211B] hover:bg-white/60"
+                      ? "bg-emerald-700 text-white shadow-sm shadow-emerald-700/20"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
                   }`}
                 >
-                  <span>{tab.icon}</span>
-                  <span>{tab.label}</span>
+                  <span>{cat.icon}</span>
+                  <span>{cat.label}</span>
+                  {cat.badge && (
+                    <span
+                      className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                        isActive
+                          ? "bg-emerald-800 text-emerald-100"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {cat.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Controls: FY Dropdown, Period Dropdown, Dep Method, Export */}
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          {/* FY Dropdown */}
-          <div className="relative">
-            <select
-              value={fy}
-              onChange={(e) => setFy(e.target.value)}
-              className="h-[38px] pl-3.5 pr-8 py-1.5 bg-white border border-[#D9E3DC] rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#177B55] shadow-2xs cursor-pointer appearance-none"
-            >
-              {FY_OPTIONS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-[#6B7280]">
-              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
-                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Tax Rate % Master Pill */}
-          <div className="flex items-center bg-[#F4F7F4] border border-[#D9E3DC] rounded-xl px-2.5 h-[38px] gap-1.5 shadow-2xs">
-            <span className="text-[11px] font-bold text-[#475569]">Tax Rate:</span>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.5"
-              value={effectiveTaxRate}
-              onChange={(e) => {
-                const val = parseFloat(e.target.value) || 0;
-                setOverrideTaxRates((prev) => ({ ...prev, [fy]: val }));
-              }}
-              className="w-12 h-[26px] bg-white border border-[#CBD5E1] rounded-lg px-1 text-center text-xs font-black text-[#166534] focus:outline-none focus:ring-1 focus:ring-[#166534]"
-            />
-            <span className="text-xs font-bold text-[#475569]">%</span>
-          </div>
-
-          {/* Period / Full Year Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedQuarter || "ALL"}
-              onChange={(e) => setSelectedQuarter(e.target.value === "ALL" ? null : e.target.value)}
-              className="h-[38px] pl-3.5 pr-8 py-1.5 bg-white border border-[#D9E3DC] rounded-xl text-xs font-bold text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#177B55] shadow-2xs cursor-pointer appearance-none"
-            >
-              <option value="ALL">Full Year</option>
-              <option value="Q1">Q1 (Apr–Jun)</option>
-              <option value="Q2">Q2 (Jul–Sep)</option>
-              <option value="Q3">Q3 (Oct–Dec)</option>
-              <option value="Q4">Q4 (Jan–Mar)</option>
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-[#6B7280]">
-              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
-                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-              </svg>
-            </div>
-          </div>
-
-          {/* Depreciation Method Pill */}
-          <div className="flex items-center bg-[#F3F4F6] rounded-xl p-1 border border-[#E5E7EB]">
-            <span className="text-[10px] font-bold text-[#6B7280] px-2">Dep:</span>
-            <button
-              type="button"
-              onClick={() => setDepMethod("WDV")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                depMethod === "WDV" ? "bg-white text-[#166534] shadow-xs" : "text-[#6B7280]"
-              }`}
-              title="Written Down Value (Income Tax Act)"
-            >
-              WDV
-            </button>
-            <button
-              type="button"
-              onClick={() => setDepMethod("SLM")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                depMethod === "SLM" ? "bg-white text-[#166534] shadow-xs" : "text-[#6B7280]"
-              }`}
-              title="Straight Line Method (Companies Act Schedule II)"
-            >
-              SLM
-            </button>
-          </div>
-
-          {/* Export Dropdown Menu */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setExportMenuOpen((prev) => !prev)}
-              className="h-[38px] px-4 text-xs font-extrabold rounded-xl border border-[#D9E3DC] bg-white text-[#166534] hover:bg-[#F0FDF4] shadow-2xs cursor-pointer flex items-center gap-2 transition-all"
-            >
-              <span>Export</span>
-              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
-                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-              </svg>
-            </button>
-
-            {exportMenuOpen && (
-              <div className="absolute right-0 mt-1.5 w-52 bg-white border border-[#D9E3DC] rounded-xl shadow-lg z-50 overflow-hidden py-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setExportMenuOpen(false);
-                    window.print();
-                  }}
-                  className="w-full px-3.5 py-2 text-left text-xs font-bold text-[#111827] hover:bg-[#F0FDF4] hover:text-[#166534] flex items-center gap-2 cursor-pointer"
-                >
-                  <span>🖨️</span> Print / Export PDF (1 Page)
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportExcel}
-                  className="w-full px-3.5 py-2 text-left text-xs font-bold text-[#111827] hover:bg-[#F0FDF4] hover:text-[#166534] flex items-center gap-2 cursor-pointer border-t border-[#EEF2EF]"
-                >
-                  <span>📊</span> Export to Excel (.csv)
-                </button>
-              </div>
-            )}
-          </div>
+        {/* Secondary Category Sub-Tabs (Tier 2) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto p-1.5 bg-slate-100/80 rounded-xl border border-slate-200/80">
+          {MASTER_CATEGORIES.find((c) => c.id === activeMasterCategory)?.subTabs.map((st) => {
+            const isSubActive = activeSubTab === st.id;
+            return (
+              <button
+                key={st.id}
+                type="button"
+                onClick={() => handleSelectSubTab(st.id)}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  isSubActive
+                    ? "bg-white text-emerald-900 shadow-2xs font-extrabold border border-slate-200"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                }`}
+              >
+                <span>{st.icon}</span>
+                <span>{st.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -1366,7 +1751,7 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {/* TAB 1: PROFIT & LOSS */}
         {/* ================================================================= */}
-        {activeTab === "pnl" && (
+        {activeSubTab === "pnl" && (
           <div className="space-y-6 text-xs">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
@@ -1555,7 +1940,7 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {/* TAB 2: BALANCE SHEET — Schedule III (Part I) — DOUBLE ENTRY PROOF */}
         {/* ================================================================= */}
-        {activeTab === "bs" && (
+        {activeSubTab === "bs" && (
           <div className="space-y-6 text-xs">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-3">
               <div>
@@ -1738,7 +2123,7 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {/* TAB 3: CASH FLOW — AS 3 Indirect Method */}
         {/* ================================================================= */}
-        {activeTab === "cashflow" && (
+        {activeSubTab === "cashflow" && (
           <div className="space-y-6 text-xs">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
@@ -1887,7 +2272,7 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {/* TAB 4: GST & TAX SLABS — DYNAMIC RATE SLAB BREAKDOWN */}
         {/* ================================================================= */}
-        {activeTab === "gst" && (
+        {activeSubTab === "gst" && (
           <div className="space-y-6 text-xs">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
@@ -2103,7 +2488,7 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {/* TAB 5: TDS — SECTION-WISE DEDUCTIONS & FORM 26Q */}
         {/* ================================================================= */}
-        {activeTab === "tds" && (
+        {activeSubTab === "tds" && (
           <div className="space-y-6 text-xs">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
@@ -2365,7 +2750,7 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {/* TAB 6: RECEIVABLES — AGEING ANALYSIS & CUSTOMER LEDGER */}
         {/* ================================================================= */}
-        {activeTab === "receivables" && (
+        {activeSubTab === "receivables" && (
           <div className="space-y-6 text-xs">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
@@ -2478,7 +2863,7 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {/* TAB 7: PAYABLES — SPOT BANK SETTLEMENT (ZERO TRADE PAYABLES) */}
         {/* ================================================================= */}
-        {activeTab === "payables" && (
+        {activeSubTab === "payables" && (
           <div className="space-y-6 text-xs">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
@@ -2594,7 +2979,10 @@ export function FinancialReportsClient({
         {/* ================================================================= */}
         {/* TAB 8: FIXED ASSETS — DEPRECIATION SCHEDULE (WDV / SLM) */}
         {/* ================================================================= */}
-        {activeTab === "assets" && (
+        {/* ================================================================= */}
+        {/* TAB 8: FIXED ASSETS — DEPRECIATION SCHEDULE (WDV / SLM) */}
+        {/* ================================================================= */}
+        {activeSubTab === "schedule" && (
           <div className="space-y-6 text-xs">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#E2E8E4] pb-4 gap-2">
               <div>
@@ -2638,11 +3026,11 @@ export function FinancialReportsClient({
             {/* Asset Schedule Table */}
             <div className="border border-[#DCE4DE] rounded-2xl overflow-hidden bg-white shadow-2xs">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[800px]">
-                  <TableHead cols={["Asset Description", "Category", "Acquisition Date", "Gross Block", "Dep. Rate", "Accumulated Dep.", "Current FY Dep.", "Net Block"]} />
+                <table className="w-full text-left border-collapse min-w-[900px]">
+                  <TableHead cols={["Asset Description", "Category", "Acquisition Date", "Gross Block", "Dep. Rate", "Accumulated Dep.", "Current FY Dep.", "Net Block", "Status & Action"]} />
                   <tbody className="divide-y divide-[#EEF2EF]">
                     {depSchedule.length === 0 ? (
-                      <EmptyRow cols={8} msg="No fixed assets recorded for this period. Capitalise capital items through Expenses categorized as ASSET." />
+                      <EmptyRow cols={9} msg="No fixed assets recorded for this period. Capitalise capital items through Expenses categorized as ASSET." />
                     ) : (
                       depSchedule.map((a) => (
                         <tr key={a.id} className="hover:bg-[#F9FAF9] transition-colors">
@@ -2654,6 +3042,29 @@ export function FinancialReportsClient({
                           <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#B45309]">({formatCurrency(a.accDep)})</td>
                           <td className="py-3 px-3.5 text-right tabular-nums font-mono text-[#B94B4B] font-bold">({formatCurrency(a.currentYearDep)})</td>
                           <td className="py-3 px-3.5 text-right tabular-nums font-mono font-black text-[#111827]">{formatCurrency(a.closingWdv)}</td>
+                          <td className="py-3 px-3.5 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {a.isCustomRecorded ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                                  ✓ Recorded
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                                  ⚡ Auto
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedAssetForDep(a);
+                                  setIsDepModalOpen(true);
+                                }}
+                                className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#177B55] text-white hover:bg-[#126344] transition-colors shadow-2xs cursor-pointer"
+                              >
+                                Adjust / Record
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -2667,6 +3078,7 @@ export function FinancialReportsClient({
                         <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-[#B45309]">({formatCurrency(totalAccDep)})</td>
                         <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-[#B94B4B]">({formatCurrency(totalCurrentYearDep)})</td>
                         <td className="py-3.5 px-3.5 text-right tabular-nums font-mono text-[#166534]">{formatCurrency(totalNetBlock)}</td>
+                        <td />
                       </tr>
                     </tfoot>
                   )}
@@ -2674,6 +3086,36 @@ export function FinancialReportsClient({
               </div>
             </div>
           </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* OPERATIONS: REVENUE & EXPENSE OPS (INTEGRATED FROM ANALYSIS)      */}
+        {/* ================================================================= */}
+        {activeSubTab === "revenue_ops" && (
+          <RevenueOpsView analysisData={initialAnalysisData} financialYear={fy} />
+        )}
+
+        {activeSubTab === "expense_ops" && (
+          <ExpenseOpsView analysisData={initialAnalysisData} financialYear={fy} />
+        )}
+
+        {/* ================================================================= */}
+        {/* BI & RATIOS: OVERVIEW, RATIOS, COMPARATIVE & CA INSIGHTS          */}
+        {/* ================================================================= */}
+        {activeSubTab === "overview" && (
+          <ExecutiveOverviewView analysisData={initialAnalysisData} financialYear={fy} />
+        )}
+
+        {activeSubTab === "ratios" && (
+          <FinancialRatiosView analysisData={initialAnalysisData} financialYear={fy} />
+        )}
+
+        {activeSubTab === "comparative" && (
+          <ComparativeTablesView analysisData={initialAnalysisData} financialYear={fy} />
+        )}
+
+        {activeSubTab === "insights" && (
+          <CaInsightsView analysisData={initialAnalysisData} financialYear={fy} />
         )}
 
         {/* Print-Only Signature Block */}
@@ -2955,6 +3397,39 @@ export function FinancialReportsClient({
           </div>
         </div>
       )}
+
+      {/* Asset Depreciation & Live Adjustment Modal */}
+      <AssetDepreciationModal
+        isOpen={isDepModalOpen}
+        onClose={() => {
+          setIsDepModalOpen(false);
+          setSelectedAssetForDep(null);
+        }}
+        asset={selectedAssetForDep}
+        financialYear={fy}
+        onSaveSuccess={(savedRecord) => {
+          setLocalDepreciations((prev) => {
+            const idx = prev.findIndex(
+              (d) =>
+                d.id === savedRecord.id ||
+                (d.expenseId === savedRecord.expenseId && d.financialYear === savedRecord.financialYear)
+            );
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = savedRecord;
+              return updated;
+            }
+            return [savedRecord, ...prev];
+          });
+          setIsDepModalOpen(false);
+          setSelectedAssetForDep(null);
+        }}
+        onDeleteSuccess={(deletedId) => {
+          setLocalDepreciations((prev) => prev.filter((d) => d.id !== deletedId));
+          setIsDepModalOpen(false);
+          setSelectedAssetForDep(null);
+        }}
+      />
     </div>
   );
 }
