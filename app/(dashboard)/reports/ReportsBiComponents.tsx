@@ -221,10 +221,10 @@ export function ExecutiveOverviewView({ analysisData, financialYear }: ReportsBi
             Current Ratio (Liquidity)
           </div>
           <div className="text-3xl font-black font-mono text-white tracking-tight">
-            {ratios.currentRatio !== null ? `${ratios.currentRatio.toFixed(2)}x` : "N/A"}
+            {ratios?.currentRatio != null ? `${Number(ratios.currentRatio).toFixed(2)}x` : "N/A"}
           </div>
           <div className="text-xs text-slate-400 font-medium">
-            {ratios.currentRatio && ratios.currentRatio >= 1.5
+            {ratios?.currentRatio != null && ratios.currentRatio >= 1.5
               ? "✓ Strong short-term working capital"
               : "⚠ Tight liquidity; monitor debt coverage"}
           </div>
@@ -237,13 +237,13 @@ export function ExecutiveOverviewView({ analysisData, financialYear }: ReportsBi
           </div>
           <div
             className={`text-3xl font-black font-mono tracking-tight ${
-              cashFlow.operating >= 0 ? "text-emerald-400" : "text-rose-400"
+              cashFlow?.operating >= 0 ? "text-emerald-400" : "text-rose-400"
             }`}
           >
-            {formatCurrency(cashFlow.operating)}
+            {formatCurrency(cashFlow?.operating || 0)}
           </div>
           <div className="text-xs text-slate-400 font-medium">
-            {cashFlow.operating >= 0 ? "✓ Positive core cash accumulation" : "⚠ Net operational cash burn"}
+            {cashFlow?.operating >= 0 ? "✓ Positive core cash accumulation" : "⚠ Net operational cash burn"}
           </div>
         </div>
       </div>
@@ -273,35 +273,35 @@ export function FinancialRatiosView({ analysisData, financialYear }: ReportsBiPr
       items: [
         {
           name: "Current Ratio",
-          value: ratios.currentRatio !== null ? `${ratios.currentRatio.toFixed(2)}x` : "N/A",
+          value: ratios?.currentRatio != null ? `${Number(ratios.currentRatio).toFixed(2)}x` : "N/A",
           benchmark: "1.50x – 2.00x",
           formula: "Current Assets / Current Liabilities",
-          status: ratios.currentRatio && ratios.currentRatio >= 1.5 ? "Healthy" : "Tight",
-          statusColor: ratios.currentRatio && ratios.currentRatio >= 1.5 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-amber-700 bg-amber-50 border-amber-200",
+          status: ratios?.currentRatio != null && ratios.currentRatio >= 1.5 ? "Healthy" : "Tight",
+          statusColor: ratios?.currentRatio != null && ratios.currentRatio >= 1.5 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-amber-700 bg-amber-50 border-amber-200",
         },
         {
           name: "Quick Ratio (Acid-Test)",
-          value: ratios.quickRatio !== null ? `${ratios.quickRatio.toFixed(2)}x` : "N/A",
+          value: ratios?.quickRatio != null ? `${Number(ratios.quickRatio).toFixed(2)}x` : "N/A",
           benchmark: "≥ 1.00x",
           formula: "(Cash + Debtors) / Current Liabilities",
-          status: ratios.quickRatio && ratios.quickRatio >= 1.0 ? "Strong" : "Monitor",
-          statusColor: ratios.quickRatio && ratios.quickRatio >= 1.0 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-rose-700 bg-rose-50 border-rose-200",
+          status: ratios?.quickRatio != null && ratios.quickRatio >= 1.0 ? "Strong" : "Monitor",
+          statusColor: ratios?.quickRatio != null && ratios.quickRatio >= 1.0 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-rose-700 bg-rose-50 border-rose-200",
         },
         {
           name: "Cash Ratio",
-          value: ratios.cashRatio !== null ? `${ratios.cashRatio.toFixed(2)}x` : "N/A",
+          value: ratios?.cashRatio != null ? `${Number(ratios.cashRatio).toFixed(2)}x` : "N/A",
           benchmark: "≥ 0.50x",
           formula: "Cash & Bank / Current Liabilities",
-          status: ratios.cashRatio && ratios.cashRatio >= 0.5 ? "Robust" : "Low Cash",
-          statusColor: ratios.cashRatio && ratios.cashRatio >= 0.5 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-amber-700 bg-amber-50 border-amber-200",
+          status: ratios?.cashRatio != null && ratios.cashRatio >= 0.5 ? "Robust" : "Low Cash",
+          statusColor: ratios?.cashRatio != null && ratios.cashRatio >= 0.5 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-amber-700 bg-amber-50 border-amber-200",
         },
         {
           name: "Debt-to-Equity",
-          value: ratios.debtToEquity !== null ? `${ratios.debtToEquity.toFixed(2)}x` : "N/A",
+          value: ratios?.debtToEquity != null ? `${Number(ratios.debtToEquity).toFixed(2)}x` : "N/A",
           benchmark: "≤ 1.50x",
           formula: "Total Liabilities / Total Equity",
-          status: ratios.debtToEquity && ratios.debtToEquity <= 1.5 ? "Low Risk" : "Leveraged",
-          statusColor: ratios.debtToEquity && ratios.debtToEquity <= 1.5 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-rose-700 bg-rose-50 border-rose-200",
+          status: ratios?.debtToEquity != null && ratios.debtToEquity <= 1.5 ? "Low Risk" : "Leveraged",
+          statusColor: ratios?.debtToEquity != null && ratios.debtToEquity <= 1.5 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-rose-700 bg-rose-50 border-rose-200",
         },
       ],
     },
@@ -311,35 +311,35 @@ export function FinancialRatiosView({ analysisData, financialYear }: ReportsBiPr
       items: [
         {
           name: "Gross Profit Margin",
-          value: ratios.grossMargin !== null ? `${ratios.grossMargin}%` : "N/A",
+          value: ratios?.grossMargin != null ? `${Number(ratios.grossMargin).toFixed(1)}%` : "N/A",
           benchmark: "≥ 25.0%",
           formula: "Gross Profit / Turnover × 100",
-          status: ratios.grossMargin && ratios.grossMargin >= 25 ? "Optimal" : "Review Margins",
-          statusColor: ratios.grossMargin && ratios.grossMargin >= 25 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-amber-700 bg-amber-50 border-amber-200",
+          status: ratios?.grossMargin != null && ratios.grossMargin >= 25 ? "Optimal" : "Review Margins",
+          statusColor: ratios?.grossMargin != null && ratios.grossMargin >= 25 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-amber-700 bg-amber-50 border-amber-200",
         },
         {
           name: "Net Profit Margin (PAT)",
-          value: ratios.netMargin !== null ? `${ratios.netMargin}%` : "N/A",
+          value: ratios?.netMargin != null ? `${Number(ratios.netMargin).toFixed(1)}%` : "N/A",
           benchmark: "≥ 10.0%",
           formula: "Profit After Tax / Turnover × 100",
-          status: ratios.netMargin && ratios.netMargin >= 10 ? "Strong" : "Thin",
-          statusColor: ratios.netMargin && ratios.netMargin >= 10 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-rose-700 bg-rose-50 border-rose-200",
+          status: ratios?.netMargin != null && ratios.netMargin >= 10 ? "Strong" : "Thin",
+          statusColor: ratios?.netMargin != null && ratios.netMargin >= 10 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-rose-700 bg-rose-50 border-rose-200",
         },
         {
           name: "Operating Margin (EBIT)",
-          value: ratios.operatingMargin !== null ? `${ratios.operatingMargin}%` : "N/A",
+          value: ratios?.operatingMargin != null ? `${Number(ratios.operatingMargin).toFixed(1)}%` : "N/A",
           benchmark: "≥ 15.0%",
           formula: "EBIT / Turnover × 100",
-          status: ratios.operatingMargin && ratios.operatingMargin >= 15 ? "Healthy" : "Moderate",
-          statusColor: ratios.operatingMargin && ratios.operatingMargin >= 15 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-slate-700 bg-slate-50 border-slate-200",
+          status: ratios?.operatingMargin != null && ratios.operatingMargin >= 15 ? "Healthy" : "Moderate",
+          statusColor: ratios?.operatingMargin != null && ratios.operatingMargin >= 15 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-slate-700 bg-slate-50 border-slate-200",
         },
         {
           name: "Working Capital",
-          value: formatCurrency(currentData.totalCurrentAssets - currentData.totalCurrentLiabilities),
+          value: formatCurrency((currentData?.totalCurrentAssets || 0) - (currentData?.totalCurrentLiabilities || 0)),
           benchmark: "> ₹0.00",
           formula: "Current Assets – Current Liabilities",
-          status: currentData.totalCurrentAssets >= currentData.totalCurrentLiabilities ? "Surplus" : "Deficit",
-          statusColor: currentData.totalCurrentAssets >= currentData.totalCurrentLiabilities ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-rose-700 bg-rose-50 border-rose-200",
+          status: (currentData?.totalCurrentAssets || 0) >= (currentData?.totalCurrentLiabilities || 0) ? "Surplus" : "Deficit",
+          statusColor: (currentData?.totalCurrentAssets || 0) >= (currentData?.totalCurrentLiabilities || 0) ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-rose-700 bg-rose-50 border-rose-200",
         },
       ],
     },
@@ -349,15 +349,15 @@ export function FinancialRatiosView({ analysisData, financialYear }: ReportsBiPr
       items: [
         {
           name: "Debtor Days (DSO)",
-          value: ratios.debtorDays !== null ? `${ratios.debtorDays} Days` : "N/A",
+          value: ratios?.debtorDays != null ? `${ratios.debtorDays} Days` : "N/A",
           benchmark: "≤ 45 Days",
           formula: "(Trade Debtors / Turnover) × 365",
-          status: ratios.debtorDays && ratios.debtorDays <= 45 ? "Fast Collection" : "Follow-up Required",
-          statusColor: ratios.debtorDays && ratios.debtorDays <= 45 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-amber-700 bg-amber-50 border-amber-200",
+          status: ratios?.debtorDays != null && ratios.debtorDays <= 45 ? "Fast Collection" : "Follow-up Required",
+          statusColor: ratios?.debtorDays != null && ratios.debtorDays <= 45 ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-amber-700 bg-amber-50 border-amber-200",
         },
         {
           name: "Creditor Days (DPO)",
-          value: ratios.creditorDays !== null ? `${ratios.creditorDays} Days` : "N/A",
+          value: ratios?.creditorDays != null ? `${ratios.creditorDays} Days` : "N/A",
           benchmark: "30 – 60 Days",
           formula: "(Trade Creditors / OPEX) × 365",
           status: "Normal Cycle",
@@ -365,7 +365,7 @@ export function FinancialRatiosView({ analysisData, financialYear }: ReportsBiPr
         },
         {
           name: "Working Capital Turnover",
-          value: ratios.workingCapitalTurnover !== null ? `${ratios.workingCapitalTurnover.toFixed(2)}x` : "N/A",
+          value: ratios?.workingCapitalTurnover != null ? `${Number(ratios.workingCapitalTurnover).toFixed(2)}x` : "N/A",
           benchmark: "3.00x – 6.00x",
           formula: "Turnover / Net Working Capital",
           status: "Efficient",

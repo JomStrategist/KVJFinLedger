@@ -606,11 +606,37 @@ export class AnalysisService {
     });
 
     // 10. Financial Ratios
-    const currentRatio = this.safePercent(currentData.totalCurrentAssets, currentData.totalCurrentLiabilities);
-    const quickRatio = this.safePercent(currentData.cashBankBalance + currentData.outstandingReceivables, currentData.totalCurrentLiabilities);
-    const debtToEquity = this.safePercent(currentData.totalLiabilities, currentData.totalEquity);
-    const receivablesTurnover = this.safePercent(currentData.totalRevenue, currentData.outstandingReceivables);
-    const payablesTurnover = this.safePercent(currentData.totalExpenses, currentData.outstandingPayables);
+    const currentRatio = currentData.totalCurrentLiabilities > 0 
+      ? Number((currentData.totalCurrentAssets / currentData.totalCurrentLiabilities).toFixed(2)) 
+      : null;
+    const quickRatio = currentData.totalCurrentLiabilities > 0 
+      ? Number(((currentData.cashBankBalance + currentData.outstandingReceivables) / currentData.totalCurrentLiabilities).toFixed(2)) 
+      : null;
+    const cashRatio = currentData.totalCurrentLiabilities > 0 
+      ? Number((currentData.cashBankBalance / currentData.totalCurrentLiabilities).toFixed(2)) 
+      : null;
+    const debtToEquity = currentData.totalEquity > 0 
+      ? Number((currentData.totalLiabilities / currentData.totalEquity).toFixed(2)) 
+      : null;
+    const receivablesTurnover = currentData.outstandingReceivables > 0 
+      ? Number((currentData.totalRevenue / currentData.outstandingReceivables).toFixed(2)) 
+      : null;
+    const payablesTurnover = currentData.outstandingPayables > 0 
+      ? Number((currentData.totalExpenses / currentData.outstandingPayables).toFixed(2)) 
+      : null;
+    const debtorDays = currentData.totalRevenue > 0 
+      ? Math.round((currentData.outstandingReceivables / currentData.totalRevenue) * 365) 
+      : 0;
+    const creditorDays = currentData.totalExpenses > 0 
+      ? Math.round((currentData.outstandingPayables / currentData.totalExpenses) * 365) 
+      : 0;
+    const netWorkingCapital = currentData.totalCurrentAssets - currentData.totalCurrentLiabilities;
+    const workingCapitalTurnover = netWorkingCapital > 0 
+      ? Number((currentData.totalRevenue / netWorkingCapital).toFixed(2)) 
+      : null;
+    const operatingMargin = currentData.totalRevenue > 0 
+      ? Number((((currentData.totalRevenue - currentData.totalExpenses + currentData.financeCosts) / currentData.totalRevenue) * 100).toFixed(1)) 
+      : 0;
 
     // 11. Balance Check (`Assets == Liabilities + Equity`)
     const totalLiabEq = currentData.totalLiabilities + currentData.totalEquity;
@@ -671,11 +697,16 @@ export class AnalysisService {
       ratios: {
         grossMargin: currentData.grossProfitMargin,
         netMargin: currentData.profitMargin,
-        currentRatio: currentRatio ? currentRatio / 100 : null,
-        quickRatio: quickRatio ? quickRatio / 100 : null,
-        debtToEquity: debtToEquity ? debtToEquity / 100 : null,
-        receivablesTurnover: receivablesTurnover ? receivablesTurnover / 100 : null,
-        payablesTurnover: payablesTurnover ? payablesTurnover / 100 : null,
+        operatingMargin,
+        currentRatio,
+        quickRatio,
+        cashRatio,
+        debtToEquity,
+        receivablesTurnover,
+        payablesTurnover,
+        debtorDays,
+        creditorDays,
+        workingCapitalTurnover,
       },
       balanceCheck: {
         isBalanced,
