@@ -626,19 +626,6 @@ export function FinancialReportsClient({
     }
   };
 
-  // Synchronize master category selection
-  const handleSelectMasterCategory = (catId: MasterCategory) => {
-    setActiveMasterCategory(catId);
-    const catConfig = MASTER_CATEGORIES.find((c) => c.id === catId);
-    const defaultSub = catConfig?.subTabs[0]?.id || "overview";
-    setActiveSubTab(defaultSub);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("subtab", defaultSub);
-      router.replace(url.pathname + url.search, { scroll: false });
-    }
-  };
-
   // Filter Change Handler (Updates local state & triggers server revalidation with query params)
   const handleFilterChange = (key: string, value: string) => {
     const updated = { ...filters, [key]: value };
@@ -1719,28 +1706,6 @@ export function FinancialReportsClient({
               </select>
             </div>
           </div>
-        </div>
-
-        {/* Master Report Categories */}
-        <div className="flex items-center gap-1.5 overflow-x-auto p-1.5 bg-slate-200/60 rounded-2xl border border-slate-200/80 no-scrollbar scroll-smooth">
-          {MASTER_CATEGORIES.map((cat) => {
-            const isCatActive = activeMasterCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => handleSelectMasterCategory(cat.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                  isCatActive
-                    ? "bg-slate-900 text-white shadow-xs font-black ring-1 ring-slate-900"
-                    : "bg-white/70 text-slate-600 hover:text-slate-900 hover:bg-white font-semibold border border-transparent"
-                }`}
-              >
-                <span>{cat.icon}</span>
-                <span>{cat.label}</span>
-              </button>
-            );
-          })}
         </div>
 
         {/* Category Sub-Tabs */}

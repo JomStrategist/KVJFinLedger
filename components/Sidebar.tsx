@@ -93,7 +93,6 @@ const navItems = [
       { name: "Working Capital", href: "/reports?subtab=receivables", icon: "💼" },
       { name: "Tax & Statutory", href: "/reports?subtab=gst", icon: "📑" },
       { name: "Fixed Assets & Depreciation", href: "/reports?subtab=schedule", icon: "🏢" },
-      { name: "Financial Ratios", href: "/reports?subtab=ratios", icon: "📐" },
     ],
   },
   {
@@ -191,12 +190,11 @@ export function Sidebar({
     if (targetSubtab === currentSubtab) return true;
 
     // Grouping aliases for parent report sections
+    if (targetSubtab === "overview" && (!currentSubtab || currentSubtab === "overview" || currentSubtab === "insights" || currentSubtab === "ratios" || currentSubtab === "comparative")) return true;
     if (targetSubtab === "pnl" && (currentSubtab === "bs" || currentSubtab === "cashflow")) return true;
     if (targetSubtab === "receivables" && (currentSubtab === "payables" || currentSubtab === "revenue_ops" || currentSubtab === "expense_ops")) return true;
     if (targetSubtab === "gst" && currentSubtab === "tds") return true;
     if (targetSubtab === "schedule" && currentSubtab === "assets") return true;
-    if (targetSubtab === "ratios" && currentSubtab === "comparative") return true;
-    if (targetSubtab === "overview" && (!currentSubtab || currentSubtab === "overview" || currentSubtab === "insights")) return true;
 
     return false;
   };
