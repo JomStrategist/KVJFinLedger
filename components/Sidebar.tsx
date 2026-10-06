@@ -90,11 +90,8 @@ const navItems = [
     subItems: [
       { name: "Executive Dashboard", href: "/reports?subtab=overview", icon: "🏛️" },
       { name: "Financial Statements", href: "/reports?subtab=pnl", icon: "📊" },
-      { name: "Tax & Statutory", href: "/reports?subtab=gst", icon: "📑" },
       { name: "Working Capital", href: "/reports?subtab=receivables", icon: "💼" },
-      { name: "Customer Analytics", href: "/reports?subtab=payables", icon: "🏢" },
-      { name: "Product Performance", href: "/reports?subtab=revenue_ops", icon: "🏷️" },
-      { name: "Expense Breakdown", href: "/reports?subtab=expense_ops", icon: "📉" },
+      { name: "Tax & Statutory", href: "/reports?subtab=gst", icon: "📑" },
       { name: "Fixed Assets & Depreciation", href: "/reports?subtab=schedule", icon: "🏢" },
       { name: "Financial Ratios", href: "/reports?subtab=ratios", icon: "📐" },
     ],
@@ -195,6 +192,7 @@ export function Sidebar({
 
     // Grouping aliases for parent report sections
     if (targetSubtab === "pnl" && (currentSubtab === "bs" || currentSubtab === "cashflow")) return true;
+    if (targetSubtab === "receivables" && (currentSubtab === "payables" || currentSubtab === "revenue_ops" || currentSubtab === "expense_ops")) return true;
     if (targetSubtab === "gst" && currentSubtab === "tds") return true;
     if (targetSubtab === "schedule" && currentSubtab === "assets") return true;
     if (targetSubtab === "ratios" && currentSubtab === "comparative") return true;

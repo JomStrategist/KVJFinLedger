@@ -150,6 +150,16 @@ export interface MasterCategoryConfig {
 
 export const MASTER_CATEGORIES: MasterCategoryConfig[] = [
   {
+    id: "bi_ratios",
+    label: "Executive Dashboard",
+    icon: "🏛️",
+    subTabs: [
+      { id: "overview", label: "Executive BI Overview", icon: "✨" },
+      { id: "ratios", label: "Financial Ratios", icon: "📐" },
+      { id: "comparative", label: "Horizontal & Vertical", icon: "📑" },
+    ],
+  },
+  {
     id: "statements",
     label: "Financial Statements",
     icon: "📊",
@@ -157,15 +167,6 @@ export const MASTER_CATEGORIES: MasterCategoryConfig[] = [
       { id: "pnl", label: "Profit & Loss", icon: "📊" },
       { id: "bs", label: "Balance Sheet", icon: "⚖️" },
       { id: "cashflow", label: "Cash Flow", icon: "💵" },
-    ],
-  },
-  {
-    id: "compliance",
-    label: "Tax & Statutory",
-    icon: "🏛️",
-    subTabs: [
-      { id: "gst", label: "GST Slabs & ITC", icon: "📑" },
-      { id: "tds", label: "TDS (Form 26Q)", icon: "🏛️" },
     ],
   },
   {
@@ -180,21 +181,20 @@ export const MASTER_CATEGORIES: MasterCategoryConfig[] = [
     ],
   },
   {
+    id: "compliance",
+    label: "Tax & Statutory",
+    icon: "📑",
+    subTabs: [
+      { id: "gst", label: "GST Slabs & ITC", icon: "📑" },
+      { id: "tds", label: "TDS (Form 26Q)", icon: "🏛️" },
+    ],
+  },
+  {
     id: "assets",
     label: "Fixed Assets & Depreciation",
     icon: "🏢",
     subTabs: [
       { id: "schedule", label: "Asset Register & Depreciation", icon: "🏢" },
-    ],
-  },
-  {
-    id: "bi_ratios",
-    label: "BI & Ratios",
-    icon: "📈",
-    subTabs: [
-      { id: "overview", label: "Executive BI Overview", icon: "✨" },
-      { id: "ratios", label: "Financial Ratios", icon: "📐" },
-      { id: "comparative", label: "Horizontal & Vertical", icon: "📑" },
     ],
   },
 ];
@@ -205,7 +205,7 @@ export function getCategoryForSubTab(subTab: string): MasterCategory {
   if (subTab === "receivables" || subTab === "payables" || subTab === "revenue_ops" || subTab === "expense_ops") return "operations";
   if (subTab === "assets" || subTab === "schedule") return "assets";
   if (subTab === "overview" || subTab === "ratios" || subTab === "comparative") return "bi_ratios";
-  return "statements";
+  return "bi_ratios";
 }
 
 const FY_OPTIONS = ["FY 2026–27", "FY 2025–26", "FY 2024–25", "ALL"];
@@ -622,6 +622,19 @@ export function FinancialReportsClient({
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("subtab", subTabId);
+      router.replace(url.pathname + url.search, { scroll: false });
+    }
+  };
+
+  // Synchronize master category selection
+  const handleSelectMasterCategory = (catId: MasterCategory) => {
+    setActiveMasterCategory(catId);
+    const catConfig = MASTER_CATEGORIES.find((c) => c.id === catId);
+    const defaultSub = catConfig?.subTabs[0]?.id || "overview";
+    setActiveSubTab(defaultSub);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("subtab", defaultSub);
       router.replace(url.pathname + url.search, { scroll: false });
     }
   };
@@ -1706,6 +1719,28 @@ export function FinancialReportsClient({
               </select>
             </div>
           </div>
+        </div>
+
+        {/* Master Report Categories */}
+        <div className="flex items-center gap-1.5 overflow-x-auto p-1.5 bg-slate-200/60 rounded-2xl border border-slate-200/80 no-scrollbar scroll-smooth">
+          {MASTER_CATEGORIES.map((cat) => {
+            const isCatActive = activeMasterCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => handleSelectMasterCategory(cat.id)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  isCatActive
+                    ? "bg-slate-900 text-white shadow-xs font-black ring-1 ring-slate-900"
+                    : "bg-white/70 text-slate-600 hover:text-slate-900 hover:bg-white font-semibold border border-transparent"
+                }`}
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Category Sub-Tabs */}
