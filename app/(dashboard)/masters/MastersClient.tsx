@@ -87,7 +87,7 @@ export function MastersClient({
         <div>
           <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Masters</h1>
           <p className="text-[#68756C] text-sm mt-0.5 font-normal">
-            Maintain customers, vendors, products/services and categories in a clean table workflow.
+            Maintain customers, parties, products/services and categories in a clean table workflow.
           </p>
         </div>
         {activeTab !== "bank_accounts" && (
@@ -110,7 +110,7 @@ export function MastersClient({
         <div className="flex flex-wrap gap-6 border-b border-[#D9E3DC]">
           {[
             { id: "customers", label: `Customers (${filteredCustomers.length})` },
-            { id: "vendors", label: `Vendors (${filteredVendors.length})` },
+            { id: "vendors", label: `Parties (${filteredVendors.length})` },
             { id: "products", label: `Products & Services (${filteredProducts.length})` },
             { id: "categories", label: `Categories (${filteredCategories.length})` },
             { id: "bank_accounts", label: "Bank Accounts" },
@@ -249,13 +249,13 @@ export function MastersClient({
           </div>
         )}
 
-        {/* 2. Vendors Table */}
+        {/* 2. Vendors / Parties Table */}
         {activeTab === "vendors" && (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[750px]">
               <thead>
                 <tr className="border-b border-[#D9E3DC] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
-                  <th className="py-3 px-3">VENDOR NAME & GSTIN</th>
+                  <th className="py-3 px-3">PARTY NAME & GSTIN</th>
                   <th className="py-3 px-3">STATE</th>
                   <th className="py-3 px-3">CONTACT</th>
                   <th className="py-3 px-3">STATUS</th>
@@ -266,7 +266,7 @@ export function MastersClient({
                 {filteredVendors.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-12 text-center text-[#68756C]">
-                      No vendors found. Click &quot;+ Add Record&quot; to create one.
+                      No parties found. Click &quot;+ Add Record&quot; to create one.
                     </td>
                   </tr>
                 ) : (
@@ -277,7 +277,7 @@ export function MastersClient({
                         {ven.gstin ? (
                           <p className="text-[11px] text-[#68756C] mt-0.5">GSTIN: <strong className="text-[#17211B]">{ven.gstin}</strong></p>
                         ) : (
-                          <p className="text-[11px] text-[#7B877F] mt-0.5">Unregistered Vendor</p>
+                          <p className="text-[11px] text-[#7B877F] mt-0.5">Unregistered Party</p>
                         )}
                       </td>
                       <td className="py-4 px-3 text-[#17211B]">

@@ -315,7 +315,7 @@ export function AddMasterRecordModal({
               <h2 className="text-base font-bold text-slate-900">
                 {initialData ? "Edit Master Record" : "Add Master Record"}
               </h2>
-              <p className="text-[11px] text-slate-500 font-medium">Configure customer, vendor, service, or accounting heads</p>
+              <p className="text-[11px] text-slate-500 font-medium">Configure customer, party, service, or accounting heads</p>
             </div>
           </div>
           <button
@@ -331,7 +331,7 @@ export function AddMasterRecordModal({
           <div className="px-6 pt-3 flex gap-2 border-b border-slate-200/70 bg-slate-50/50">
             {[
               { id: "customer", label: "Customer", icon: "👤" },
-              { id: "vendor", label: "Vendor", icon: "🏢" },
+              { id: "vendor", label: "Party", icon: "🏢" },
               { id: "product", label: "Product & Service", icon: "📦" },
               { id: "category", label: "Category", icon: "🏷️" },
             ].map((t) => (
@@ -561,12 +561,12 @@ export function AddMasterRecordModal({
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Vendor Name *
+                  Party Name *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. ABC Vendor Services"
+                  placeholder="e.g. ABC Vendor Services / Supplier"
                   value={vendorName}
                   onChange={(e) => setVendorName(e.target.value)}
                   className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
@@ -584,10 +584,10 @@ export function AddMasterRecordModal({
                 />
               </div>
 
-              {/* Vendor Type & GSTIN */}
+              {/* Party Type & GSTIN */}
               <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Vendor Type *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Party Type *</label>
                   <select
                     value={vendorType}
                     onChange={(e) => setVendorType(e.target.value)}
@@ -604,7 +604,7 @@ export function AddMasterRecordModal({
                   </label>
                   {vendorType === "B2C" ? (
                     <div className="w-full h-10 border border-slate-200 rounded-xl px-3.5 flex items-center bg-slate-50 text-slate-400 text-xs font-semibold">
-                      Unregistered Vendor
+                      Unregistered Party
                     </div>
                   ) : (
                     <input
@@ -625,7 +625,7 @@ export function AddMasterRecordModal({
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">PAN Number</label>
                   <input
                     type="text"
-                    placeholder="e.g. VENDOR1234A"
+                    placeholder="e.g. PARTY1234A"
                     value={vendorPan}
                     onChange={(e) => setVendorPan(e.target.value.toUpperCase())}
                     className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 uppercase font-mono font-bold tracking-wider"
@@ -649,30 +649,30 @@ export function AddMasterRecordModal({
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Contact Person</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Contact Person</label>
                   <input
                     type="text"
                     value={vendorContact}
                     onChange={(e) => setVendorContact(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Email</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Email</label>
                   <input
                     type="email"
                     value={vendorEmail}
                     onChange={(e) => setVendorEmail(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#68756C] mb-1">Phone</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Phone</label>
                   <input
                     type="text"
                     value={vendorPhone}
                     onChange={(e) => setVendorPhone(e.target.value)}
-                    className="w-full h-[38px] border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                   />
                 </div>
               </div>

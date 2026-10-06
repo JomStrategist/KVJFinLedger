@@ -175,7 +175,7 @@ export function VendorForm({ initialData }: { initialData?: any }) {
           disabled={isPending}
           className="px-6 py-2 bg-theme-primary text-white rounded-lg text-sm font-medium hover:bg-theme-primary-dark disabled:opacity-50"
         >
-          {isPending ? "Saving..." : initialData ? "Save Changes" : "Add Vendor"}
+          {isPending ? "Saving..." : initialData ? "Save Changes" : "Add Party"}
         </button>
       </div>
     </form>

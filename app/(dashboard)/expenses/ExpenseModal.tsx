@@ -394,7 +394,7 @@ export function ExpenseModal({
                     className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium text-slate-800"
                   >
                     <option value="">— Internal / Self (Salary, Petty Cash, Fees) —</option>
-                    <option value="ADD_NEW" className="font-bold text-emerald-700">+ Add New Vendor...</option>
+                    <option value="ADD_NEW" className="font-bold text-emerald-700">+ Add Party...</option>
                     {vendorList.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.name}

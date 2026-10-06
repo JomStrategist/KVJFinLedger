@@ -134,7 +134,7 @@ export function ExpensesClientList({
           <div className="relative flex-1 min-w-[240px]">
             <input
               type="text"
-              placeholder="Search expense / vendor"
+              placeholder="Search expense / party"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full h-[41px] px-3.5 border border-[#D9E3DC] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white placeholder-[#68756C]"
@@ -155,13 +155,13 @@ export function ExpensesClientList({
             ))}
           </select>
 
-          {/* All Vendors Dropdown */}
+          {/* All Parties Dropdown */}
           <select
             value={vendorFilter}
             onChange={(e) => setVendorFilter(e.target.value)}
             className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[150px]"
           >
-            <option value="ALL">All Vendors</option>
+            <option value="ALL">All Parties</option>
             {vendors.map((ven) => (
               <option key={ven.id} value={ven.id}>
                 {ven.name}

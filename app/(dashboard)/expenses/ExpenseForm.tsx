@@ -348,7 +348,7 @@ export function ExpenseForm({
             <thead>
               <tr className="border-b-2 border-theme-border text-xs font-semibold text-theme-text-muted uppercase tracking-wider">
                 <th className="pb-3 px-2 w-36">Date</th>
-                <th className="pb-3 px-2 w-44">Vendor</th>
+                <th className="pb-3 px-2 w-44">Party</th>
                 <th className="pb-3 px-2 w-44">Item (Optional)</th>
                 <th className="pb-3 px-2 w-44">Category</th>
                 <th className="pb-3 px-2 w-28">HSN / SAC</th>
@@ -377,7 +377,7 @@ export function ExpenseForm({
                       onChange={e => handleItemVendorChange(index, e.target.value)}
                       className="w-full border border-theme-border rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-theme-primary focus:border-transparent text-xs bg-theme-surface"
                     >
-                      <option value="">No Vendor</option>
+                      <option value="">No Party / Internal</option>
                       {vendors.map(v => {
                         const hasDiffName = v.businessName && v.businessName.trim().toLowerCase() !== v.name.trim().toLowerCase();
                         return (
@@ -386,7 +386,7 @@ export function ExpenseForm({
                           </option>
                         );
                       })}
-                      <option value="ADD_NEW" className="font-bold text-theme-primary">+ Add Custom Vendor</option>
+                      <option value="ADD_NEW" className="font-bold text-theme-primary">+ Add Party</option>
                     </select>
                   </td>
                   <td className="py-2.5 px-2">

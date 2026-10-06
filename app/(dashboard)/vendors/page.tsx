@@ -24,7 +24,7 @@ export default async function VendorsPage({
           href="/vendors/new" 
           className="inline-flex items-center justify-center px-4 py-2 bg-theme-primary hover:bg-theme-primary-dark text-white text-sm font-medium rounded-lg transition-colors shadow-sm gap-2"
         >
-          Add Vendor
+          Add Party
         </Link>
       </div>
 
