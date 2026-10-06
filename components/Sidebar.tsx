@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 
@@ -132,11 +132,10 @@ export function Sidebar({
   onCloseMobile?: () => void;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-
-  const [currentSearch, setCurrentSearch] = useState("");
 
   const [isPending, startTransition] = React.useTransition();
   const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
@@ -147,20 +146,11 @@ export function Sidebar({
     if (stored === "true") {
       setIsCollapsed(true);
     }
-    if (typeof window !== "undefined") {
-      setCurrentSearch(window.location.search);
-    }
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setCurrentSearch(window.location.search);
-    }
-  }, [pathname, optimisticHref]);
-
-  useEffect(() => {
     setOptimisticHref(null);
-  }, [pathname]);
+  }, [pathname, searchParams]);
 
   const toggleSidebar = () => {
     const newState = !isCollapsed;
@@ -170,7 +160,6 @@ export function Sidebar({
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     onCloseMobile?.();
-    if (pathname === href) return;
     setOptimisticHref(href);
     startTransition(() => {
       router.push(href);
@@ -186,13 +175,31 @@ export function Sidebar({
   }, [pathname]);
 
   const isSubItemActive = (href: string) => {
-    if (!isMounted) return false;
-    const currentHref = (isPending || optimisticHref) && optimisticHref ? optimisticHref : pathname;
-    const fullCurrent = currentHref + currentSearch;
-    if (fullCurrent === href) return true;
-    if (currentHref === "/reports" && (!currentSearch || currentSearch === "") && href === "/reports?subtab=overview") {
-      return true;
+    if (!pathname.startsWith("/reports")) return false;
+    
+    // Check optimistic destination during transition
+    const activeUrl = optimisticHref || href;
+    const currentSubtab = searchParams?.get("subtab") || "overview";
+    
+    let targetSubtab: string | null = null;
+    try {
+      const url = new URL(href, "http://localhost");
+      targetSubtab = url.searchParams.get("subtab");
+    } catch {
+      targetSubtab = href.split("subtab=")[1] || null;
     }
+
+    if (optimisticHref && optimisticHref === href) return true;
+
+    if (targetSubtab === currentSubtab) return true;
+
+    // Grouping aliases for parent report sections
+    if (targetSubtab === "pnl" && (currentSubtab === "bs" || currentSubtab === "cashflow")) return true;
+    if (targetSubtab === "gst" && currentSubtab === "tds") return true;
+    if (targetSubtab === "schedule" && currentSubtab === "assets") return true;
+    if (targetSubtab === "ratios" && currentSubtab === "comparative") return true;
+    if (targetSubtab === "overview" && (!currentSubtab || currentSubtab === "overview" || currentSubtab === "insights")) return true;
+
     return false;
   };
 
@@ -337,7 +344,7 @@ export function Sidebar({
                                   onClick={(e) => handleLinkClick(e, sub.href)}
                                   className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12px] transition-all duration-150 ${
                                     isSubActive
-                                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                                      ? "bg-emerald-500/30 text-white font-extrabold border-l-[3px] border-emerald-400 pl-2.5 shadow-xs"
                                       : "text-[#8EA699] hover:text-white hover:bg-white/[0.05] font-medium"
                                   }`}
                                 >
@@ -512,7 +519,7 @@ export function Sidebar({
                                   onClick={(e) => handleLinkClick(e, sub.href)}
                                   className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12px] transition-all duration-150 ${
                                     isSubActive
-                                      ? "bg-emerald-500/20 text-emerald-300 font-bold border-l-2 border-emerald-400 pl-2.5"
+                                      ? "bg-emerald-500/30 text-white font-extrabold border-l-[3px] border-emerald-400 pl-2.5 shadow-xs"
                                       : "text-[#8EA699] hover:text-white hover:bg-white/[0.05] font-medium"
                                   }`}
                                 >

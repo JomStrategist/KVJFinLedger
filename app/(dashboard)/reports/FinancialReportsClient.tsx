@@ -619,6 +619,11 @@ export function FinancialReportsClient({
   const handleSelectSubTab = (subTabId: SubTab) => {
     setActiveSubTab(subTabId);
     setActiveMasterCategory(getCategoryForSubTab(subTabId));
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("subtab", subTabId);
+      router.replace(url.pathname + url.search, { scroll: false });
+    }
   };
 
   // Filter Change Handler (Updates local state & triggers server revalidation with query params)
@@ -1708,7 +1713,7 @@ export function FinancialReportsClient({
           const currentSubTabs = MASTER_CATEGORIES.find((c) => c.id === activeMasterCategory)?.subTabs || [];
           if (currentSubTabs.length <= 1) return null;
           return (
-            <div className="flex items-center gap-1.5 overflow-x-auto p-1.5 bg-slate-100/80 rounded-xl border border-slate-200/80 no-scrollbar scroll-smooth">
+            <div className="flex items-center gap-2 overflow-x-auto p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/90 no-scrollbar scroll-smooth shadow-2xs">
               {currentSubTabs.map((st) => {
                 const isSubActive = activeSubTab === st.id;
                 return (
@@ -1716,14 +1721,17 @@ export function FinancialReportsClient({
                     key={st.id}
                     type="button"
                     onClick={() => handleSelectSubTab(st.id)}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                       isSubActive
-                        ? "bg-white text-emerald-900 shadow-2xs font-extrabold border border-slate-200"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                        ? "bg-[#177B55] text-white font-black shadow-sm shadow-emerald-950/20 ring-2 ring-[#177B55]"
+                        : "bg-white/80 text-slate-600 hover:text-slate-900 hover:bg-white font-semibold border border-slate-200/60"
                     }`}
                   >
                     <span>{st.icon}</span>
                     <span>{st.label}</span>
+                    {isSubActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 ml-0.5 animate-pulse" />
+                    )}
                   </button>
                 );
               })}
