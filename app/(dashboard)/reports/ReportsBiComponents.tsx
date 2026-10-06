@@ -12,21 +12,23 @@ export function renderVarianceBadge(metric: any) {
   if (!metric) return null;
   const isFavourable = metric.isFavourable;
   const isPositive = metric.varianceAmount >= 0;
+  const hasPercent = metric.variancePercent !== null && metric.variancePercent !== undefined;
 
   return (
     <div
-      className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
+      title={hasPercent ? `Variance: ${isPositive ? "+" : "-"}${formatCurrency(Math.abs(metric.varianceAmount))}` : undefined}
+      className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${
         isFavourable
           ? "bg-emerald-50 text-emerald-800 border border-emerald-300"
           : "bg-rose-50 text-rose-800 border border-rose-300"
       }`}
     >
+      <span>{isPositive ? "↑" : "↓"}</span>
       <span>
-        {isPositive ? "↑" : "↓"} {formatCurrency(Math.abs(metric.varianceAmount))}
+        {hasPercent
+          ? `${isPositive ? "+" : ""}${metric.variancePercent}%`
+          : formatCurrency(Math.abs(metric.varianceAmount))}
       </span>
-      {metric.variancePercent !== null && (
-        <span className="opacity-90">({isPositive ? "+" : ""}{metric.variancePercent}%)</span>
-      )}
     </div>
   );
 }
@@ -78,8 +80,10 @@ export function ExecutiveOverviewView({ analysisData, financialYear }: ReportsBi
           <div className="text-2xl font-black font-mono text-slate-900 tracking-tight">
             {formatCurrency(currentData.totalRevenue)}
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <span className="font-mono text-[11px]">Comp: {formatCurrency(compData?.totalRevenue || 0)}</span>
+          <div className="flex items-center justify-between gap-2 min-w-0 text-xs text-slate-500 pt-2 border-t border-slate-100">
+            <span className="font-mono text-[11px] truncate min-w-0" title={`Comp: ${formatCurrency(compData?.totalRevenue || 0)}`}>
+              Comp: {formatCurrency(compData?.totalRevenue || 0)}
+            </span>
             {renderVarianceBadge(kpis.totalRevenue)}
           </div>
         </div>
@@ -92,8 +96,10 @@ export function ExecutiveOverviewView({ analysisData, financialYear }: ReportsBi
           <div className="text-2xl font-black font-mono text-slate-900 tracking-tight">
             {formatCurrency(currentData.totalExpenses)}
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <span className="font-mono text-[11px]">Comp: {formatCurrency(compData?.totalExpenses || 0)}</span>
+          <div className="flex items-center justify-between gap-2 min-w-0 text-xs text-slate-500 pt-2 border-t border-slate-100">
+            <span className="font-mono text-[11px] truncate min-w-0" title={`Comp: ${formatCurrency(compData?.totalExpenses || 0)}`}>
+              Comp: {formatCurrency(compData?.totalExpenses || 0)}
+            </span>
             {renderVarianceBadge(kpis.totalExpenses)}
           </div>
         </div>
@@ -106,8 +112,8 @@ export function ExecutiveOverviewView({ analysisData, financialYear }: ReportsBi
           <div className="text-2xl font-black font-mono text-emerald-700 tracking-tight">
             {formatCurrency(currentData.grossProfit)}
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <span className="font-mono text-[11px]">Margin: {ratios.grossMargin ?? 0}%</span>
+          <div className="flex items-center justify-between gap-2 min-w-0 text-xs text-slate-500 pt-2 border-t border-slate-100">
+            <span className="font-mono text-[11px] truncate min-w-0">Margin: {ratios.grossMargin ?? 0}%</span>
             {renderVarianceBadge(kpis.grossProfit)}
           </div>
         </div>
@@ -124,8 +130,8 @@ export function ExecutiveOverviewView({ analysisData, financialYear }: ReportsBi
           >
             {formatCurrency(currentData.netProfit)}
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <span className="font-mono text-[11px]">Margin: {currentData.profitMargin}%</span>
+          <div className="flex items-center justify-between gap-2 min-w-0 text-xs text-slate-500 pt-2 border-t border-slate-100">
+            <span className="font-mono text-[11px] truncate min-w-0">Margin: {currentData.profitMargin}%</span>
             {renderVarianceBadge(kpis.netProfit)}
           </div>
         </div>
@@ -138,8 +144,10 @@ export function ExecutiveOverviewView({ analysisData, financialYear }: ReportsBi
           <div className="text-2xl font-black font-mono text-slate-900 tracking-tight">
             {formatCurrency(currentData.totalAssets)}
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <span className="font-mono text-[11px]">Comp: {formatCurrency(compData?.totalAssets || 0)}</span>
+          <div className="flex items-center justify-between gap-2 min-w-0 text-xs text-slate-500 pt-2 border-t border-slate-100">
+            <span className="font-mono text-[11px] truncate min-w-0" title={`Comp: ${formatCurrency(compData?.totalAssets || 0)}`}>
+              Comp: {formatCurrency(compData?.totalAssets || 0)}
+            </span>
             {renderVarianceBadge(kpis.totalAssets)}
           </div>
         </div>
@@ -152,8 +160,10 @@ export function ExecutiveOverviewView({ analysisData, financialYear }: ReportsBi
           <div className="text-2xl font-black font-mono text-emerald-700 tracking-tight">
             {formatCurrency(currentData.cashBankBalance)}
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <span className="font-mono text-[11px]">Comp: {formatCurrency(compData?.cashBankBalance || 0)}</span>
+          <div className="flex items-center justify-between gap-2 min-w-0 text-xs text-slate-500 pt-2 border-t border-slate-100">
+            <span className="font-mono text-[11px] truncate min-w-0" title={`Comp: ${formatCurrency(compData?.cashBankBalance || 0)}`}>
+              Comp: {formatCurrency(compData?.cashBankBalance || 0)}
+            </span>
             {renderVarianceBadge(kpis.cashBankBalance)}
           </div>
         </div>
@@ -166,8 +176,8 @@ export function ExecutiveOverviewView({ analysisData, financialYear }: ReportsBi
           <div className="text-2xl font-black font-mono text-amber-700 tracking-tight">
             {formatCurrency(currentData.outstandingReceivables)}
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <span className="font-mono text-[11px]">DSO: {ratios.debtorDays ?? 0} Days</span>
+          <div className="flex items-center justify-between gap-2 min-w-0 text-xs text-slate-500 pt-2 border-t border-slate-100">
+            <span className="font-mono text-[11px] truncate min-w-0">DSO: {ratios.debtorDays ?? 0} Days</span>
             {renderVarianceBadge(kpis.outstandingReceivables)}
           </div>
         </div>
@@ -180,9 +190,9 @@ export function ExecutiveOverviewView({ analysisData, financialYear }: ReportsBi
           <div className="text-2xl font-black font-mono text-slate-900 tracking-tight">
             {formatCurrency(currentData.outstandingPayables)}
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-            <span className="font-mono text-[11px]">DPO: {ratios.creditorDays ?? 0} Days</span>
-            <span className="text-[11px] text-slate-500 font-bold">Trade Liabilities</span>
+          <div className="flex items-center justify-between gap-2 min-w-0 text-xs text-slate-500 pt-2 border-t border-slate-100">
+            <span className="font-mono text-[11px] truncate min-w-0">DPO: {ratios.creditorDays ?? 0} Days</span>
+            <span className="text-[11px] text-slate-500 font-bold whitespace-nowrap shrink-0">Trade Liabilities</span>
           </div>
         </div>
       </div>

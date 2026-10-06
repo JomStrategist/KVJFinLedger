@@ -107,15 +107,21 @@ export default function AnalysisClient({
     if (!metric) return null;
     const isFavourable = metric.isFavourable;
     const isPositive = metric.varianceAmount >= 0;
+    const hasPercent = metric.variancePercent !== null && metric.variancePercent !== undefined;
 
     return (
-      <div className={`flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-full w-fit ${
-        isFavourable ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-rose-100 text-rose-800 border border-rose-300"
-      }`}>
-        <span>{isPositive ? "↑" : "↓"} {formatCurrency(Math.abs(metric.varianceAmount))}</span>
-        {metric.variancePercent !== null && (
-          <span>({isPositive ? "+" : ""}{metric.variancePercent}%)</span>
-        )}
+      <div
+        title={hasPercent ? `Variance: ${isPositive ? "+" : "-"}${formatCurrency(Math.abs(metric.varianceAmount))}` : undefined}
+        className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${
+          isFavourable ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-rose-100 text-rose-800 border border-rose-300"
+        }`}
+      >
+        <span>{isPositive ? "↑" : "↓"}</span>
+        <span>
+          {hasPercent
+            ? `${isPositive ? "+" : ""}${metric.variancePercent}%`
+            : formatCurrency(Math.abs(metric.varianceAmount))}
+        </span>
       </div>
     );
   };
