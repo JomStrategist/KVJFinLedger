@@ -4,12 +4,13 @@ import { VendorService } from "@/services/vendor.service";
 import { ProductService } from "@/services/product.service";
 import { ExpenseCategoryService } from "@/services/expense-category.service";
 import { ChartOfAccountsService } from "@/services/chart-of-accounts.service";
+import { EmployeeService } from "@/services/employee.service";
 import { MastersClient } from "./MastersClient";
 
 export default async function MastersPage() {
   await requireAuth();
 
-  const [customers, vendors, products, categories, financialTypes, statementGroups, accountNatures] =
+  const [customers, vendors, products, categories, financialTypes, statementGroups, accountNatures, employees] =
     await Promise.all([
       CustomerService.getCustomers(),
       VendorService.getVendors(),
@@ -18,6 +19,7 @@ export default async function MastersPage() {
       ChartOfAccountsService.getFinancialTypes(),
       ChartOfAccountsService.getStatementGroups(),
       ChartOfAccountsService.getAccountNatures(),
+      EmployeeService.getEmployees(),
     ]);
 
   return (
@@ -25,6 +27,7 @@ export default async function MastersPage() {
       <MastersClient
         customers={JSON.parse(JSON.stringify(customers))}
         vendors={JSON.parse(JSON.stringify(vendors))}
+        employees={JSON.parse(JSON.stringify(employees))}
         products={JSON.parse(JSON.stringify(products))}
         categories={JSON.parse(JSON.stringify(categories))}
         financialTypes={JSON.parse(JSON.stringify(financialTypes))}

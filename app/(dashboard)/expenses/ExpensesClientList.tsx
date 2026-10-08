@@ -20,16 +20,21 @@ export function ExpensesClientList({
   categories = [],
   vendors = [],
   employees = [],
+  showHeader = true,
 }: {
   initialExpenses: any[];
   categories: any[];
   vendors: any[];
   employees: any[];
+  showHeader?: boolean;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [vendorFilter, setVendorFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [payerFilter, setPayerFilter] = useState("ALL");
+  const [employeeFilter, setEmployeeFilter] = useState("ALL");
 
   // Date Filter State
   const [datePreset, setDatePreset] = useState<DatePreset>("ALL");
@@ -87,7 +92,27 @@ export function ExpensesClientList({
       matchesDate = expDate >= dateBounds.start && expDate <= dateBounds.end;
     }
 
-    return matchesSearch && matchesCategory && matchesVendor && matchesDate;
+    const matchesStatus =
+      statusFilter === "ALL" || exp.paymentStatus === statusFilter;
+
+    const matchesPayer =
+      payerFilter === "ALL" ||
+      (payerFilter === "COMPANY" ? exp.paidBy !== "EMPLOYEE" : exp.paidBy === "EMPLOYEE");
+
+    const matchesEmployee =
+      employeeFilter === "ALL" ||
+      exp.employeeId === employeeFilter ||
+      exp.userId === employeeFilter;
+
+    return (
+      matchesSearch &&
+      matchesCategory &&
+      matchesVendor &&
+      matchesDate &&
+      matchesStatus &&
+      matchesPayer &&
+      matchesEmployee
+    );
   });
 
   const handleOpenAddModal = () => {
@@ -109,29 +134,31 @@ export function ExpensesClientList({
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Expenses</h1>
-          <p className="text-[#68756C] text-sm mt-0.5 font-normal">
-            Record and categorise every business expense.
-          </p>
+      {/* Page Header (if enabled) */}
+      {showHeader && (
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Expenses</h1>
+            <p className="text-[#68756C] text-sm mt-0.5 font-normal">
+              Record and categorise every business expense.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleOpenAddModal}
+            className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent rounded-xl text-xs font-bold text-white bg-[#1b5e4b] hover:bg-[#136f58] shadow-xs transition-colors gap-1.5 shrink-0 cursor-pointer"
+          >
+            <span>+</span> Add Expense
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={handleOpenAddModal}
-          className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent rounded-xl text-xs font-bold text-white bg-[#1b5e4b] hover:bg-[#136f58] shadow-xs transition-colors gap-1.5 shrink-0 cursor-pointer"
-        >
-          <span>+</span> Add Expense
-        </button>
-      </div>
+      )}
 
       {/* Main Card Container */}
       <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-6 space-y-5">
         {/* Filters Toolbar */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Search Box */}
-          <div className="relative flex-1 min-w-[240px]">
+          <div className="relative flex-1 min-w-[200px]">
             <input
               type="text"
               placeholder="Search expense / party"
@@ -145,7 +172,7 @@ export function ExpensesClientList({
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[150px]"
+            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[140px]"
           >
             <option value="ALL">All Categories</option>
             {categories.map((cat) => (
@@ -159,7 +186,7 @@ export function ExpensesClientList({
           <select
             value={vendorFilter}
             onChange={(e) => setVendorFilter(e.target.value)}
-            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[150px]"
+            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[140px]"
           >
             <option value="ALL">All Parties</option>
             {vendors.map((ven) => (
@@ -168,6 +195,45 @@ export function ExpensesClientList({
               </option>
             ))}
           </select>
+
+          {/* Payment Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[130px]"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="PAID">Paid</option>
+            <option value="PARTIALLY_PAID">Partially Paid</option>
+            <option value="UNPAID">Unpaid</option>
+          </select>
+
+          {/* Payer Filter */}
+          <select
+            value={payerFilter}
+            onChange={(e) => setPayerFilter(e.target.value)}
+            className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[130px]"
+          >
+            <option value="ALL">All Payers</option>
+            <option value="COMPANY">KVJ Paid (Company)</option>
+            <option value="EMPLOYEE">Employee Paid</option>
+          </select>
+
+          {/* Employee Filter */}
+          {employees.length > 0 && (
+            <select
+              value={employeeFilter}
+              onChange={(e) => setEmployeeFilter(e.target.value)}
+              className="h-[41px] border border-[#D9E3DC] rounded-xl px-3.5 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#177B55] bg-white text-[#17211B] min-w-[140px]"
+            >
+              <option value="ALL">All Employees</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Row 2: Date Filter */}

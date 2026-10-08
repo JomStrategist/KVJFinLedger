@@ -11,6 +11,7 @@ import { BankAccountsMasterTab } from "../settings/BankAccountsMasterTab";
 export function MastersClient({
   customers = [],
   vendors = [],
+  employees = [],
   products = [],
   categories = [],
   financialTypes = [],
@@ -19,6 +20,7 @@ export function MastersClient({
 }: {
   customers: any[];
   vendors: any[];
+  employees?: any[];
   products: any[];
   categories: any[];
   financialTypes?: any[];
@@ -27,7 +29,7 @@ export function MastersClient({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState<"customers" | "vendors" | "products" | "categories" | "bank_accounts">("customers");
+  const [activeTab, setActiveTab] = useState<"customers" | "vendors" | "employees" | "products" | "categories" | "bank_accounts">("customers");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ACTIVE");
   const [financialTypeFilter, setFinancialTypeFilter] = useState<string>("ALL");
@@ -52,6 +54,10 @@ export function MastersClient({
 
   const filteredVendors = vendors.filter((v) =>
     filterRecord(v.name || "", v.gstin || "", v.isActive ?? true)
+  );
+
+  const filteredEmployees = employees.filter((e) =>
+    filterRecord(e.name || "", e.employeeCode || e.designation || "", e.isActive ?? true)
   );
 
   const filteredProducts = products.filter((p) =>
@@ -110,9 +116,10 @@ export function MastersClient({
         <div className="flex flex-wrap gap-6 border-b border-[#D9E3DC]">
           {[
             { id: "customers", label: `Customers (${filteredCustomers.length})` },
-            { id: "vendors", label: `Parties (${filteredVendors.length})` },
+            { id: "vendors", label: `Vendors (${filteredVendors.length})` },
+            { id: "employees", label: `Employees (${filteredEmployees.length})` },
             { id: "products", label: `Products & Services (${filteredProducts.length})` },
-            { id: "categories", label: `Categories (${filteredCategories.length})` },
+            { id: "categories", label: `Chart of Accounts (${filteredCategories.length})` },
             { id: "bank_accounts", label: "Bank Accounts" },
           ].map((tab) => (
             <button
@@ -302,6 +309,57 @@ export function MastersClient({
                         >
                           Edit
                         </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* 2b. Employees Table */}
+        {activeTab === "employees" && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[750px]">
+              <thead>
+                <tr className="border-b border-[#D9E3DC] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
+                  <th className="py-3 px-3">EMPLOYEE CODE & NAME</th>
+                  <th className="py-3 px-3">DESIGNATION & DEPT</th>
+                  <th className="py-3 px-3">CONTACT</th>
+                  <th className="py-3 px-3">PAN</th>
+                  <th className="py-3 px-3">STATUS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EBF1ED]">
+                {filteredEmployees.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-xs text-[#738078]">
+                      No employee records found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEmployees.map((emp) => (
+                    <tr key={emp.id} className="hover:bg-[#F6FAF7] transition-colors">
+                      <td className="py-3 px-3">
+                        <div className="font-bold text-xs text-[#17211B]">{emp.name}</div>
+                        <div className="text-[11px] text-[#738078] font-mono">{emp.employeeCode || "—"}</div>
+                      </td>
+                      <td className="py-3 px-3 text-xs text-[#17211B]">
+                        <div>{emp.designation || "Staff"}</div>
+                        <div className="text-[11px] text-[#738078]">{emp.department || "Operations"}</div>
+                      </td>
+                      <td className="py-3 px-3 text-xs text-[#17211B]">
+                        <div>{emp.email || "—"}</div>
+                        <div className="text-[11px] text-[#738078]">{emp.phone || "—"}</div>
+                      </td>
+                      <td className="py-3 px-3 text-xs font-mono text-[#17211B]">{emp.pan || "—"}</td>
+                      <td className="py-3 px-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          emp.isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+                        }`}>
+                          {emp.isActive ? "Active" : "Inactive"}
+                        </span>
                       </td>
                     </tr>
                   ))

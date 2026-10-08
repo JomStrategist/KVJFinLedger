@@ -32,6 +32,7 @@ export interface RatioItem {
 }
 
 export interface FinancialStatementsClientProps {
+  basePath?: string;
   currentFilters: {
     financialYear: string;
     period: string;
@@ -273,8 +274,11 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
     const tabToUse = overrides?.tab || activeTab;
     params.set("tab", tabToUse);
 
+    const basePath = props.basePath || "/reports?category=statements";
+    const separator = basePath.includes("?") ? "&" : "?";
+
     startTransition(() => {
-      router.push(`/financial-statements?${params.toString()}`);
+      router.push(`${basePath}${separator}${params.toString()}`);
     });
   };
 
@@ -483,7 +487,6 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
             { id: "balance-sheet", label: "Balance Sheet", icon: "🏛️" },
             { id: "cash-flow", label: "Cash Flow Statement", icon: "💵" },
             { id: "comparative", label: "Comparative Analysis", icon: "📊" },
-            { id: "analysis", label: "Financial Intelligence & Ratios", icon: "💡" },
           ].map(tab => {
             const isActive = activeTab === tab.id;
             return (

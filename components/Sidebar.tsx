@@ -24,7 +24,7 @@ const navItems = [
     )
   },
   {
-    name: "Journals",
+    name: "Journal",
     href: "/journals",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,32 +33,22 @@ const navItems = [
     )
   },
   {
-    name: "Invoices",
+    name: "Invoice",
     href: "/invoices",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
-    ),
-    subItems: [
-      { name: "Tax Invoices", href: "/invoices", icon: "📄" },
-      { name: "Direct Invoice", href: "/invoices/new", icon: "➕" },
-      { name: "Proforma Invoices", href: "/proforma-invoices", icon: "📑" },
-      { name: "Customers", href: "/customers", icon: "👥" },
-    ],
+    )
   },
   {
-    name: "Expenses",
+    name: "Expense",
     href: "/expenses",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
-    ),
-    subItems: [
-      { name: "All Expenses", href: "/expenses", icon: "💳" },
-      { name: "Vendors", href: "/vendors", icon: "🏭" },
-    ],
+    )
   },
   {
     name: "Banking & Cash",
@@ -67,11 +57,7 @@ const navItems = [
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
       </svg>
-    ),
-    subItems: [
-      { name: "Transfers & Contra", href: "/bank-transfers", icon: "🔄" },
-      { name: "Bank Reconciliation (BRS)", href: "/bank-transfers/reconciliation", icon: "🏦" },
-    ],
+    )
   },
   {
     name: "Masters",
@@ -83,7 +69,7 @@ const navItems = [
     )
   },
   {
-    name: "Users & Roles",
+    name: "Users",
     href: "/users",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -92,24 +78,7 @@ const navItems = [
     )
   },
   {
-    name: "Financial Statements",
-    href: "/financial-statements",
-    icon: (
-      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-    ),
-    subItems: [
-      { name: "Trial Balance", href: "/financial-statements?tab=trial-balance", icon: "⚖️" },
-      { name: "Profit & Loss", href: "/financial-statements?tab=pnl", icon: "📈" },
-      { name: "Balance Sheet", href: "/financial-statements?tab=balance-sheet", icon: "🏛️" },
-      { name: "Cash Flow", href: "/financial-statements?tab=cash-flow", icon: "💵" },
-      { name: "Comparative Analysis", href: "/financial-statements?tab=comparative", icon: "📊" },
-      { name: "Financial Intelligence", href: "/financial-statements?tab=analysis", icon: "💡" },
-    ],
-  },
-  {
-    name: "Reports Hub",
+    name: "Reports",
     href: "/reports",
     icon: (
       <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none">
@@ -117,18 +86,10 @@ const navItems = [
         <rect x="9.75" y="4" width="4.5" height="17" rx="1.5" fill="#10B981" />
         <rect x="16.5" y="8" width="4.5" height="13" rx="1.5" fill="#EF4444" />
       </svg>
-    ),
-    subItems: [
-      { name: "Executive Overview", href: "/reports?category=overview", icon: "🏛️" },
-      { name: "Sales & Receivables", href: "/reports?category=sales", icon: "📈" },
-      { name: "Expenses & Payables", href: "/reports?category=expenses", icon: "📉" },
-      { name: "GST & Statutory", href: "/reports?category=gst", icon: "📑" },
-      { name: "TDS Register", href: "/reports?category=tds", icon: "🏷️" },
-      { name: "Audit & Daybook", href: "/reports?category=audit", icon: "🔍" },
-    ],
+    )
   },
   {
-    name: "Opening / Closing",
+    name: "Opening/Closing",
     href: "/opening-closing",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,20 +195,22 @@ export function Sidebar({
   const isItemActive = (href: string) => {
     const currentHref = (isPending || optimisticHref) && optimisticHref ? optimisticHref : pathname;
     if (href === "/dashboard") return currentHref === "/dashboard";
+    if (href === "/ledgers") return currentHref.startsWith("/ledgers");
     if (href === "/journals") return currentHref.startsWith("/journals");
     if (href === "/invoices") return currentHref.startsWith("/invoices") || currentHref.startsWith("/proforma-invoices");
-    if (href === "/finance") return currentHref.startsWith("/finance") || currentHref.startsWith("/revenue") || currentHref.startsWith("/ledger");
     if (href === "/expenses") return currentHref.startsWith("/expenses") || currentHref.startsWith("/expense-categories");
-    if (href === "/opening-closing") return currentHref.startsWith("/opening-closing");
+    if (href === "/bank-transfers") return currentHref.startsWith("/bank-transfers");
+    if (href === "/masters") return currentHref.startsWith("/masters") || currentHref.startsWith("/customers") || currentHref.startsWith("/vendors");
     if (href === "/users") return currentHref.startsWith("/users");
-    if (href === "/financial-statements") return currentHref.startsWith("/financial-statements");
-    if (href === "/reports") return currentHref.startsWith("/reports");
+    if (href === "/reports") return currentHref.startsWith("/reports") || currentHref.startsWith("/financial-statements");
+    if (href === "/opening-closing") return currentHref.startsWith("/opening-closing");
+    if (href === "/settings") return currentHref.startsWith("/settings");
     return currentHref.startsWith(href);
   };
 
   const filteredNavItems = navItems.filter((item) => {
     if (item.name === "Settings" && userRole !== "ADMIN") return false;
-    if (item.name === "Users & Roles" && userRole !== "ADMIN") return false;
+    if (item.name === "Users" && userRole !== "ADMIN") return false;
     if (item.name === "Dashboard" && userRole !== "ADMIN") return false;
     return true;
   });

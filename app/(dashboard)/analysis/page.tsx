@@ -9,12 +9,10 @@ export default async function AnalysisPage({
 }) {
   const params = await searchParams;
   const query = new URLSearchParams();
+  query.set("category", "analysis");
   for (const [key, val] of Object.entries(params)) {
-    if (val) query.set(key, val);
-  }
-  if (!query.has("tab")) {
-    query.set("tab", "analysis");
+    if (val && key !== "category") query.set(key, val);
   }
   const qs = query.toString();
-  redirect(`/financial-statements?${qs}`);
+  redirect(`/reports?${qs}`);
 }
