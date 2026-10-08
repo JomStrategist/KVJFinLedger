@@ -1,105 +1,140 @@
 import { requireAuth } from '@/lib/auth-utils';
-import { TaxInvoiceService } from '@/services/tax-invoice.service';
-import { ExpenseService } from '@/services/expense.service';
-import { OpeningClosingService } from '@/services/opening-closing.service';
-import { GstFilingService } from '@/services/gst-filing.service';
-import { TdsDepositService } from '@/services/tds-deposit.service';
-import { DepreciationService } from '@/services/depreciation.service';
-import { AnalysisService } from '@/services/analysis.service';
+import { AccountingEngine } from '@/services/accounting-engine.service';
+import { ReportsService } from '@/services/reports.service';
 import { prisma } from '@/lib/prisma';
-import { FinancialReportsClient } from './FinancialReportsClient';
+import { ReportsHubClient } from './ReportsHubClient';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
+
+export const metadata = {
+  title: 'ERP Reports Hub | FinLedger',
+  description: 'Authoritative financial, statutory and management reports driven by AccountingEngine.',
+};
 
 export default async function ReportsPage({
   searchParams,
 }: {
   searchParams?: Promise<{
+    category?: string;
     financialYear?: string;
-    period?: string;
     fromDate?: string;
     toDate?: string;
-    comparisonType?: string;
-    customerId?: string;
-    vendorId?: string;
-    categoryId?: string;
-    subtab?: string;
   }>;
 }) {
   await requireAuth();
   const params = (await searchParams) || {};
 
-  const filters = {
-    financialYear: params.financialYear || "FY 2026–27",
-    period: params.period || "ALL",
-    fromDate: params.fromDate,
-    toDate: params.toDate,
-    comparisonType: (params.comparisonType as any) || "PREV_FY",
-    customerId: params.customerId,
-    vendorId: params.vendorId,
-    categoryId: params.categoryId,
+  const category = params.category || 'overview';
+  const financialYear = params.financialYear || 'FY 2026–27';
+  const filters: any = {
+    financialYear,
+    fromDate: params.fromDate ? new Date(params.fromDate) : undefined,
+    toDate: params.toDate ? new Date(params.toDate) : undefined,
   };
 
-  const [
-    invoices,
-    expenses,
-    openingBalances,
-    gstFilings,
-    tdsDeposits,
-    assetDepreciations,
-    customers,
-    vendors,
-    categories,
-    analysisData
-  ] = await Promise.all([
-    TaxInvoiceService.getTaxInvoices().catch((err) => {
-      console.warn("Could not fetch invoices for reports:", err);
-      return [];
-    }),
-    ExpenseService.getExpenses().catch((err) => {
-      console.warn("Could not fetch expenses for reports:", err);
-      return [];
-    }),
-    OpeningClosingService.getAllOpeningBalances().catch((err) => {
-      console.warn("Could not fetch opening balances for reports:", err);
-      return [];
-    }),
-    GstFilingService.getAllGstFilings().catch((err) => {
-      console.warn("Could not fetch GST filings for reports:", err);
-      return [];
-    }),
-    TdsDepositService.getAllTdsDeposits().catch((err) => {
-      console.warn("Could not fetch TDS deposits for reports:", err);
-      return [];
-    }),
-    DepreciationService.getAllDepreciations().catch((err) => {
-      console.warn("Could not fetch asset depreciations:", err);
-      return [];
-    }),
-    prisma.customer.findMany({ select: { id: true, legalName: true }, orderBy: { legalName: "asc" } }).catch(() => []),
-    prisma.vendor.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }).catch(() => []),
-    prisma.expenseCategory.findMany({ select: { id: true, name: true, financialType: true }, orderBy: { name: "asc" } }).catch(() => []),
-    AnalysisService.getFullAnalysis(filters).catch((err) => {
-      console.warn("Could not fetch full analysis:", err);
-      return null;
-    }),
-  ]);
+  // Authoritative Accounting Equilibrium check
+  let isBalanced = true;
+  let tbDiff = 0;
+  let bsDiff = 0;
+  let cashBalance = 0;
+
+  try {
+    const tb = await AccountingEngine.getTrialBalance(filters);
+    tbDiff = tb.difference;
+    isBalanced = tb.isBalanced;
+
+    const bs = await AccountingEngine.getBalanceSheet(filters);
+    bsDiff = bs.difference;
+    cashBalance = bs.currentAssets.cashAndBank;
+  } catch (err) {
+    console.warn('Accounting equilibrium check warning:', err);
+  }
+
+  // Load ONLY the data required for the selected category
+  let reportData: any = null;
+
+  try {
+    switch (category) {
+      case 'overview': {
+        reportData = await AccountingEngine.getFinancialIntelligence(filters);
+        break;
+      }
+      case 'statements': {
+        reportData = { message: 'Authoritative statements hosted at /financial-statements' };
+        break;
+      }
+      case 'sales': {
+        reportData = await ReportsService.getSalesReport(filters);
+        break;
+      }
+      case 'expenses': {
+        reportData = await ReportsService.getExpenseReport(filters);
+        break;
+      }
+      case 'gst': {
+        const [outward, itc] = await Promise.all([
+          ReportsService.getGstOutwardSupplies(filters),
+          ReportsService.getInputTaxCredit(filters),
+        ]);
+        reportData = { outward, itc };
+        break;
+      }
+      case 'tds': {
+        reportData = await ReportsService.getTdsReport(filters);
+        break;
+      }
+      case 'banking': {
+        const accounts = await prisma.bankAccount.findMany({
+          where: { isActive: true },
+          select: { id: true, accountName: true, accountNumber: true, bankName: true },
+        });
+        reportData = { accounts };
+        break;
+      }
+      case 'assets': {
+        reportData = { message: 'Fixed assets register' };
+        break;
+      }
+      case 'employees': {
+        const employees = await prisma.employee.findMany({
+          select: { id: true, employeeCode: true, name: true, designation: true, isActive: true },
+        });
+        reportData = { employees };
+        break;
+      }
+      case 'analysis': {
+        reportData = await AccountingEngine.getFinancialIntelligence(filters);
+        break;
+      }
+      case 'audit': {
+        const vouchers = await AccountingEngine.generateAllVouchers(filters);
+        reportData = { vouchers };
+        break;
+      }
+      default: {
+        reportData = await AccountingEngine.getFinancialIntelligence(filters);
+        break;
+      }
+    }
+  } catch (err) {
+    console.error(`Error loading report data for category ${category}:`, err);
+    reportData = { error: 'Failed to load report dataset.' };
+  }
 
   return (
-    <div className="p-3 sm:p-6 md:p-8 max-w-7xl mx-auto">
-      <FinancialReportsClient
-        invoices={JSON.parse(JSON.stringify(invoices))}
-        expenses={JSON.parse(JSON.stringify(expenses))}
-        openingBalances={JSON.parse(JSON.stringify(openingBalances))}
-        gstFilings={JSON.parse(JSON.stringify(gstFilings))}
-        tdsDeposits={JSON.parse(JSON.stringify(tdsDeposits))}
-        assetDepreciations={JSON.parse(JSON.stringify(assetDepreciations))}
-        customers={JSON.parse(JSON.stringify(customers))}
-        vendors={JSON.parse(JSON.stringify(vendors))}
-        categories={JSON.parse(JSON.stringify(categories))}
-        initialAnalysisData={JSON.parse(JSON.stringify(analysisData))}
-        initialFilters={filters}
-        initialSubTab={params.subtab}
+    <div className="p-6 md:p-8 max-w-7xl mx-auto">
+      <ReportsHubClient
+        currentCategory={category}
+        financialYear={financialYear}
+        fromDate={params.fromDate}
+        toDate={params.toDate}
+        reportData={reportData}
+        accountingEquilibrium={{
+          isBalanced,
+          tbDiff,
+          bsDiff,
+          cashBalance,
+        }}
       />
     </div>
   );

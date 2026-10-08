@@ -29,7 +29,7 @@ export interface JournalVoucherLine {
   credit: number;
   particulars?: string;
   entityId?: string;
-  entityType?: "CUSTOMER" | "VENDOR" | "EMPLOYEE" | "BANK" | "CATEGORY";
+  entityType?: "CUSTOMER" | "VENDOR" | "EMPLOYEE" | "BANK" | "CATEGORY" | "LOAN";
 }
 
 export interface JournalVoucher {
@@ -48,7 +48,11 @@ export interface JournalVoucher {
     | "OPENING_BALANCE" 
     | "ASSET_DEPRECIATION"
     | "GST_FILING"
-    | "TDS_DEPOSIT";
+    | "GST_SETTLEMENT"
+    | "TDS_DEPOSIT"
+    | "LOAN_RECEIPT"
+    | "LOAN_REPAYMENT"
+    | "ASSET_DISPOSAL";
   sourceId: string;
   sourceUrl?: string;
   totalDebit: number;
@@ -345,8 +349,11 @@ export class AccountingEngine {
       bankTransfers,
       openingBalances,
       gstFilings,
+      gstSettlements,
       tdsDeposits,
       assetDepreciations,
+      loans,
+      assetDisposals,
       primaryBank,
       customers,
       vendors,
@@ -389,12 +396,23 @@ export class AccountingEngine {
       prisma.gstFiling.findMany({
         orderBy: { filingDate: "asc" }
       }),
+      prisma.gstSettlement.findMany({
+        orderBy: { paymentDate: "asc" }
+      }),
       prisma.tdsDeposit.findMany({
         orderBy: { depositDate: "asc" }
       }),
       prisma.assetDepreciation.findMany({
         include: { expense: true },
         orderBy: { effectiveDate: "asc" }
+      }),
+      prisma.loan.findMany({
+        include: { repayments: true },
+        orderBy: { disbursementDate: "asc" }
+      }),
+      prisma.assetDisposal.findMany({
+        include: { expense: true },
+        orderBy: { disposalDate: "asc" }
       }),
       prisma.bankAccount.findFirst({
         where: { isPrimary: true, isActive: true }
@@ -664,20 +682,41 @@ export class AccountingEngine {
         });
       }
 
-      // Cr Customer Receivable (Total payment settled)
-      lines.push({
-        accountId: customerId,
-        accountName: customerName,
-        accountGroup: "Trade Receivables",
-        financialType: "ASSET",
-        financialStatement: "BALANCE_SHEET",
-        normalBalance: "DEBIT",
-        debit: 0,
-        credit: paymentAmount,
-        particulars: `Payment settlement for Invoice ${p.taxInvoice.invoiceNumber}`,
-        entityId: p.taxInvoice.customerId,
-        entityType: "CUSTOMER"
-      });
+      // Cr Customer Receivable & Customer Advance (Overpayment)
+      const advanceAmount = Number(p.advanceAmount || 0);
+      const invoiceSettled = Math.max(0, paymentAmount - advanceAmount);
+
+      if (invoiceSettled > 0) {
+        lines.push({
+          accountId: customerId,
+          accountName: customerName,
+          accountGroup: "Trade Receivables",
+          financialType: "ASSET",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "DEBIT",
+          debit: 0,
+          credit: invoiceSettled,
+          particulars: `Payment settlement for Invoice ${p.taxInvoice.invoiceNumber}`,
+          entityId: p.taxInvoice.customerId,
+          entityType: "CUSTOMER"
+        });
+      }
+
+      if (advanceAmount > 0) {
+        lines.push({
+          accountId: `cust_adv_${p.taxInvoice.customerId}`,
+          accountName: `${customerName} (Customer Advance)`,
+          accountGroup: "Current Liabilities",
+          financialType: "LIABILITY",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "CREDIT",
+          debit: 0,
+          credit: advanceAmount,
+          particulars: `Advance / overpayment received on account from ${customerName}`,
+          entityId: p.taxInvoice.customerId,
+          entityType: "CUSTOMER"
+        });
+      }
 
       const { balancedLines, totalDebit, totalCredit, isBalanced } = this.balanceVoucher(lines, p.reference || `REC-${p.id.slice(-6)}`);
 
@@ -727,6 +766,10 @@ export class AccountingEngine {
 
       const lines: JournalVoucherLine[] = [];
 
+      // FROZEN RULE: ITC Eligible vs Ineligible (Capitalize GST if ineligible)
+      const isItcEligible = exp.isItcEligible !== false;
+      const expenseDebit = isItcEligible ? taxable : (taxable + totalInputGst);
+
       // Debit Expense Category OR Fixed Asset (Balance Sheet)
       lines.push({
         accountId: catId,
@@ -735,51 +778,71 @@ export class AccountingEngine {
         financialType: isAsset ? "ASSET" : "EXPENSE",
         financialStatement: isAsset ? "BALANCE_SHEET" : "PROFIT_LOSS",
         normalBalance: "DEBIT",
-        debit: taxable,
+        debit: expenseDebit,
         credit: 0,
         particulars: exp.description || (isAsset ? "Fixed Asset Purchase" : "Business Expense"),
         entityId: exp.categoryId || undefined,
         entityType: "CATEGORY"
       });
 
-      // Debit Input Tax Credit accounts (ITC Assets)
-      if (inputCgst > 0) {
-        lines.push({
-          accountId: "stat_input_cgst",
-          accountName: "Input CGST Credit (ITC)",
-          accountGroup: "Statutory Tax Assets",
-          financialType: "ASSET",
-          financialStatement: "BALANCE_SHEET",
-          normalBalance: "DEBIT",
-          debit: inputCgst,
-          credit: 0,
-          particulars: `Input CGST on expense ${exp.expenseNumber}`
-        });
+      // Debit Input Tax Credit accounts (ITC Assets) ONLY if eligible
+      if (isItcEligible) {
+        if (inputCgst > 0) {
+          lines.push({
+            accountId: "stat_input_cgst",
+            accountName: "Input CGST Credit (ITC)",
+            accountGroup: "Statutory Tax Assets",
+            financialType: "ASSET",
+            financialStatement: "BALANCE_SHEET",
+            normalBalance: "DEBIT",
+            debit: inputCgst,
+            credit: 0,
+            particulars: `Input CGST on expense ${exp.expenseNumber}`
+          });
+        }
+        if (inputSgst > 0) {
+          lines.push({
+            accountId: "stat_input_sgst",
+            accountName: "Input SGST Credit (ITC)",
+            accountGroup: "Statutory Tax Assets",
+            financialType: "ASSET",
+            financialStatement: "BALANCE_SHEET",
+            normalBalance: "DEBIT",
+            debit: inputSgst,
+            credit: 0,
+            particulars: `Input SGST on expense ${exp.expenseNumber}`
+          });
+        }
+        if (inputIgst > 0) {
+          lines.push({
+            accountId: "stat_input_igst",
+            accountName: "Input IGST Credit (ITC)",
+            accountGroup: "Statutory Tax Assets",
+            financialType: "ASSET",
+            financialStatement: "BALANCE_SHEET",
+            normalBalance: "DEBIT",
+            debit: inputIgst,
+            credit: 0,
+            particulars: `Input IGST on expense ${exp.expenseNumber}`
+          });
+        }
       }
-      if (inputSgst > 0) {
+
+      // Vendor Advance (Overpayment to supplier)
+      const advanceAmount = Number(exp.advanceAmount || 0);
+      if (advanceAmount > 0) {
         lines.push({
-          accountId: "stat_input_sgst",
-          accountName: "Input SGST Credit (ITC)",
-          accountGroup: "Statutory Tax Assets",
+          accountId: `vend_adv_${exp.vendorId || "vendor_cash"}`,
+          accountName: `${vendorName} (Vendor Advance)`,
+          accountGroup: "Current Assets",
           financialType: "ASSET",
           financialStatement: "BALANCE_SHEET",
           normalBalance: "DEBIT",
-          debit: inputSgst,
+          debit: advanceAmount,
           credit: 0,
-          particulars: `Input SGST on expense ${exp.expenseNumber}`
-        });
-      }
-      if (inputIgst > 0) {
-        lines.push({
-          accountId: "stat_input_igst",
-          accountName: "Input IGST Credit (ITC)",
-          accountGroup: "Statutory Tax Assets",
-          financialType: "ASSET",
-          financialStatement: "BALANCE_SHEET",
-          normalBalance: "DEBIT",
-          debit: inputIgst,
-          credit: 0,
-          particulars: `Input IGST on expense ${exp.expenseNumber}`
+          particulars: `Advance payment made to ${vendorName}`,
+          entityId: exp.vendorId || undefined,
+          entityType: "VENDOR"
         });
       }
 
@@ -880,7 +943,7 @@ export class AccountingEngine {
             financialStatement: "BALANCE_SHEET",
             normalBalance: "DEBIT",
             debit: 0,
-            credit: netAmount,
+            credit: netAmount + advanceAmount,
             particulars: `Bank payment for expense ${exp.expenseNumber}`,
             entityType: "BANK"
           });
@@ -1177,6 +1240,375 @@ export class AccountingEngine {
       }
     }
 
+    // ────────────────────────────────────────────────────────────────────────
+    // 9. LOANS & BORROWINGS (Disbursements & Repayments)
+    // ────────────────────────────────────────────────────────────────────────
+    for (const loan of loans) {
+      const principal = Number(loan.principalAmount || 0);
+      if (principal <= 0) continue;
+
+      const bankId = loan.bankAccountId ? `bank_${loan.bankAccountId}` : defaultBankId;
+      const bankName = defaultBankName;
+      const loanAccountId = `loan_${loan.id}`;
+      const loanAccountName = `Loan: ${loan.lenderName} (${loan.loanNumber})`;
+
+      // 9a. Loan Disbursement Voucher
+      const disbLines: JournalVoucherLine[] = [
+        {
+          accountId: bankId,
+          accountName: bankName,
+          accountGroup: "Bank Accounts",
+          financialType: "ASSET",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "DEBIT",
+          debit: principal,
+          credit: 0,
+          particulars: `Loan disbursed by ${loan.lenderName}`,
+          entityType: "BANK"
+        },
+        {
+          accountId: loanAccountId,
+          accountName: loanAccountName,
+          accountGroup: "Long-Term Borrowings",
+          financialType: "LIABILITY",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "CREDIT",
+          debit: 0,
+          credit: principal,
+          particulars: `Principal liability for Loan ${loan.loanNumber}`,
+          entityId: loan.id,
+          entityType: "LOAN"
+        }
+      ];
+
+      vouchers.push({
+        id: `voucher_loan_disb_${loan.id}`,
+        voucherNumber: `LN-DISB-${loan.loanNumber}`,
+        voucherType: "Receipt",
+        date: new Date(loan.disbursementDate),
+        reference: loan.loanNumber,
+        narration: `Loan disbursement received from ${loan.lenderName} (${loan.loanNumber})`,
+        sourceType: "LOAN_RECEIPT",
+        sourceId: loan.id,
+        sourceUrl: `/banking/loans`,
+        totalDebit: principal,
+        totalCredit: principal,
+        isBalanced: true,
+        lines: disbLines
+      });
+
+      // 9b. Loan Repayments
+      if (loan.repayments && loan.repayments.length > 0) {
+        for (const rep of loan.repayments) {
+          const pComp = Number(rep.principalAmount ?? 0);
+          const iComp = Number(rep.interestAmount ?? 0);
+          const tot = Number(rep.totalAmount || (pComp + iComp));
+          if (tot <= 0) continue;
+
+          const repBankId = rep.bankAccountId ? `bank_${rep.bankAccountId}` : defaultBankId;
+
+          const repLines: JournalVoucherLine[] = [];
+
+          if (pComp > 0) {
+            repLines.push({
+              accountId: loanAccountId,
+              accountName: loanAccountName,
+              accountGroup: "Long-Term Borrowings",
+              financialType: "LIABILITY",
+              financialStatement: "BALANCE_SHEET",
+              normalBalance: "CREDIT",
+              debit: pComp,
+              credit: 0,
+              particulars: `Principal repayment for Loan ${loan.loanNumber}`,
+              entityId: loan.id,
+              entityType: "LOAN"
+            });
+          }
+
+          if (iComp > 0) {
+            repLines.push({
+              accountId: "cat_exp_finance_interest",
+              accountName: "Interest on Borrowings",
+              accountGroup: "Finance Costs",
+              financialType: "EXPENSE",
+              financialStatement: "PROFIT_LOSS",
+              normalBalance: "DEBIT",
+              debit: iComp,
+              credit: 0,
+              particulars: `Interest portion on Loan ${loan.loanNumber}`
+            });
+          }
+
+          repLines.push({
+            accountId: repBankId,
+            accountName: defaultBankName,
+            accountGroup: "Bank Accounts",
+            financialType: "ASSET",
+            financialStatement: "BALANCE_SHEET",
+            normalBalance: "DEBIT",
+            debit: 0,
+            credit: tot,
+            particulars: `EMI Repayment for Loan ${loan.loanNumber}`,
+            entityType: "BANK"
+          });
+
+          const repRef = rep.reference || `REP-${rep.id.slice(-6).toUpperCase()}`;
+          const { balancedLines, totalDebit, totalCredit, isBalanced } = this.balanceVoucher(repLines, repRef);
+
+          vouchers.push({
+            id: `voucher_loan_rep_${rep.id}`,
+            voucherNumber: repRef,
+            voucherType: "Payment",
+            date: new Date(rep.paymentDate),
+            reference: loan.loanNumber,
+            narration: `EMI repayment for Loan ${loan.loanNumber} (Principal: ₹${pComp}, Interest: ₹${iComp})`,
+            sourceType: "LOAN_REPAYMENT",
+            sourceId: rep.id,
+            sourceUrl: `/banking/loans`,
+            totalDebit,
+            totalCredit,
+            isBalanced,
+            lines: balancedLines
+          });
+        }
+      }
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // 10. FIXED ASSET DISPOSALS / SALES
+    // ────────────────────────────────────────────────────────────────────────
+    for (const ad of assetDisposals) {
+      const cost = Number(ad.grossCost || 0);
+      const accumDep = Number(ad.accumulatedDepreciation || 0);
+      const proceeds = Number(ad.saleProceeds || 0);
+      const nbv = Number(ad.netBookValue || (cost - accumDep));
+      const gainLoss = Number(ad.gainOrLoss ?? (proceeds - nbv));
+
+      const lines: JournalVoucherLine[] = [];
+
+      // Cr Asset Gross Cost
+      lines.push({
+        accountId: "asset_fixed",
+        accountName: "Fixed Assets & Equipment",
+        accountGroup: "Fixed Assets",
+        financialType: "ASSET",
+        financialStatement: "BALANCE_SHEET",
+        normalBalance: "DEBIT",
+        debit: 0,
+        credit: cost,
+        particulars: `Disposal of asset (Original Cost: ₹${cost})`
+      });
+
+      // Dr Accumulated Depreciation
+      if (accumDep > 0) {
+        lines.push({
+          accountId: "asset_dep_accum",
+          accountName: "Accumulated Depreciation",
+          accountGroup: "Fixed Assets",
+          financialType: "ASSET",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "CREDIT",
+          debit: accumDep,
+          credit: 0,
+          particulars: `Reversal of accumulated depreciation on disposed asset`
+        });
+      }
+
+      // Dr Bank / Cash for Proceeds
+      if (proceeds > 0) {
+        lines.push({
+          accountId: defaultBankId,
+          accountName: defaultBankName,
+          accountGroup: "Bank Accounts",
+          financialType: "ASSET",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "DEBIT",
+          debit: proceeds,
+          credit: 0,
+          particulars: `Sale proceeds from asset disposal`
+        });
+      }
+
+      // Gain or Loss
+      if (gainLoss > 0) {
+        lines.push({
+          accountId: "cat_inc_gain_asset_disposal",
+          accountName: "Gain on Sale of Fixed Assets",
+          accountGroup: "Other Income",
+          financialType: "INCOME",
+          financialStatement: "PROFIT_LOSS",
+          normalBalance: "CREDIT",
+          debit: 0,
+          credit: gainLoss,
+          particulars: `Profit on disposal of fixed asset`
+        });
+      } else if (gainLoss < 0) {
+        lines.push({
+          accountId: "cat_exp_loss_asset_disposal",
+          accountName: "Loss on Sale of Fixed Assets",
+          accountGroup: "Other Expenses",
+          financialType: "EXPENSE",
+          financialStatement: "PROFIT_LOSS",
+          normalBalance: "DEBIT",
+          debit: Math.abs(gainLoss),
+          credit: 0,
+          particulars: `Loss on disposal/write-off of fixed asset`
+        });
+      }
+
+      const { balancedLines, totalDebit, totalCredit, isBalanced } = this.balanceVoucher(lines, `DISP-${ad.id.slice(-6)}`);
+
+      vouchers.push({
+        id: `voucher_asset_disp_${ad.id}`,
+        voucherNumber: `DISP-${ad.id.slice(-6).toUpperCase()}`,
+        voucherType: "Journal",
+        date: new Date(ad.disposalDate),
+        reference: null,
+        narration: `Asset disposal: Proceeds ₹${proceeds}, NBV ₹${nbv}, Gain/Loss ₹${gainLoss}`,
+        sourceType: "ASSET_DISPOSAL",
+        sourceId: ad.id,
+        sourceUrl: `/reports?subtab=schedule`,
+        totalDebit,
+        totalCredit,
+        isBalanced,
+        lines: balancedLines
+      });
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // 11. GST STATUTORY SETTLEMENTS
+    // ────────────────────────────────────────────────────────────────────────
+    for (const gs of gstSettlements) {
+      const cgstPay = Number(gs.cgstPaid || 0);
+      const sgstPay = Number(gs.sgstPaid || 0);
+      const igstPay = Number(gs.igstPaid || 0);
+
+      const cgstItc = Number(gs.itcCgstUtilized || 0);
+      const sgstItc = Number(gs.itcSgstUtilized || 0);
+      const igstItc = Number(gs.itcIgstUtilized || 0);
+
+      const cashPaid = Number(gs.totalPaid || 0);
+      const bankId = gs.bankAccountId ? `bank_${gs.bankAccountId}` : defaultBankId;
+
+      const lines: JournalVoucherLine[] = [];
+
+      // Dr Output GST liabilities (settling output tax)
+      if (cgstPay > 0) {
+        lines.push({
+          accountId: "stat_output_cgst",
+          accountName: "Output CGST Payable",
+          accountGroup: "Statutory Tax Liabilities",
+          financialType: "LIABILITY",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "CREDIT",
+          debit: cgstPay,
+          credit: 0,
+          particulars: `Output CGST settled for ${gs.returnPeriod}`
+        });
+      }
+      if (sgstPay > 0) {
+        lines.push({
+          accountId: "stat_output_sgst",
+          accountName: "Output SGST Payable",
+          accountGroup: "Statutory Tax Liabilities",
+          financialType: "LIABILITY",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "CREDIT",
+          debit: sgstPay,
+          credit: 0,
+          particulars: `Output SGST settled for ${gs.returnPeriod}`
+        });
+      }
+      if (igstPay > 0) {
+        lines.push({
+          accountId: "stat_output_igst",
+          accountName: "Output IGST Payable",
+          accountGroup: "Statutory Tax Liabilities",
+          financialType: "LIABILITY",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "CREDIT",
+          debit: igstPay,
+          credit: 0,
+          particulars: `Output IGST settled for ${gs.returnPeriod}`
+        });
+      }
+
+      // Cr Input GST assets (utilizing ITC against output tax)
+      if (cgstItc > 0) {
+        lines.push({
+          accountId: "stat_input_cgst",
+          accountName: "Input CGST Credit (ITC)",
+          accountGroup: "Statutory Tax Assets",
+          financialType: "ASSET",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "DEBIT",
+          debit: 0,
+          credit: cgstItc,
+          particulars: `Input CGST utilized against output tax for ${gs.returnPeriod}`
+        });
+      }
+      if (sgstItc > 0) {
+        lines.push({
+          accountId: "stat_input_sgst",
+          accountName: "Input SGST Credit (ITC)",
+          accountGroup: "Statutory Tax Assets",
+          financialType: "ASSET",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "DEBIT",
+          debit: 0,
+          credit: sgstItc,
+          particulars: `Input SGST utilized against output tax for ${gs.returnPeriod}`
+        });
+      }
+      if (igstItc > 0) {
+        lines.push({
+          accountId: "stat_input_igst",
+          accountName: "Input IGST Credit (ITC)",
+          accountGroup: "Statutory Tax Assets",
+          financialType: "ASSET",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "DEBIT",
+          debit: 0,
+          credit: igstItc,
+          particulars: `Input IGST utilized against output tax for ${gs.returnPeriod}`
+        });
+      }
+
+      // Cr Bank for Challan Cash payment
+      if (cashPaid > 0) {
+        lines.push({
+          accountId: bankId,
+          accountName: defaultBankName,
+          accountGroup: "Bank Accounts",
+          financialType: "ASSET",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "DEBIT",
+          debit: 0,
+          credit: cashPaid,
+          particulars: `Cash tax payment via Challan for ${gs.returnPeriod} (${gs.challanRef || ""})`
+        });
+      }
+
+      const vNo = gs.settlementNumber || `GST-SETTLE-${gs.id.slice(-6).toUpperCase()}`;
+      const { balancedLines, totalDebit, totalCredit, isBalanced } = this.balanceVoucher(lines, vNo);
+
+      vouchers.push({
+        id: `voucher_gst_settle_${gs.id}`,
+        voucherNumber: vNo,
+        voucherType: "Payment",
+        date: new Date(gs.paymentDate),
+        reference: gs.challanRef || null,
+        narration: `GST statutory return settlement for ${gs.returnPeriod}`,
+        sourceType: "GST_SETTLEMENT",
+        sourceId: gs.id,
+        sourceUrl: `/reports?subtab=gst`,
+        totalDebit,
+        totalCredit,
+        isBalanced,
+        lines: balancedLines
+      });
+    }
+
     // Sort all vouchers chronologically
     vouchers.sort((a, b) => a.date.getTime() - b.date.getTime());
     return vouchers;
@@ -1284,12 +1716,14 @@ export class AccountingEngine {
       return this.cachedAccountDescriptors;
     }
 
-    const [customers, vendors, bankAccounts, categories, users] = await Promise.all([
+    const [customers, vendors, bankAccounts, categories, users, employees, loans] = await Promise.all([
       prisma.customer.findMany({ select: { id: true, legalName: true, tradeName: true, gstin: true, pan: true } }),
       prisma.vendor.findMany({ select: { id: true, name: true, businessName: true, gstin: true, pan: true } }),
       prisma.bankAccount.findMany({ select: { id: true, accountName: true, bankName: true, accountNumber: true } }),
       prisma.expenseCategory.findMany({ select: { id: true, name: true, financialType: true, statementGroup: true, normalBalance: true } }),
-      prisma.user.findMany({ select: { id: true, name: true, email: true } })
+      prisma.user.findMany({ select: { id: true, name: true, email: true } }),
+      prisma.employee.findMany({ select: { id: true, name: true, employeeCode: true, pan: true } }),
+      prisma.loan.findMany({ select: { id: true, lenderName: true, loanNumber: true } })
     ]);
 
     const accounts: AccountDescriptor[] = [];
@@ -1325,12 +1759,42 @@ export class AccountingEngine {
     }
 
     // 3. Employee Payables
-    for (const u of users) {
+    const empSeen = new Set<string>();
+    for (const emp of employees) {
+      empSeen.add(`emp_${emp.id}`);
       accounts.push({
-        id: `emp_${u.id}`,
-        name: `${u.name} (Employee)`,
+        id: `emp_${emp.id}`,
+        name: `${emp.name} (Employee)`,
+        code: emp.employeeCode || undefined,
         group: "Employee Payables",
         type: "EMPLOYEE",
+        financialType: "LIABILITY",
+        financialStatement: "BALANCE_SHEET",
+        normalBalance: "CREDIT",
+        pan: emp.pan || undefined
+      });
+    }
+    for (const u of users) {
+      if (!empSeen.has(`emp_${u.id}`)) {
+        accounts.push({
+          id: `emp_${u.id}`,
+          name: `${u.name} (User/Staff)`,
+          group: "Employee Payables",
+          type: "EMPLOYEE",
+          financialType: "LIABILITY",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "CREDIT"
+        });
+      }
+    }
+
+    // 3b. Loans & Borrowings
+    for (const l of loans) {
+      accounts.push({
+        id: `loan_${l.id}`,
+        name: `Loan: ${l.lenderName} (${l.loanNumber})`,
+        group: "Long-Term Borrowings",
+        type: "LOAN",
         financialType: "LIABILITY",
         financialStatement: "BALANCE_SHEET",
         normalBalance: "CREDIT"
@@ -1514,6 +1978,33 @@ export class AccountingEngine {
       id: "cat_round_off",
       name: "Rounding Off Adjustment",
       group: "Other Indirect Expenses",
+      type: "EXPENSE_CATEGORY",
+      financialType: "EXPENSE",
+      financialStatement: "PROFIT_LOSS",
+      normalBalance: "DEBIT"
+    });
+    accounts.push({
+      id: "cat_exp_finance_interest",
+      name: "Interest on Borrowings",
+      group: "Finance Costs",
+      type: "EXPENSE_CATEGORY",
+      financialType: "EXPENSE",
+      financialStatement: "PROFIT_LOSS",
+      normalBalance: "DEBIT"
+    });
+    accounts.push({
+      id: "cat_inc_gain_asset_disposal",
+      name: "Gain on Sale of Fixed Assets",
+      group: "Other Income",
+      type: "INCOME_CATEGORY",
+      financialType: "INCOME",
+      financialStatement: "PROFIT_LOSS",
+      normalBalance: "CREDIT"
+    });
+    accounts.push({
+      id: "cat_exp_loss_asset_disposal",
+      name: "Loss on Sale of Fixed Assets",
+      group: "Other Expenses",
       type: "EXPENSE_CATEGORY",
       financialType: "EXPENSE",
       financialStatement: "PROFIT_LOSS",
@@ -1791,6 +2282,9 @@ export class AccountingEngine {
 
     const customerBalanceMap = new Map<string, number>();
     const vendorBalanceMap = new Map<string, number>();
+    const loanMap = new Map<string, number>();
+    let customerAdvancesDirect = 0;
+    let vendorAdvancesDirect = 0;
 
     for (const v of vouchers) {
       for (const line of v.lines) {
@@ -1802,6 +2296,12 @@ export class AccountingEngine {
             capital += (cr - dr);
           } else if (line.accountId === "eq_drawings") {
             drawings += (dr - cr);
+          } else if (line.accountId.startsWith("loan_") || line.accountGroup === "Long-Term Borrowings") {
+            loanMap.set(line.accountName, (loanMap.get(line.accountName) || 0) + (cr - dr));
+          } else if (line.accountId.startsWith("cust_adv_")) {
+            customerAdvancesDirect += (cr - dr);
+          } else if (line.accountId.startsWith("vend_adv_")) {
+            vendorAdvancesDirect += (dr - cr);
           } else if (line.accountGroup === "Trade Payables" || line.accountId.startsWith("vendor_")) {
             vendorBalanceMap.set(line.accountId, (vendorBalanceMap.get(line.accountId) || 0) + (cr - dr));
           } else if (line.accountGroup === "Employee Payables" || line.accountId.startsWith("emp_")) {
@@ -1833,17 +2333,28 @@ export class AccountingEngine {
 
     // Segregate debtors and advances
     let tradeReceivables = 0;
-    let customerAdvances = 0;
+    let customerAdvances = customerAdvancesDirect;
     for (const bal of customerBalanceMap.values()) {
       if (bal > 0) tradeReceivables += bal;
       else if (bal < 0) customerAdvances += Math.abs(bal);
     }
 
     let tradePayables = 0;
-    let vendorAdvances = 0;
+    let vendorAdvances = vendorAdvancesDirect;
     for (const bal of vendorBalanceMap.values()) {
       if (bal > 0) tradePayables += bal;
       else if (bal < 0) vendorAdvances += Math.abs(bal);
+    }
+
+    // Loans (Non-Current Liabilities)
+    let totalLoans = 0;
+    const loanItems: { name: string; amount: number }[] = [];
+    for (const [name, amt] of loanMap.entries()) {
+      const rounded = Math.round(amt * 100) / 100;
+      if (rounded > 0) {
+        loanItems.push({ name, amount: rounded });
+        totalLoans += rounded;
+      }
     }
 
     // Net GST position: if Output > Input, statutory GST payable. If Input > Output, excess ITC asset.
@@ -1871,7 +2382,7 @@ export class AccountingEngine {
     const totalOtherLiabilities = Math.round((otherLiabs + customerAdvances + incomeTaxProvision) * 100) / 100;
 
     const totalCurrentLiabilities = Math.round((tradePayables + employeePayables + statutoryGstPayable + tdsPayable + totalOtherLiabilities) * 100) / 100;
-    const totalEquityAndLiabilities = Math.round((totalShareholdersFunds + totalCurrentLiabilities) * 100) / 100;
+    const totalEquityAndLiabilities = Math.round((totalShareholdersFunds + totalLoans + totalCurrentLiabilities) * 100) / 100;
 
     fixedAssetsGross = Math.round(fixedAssetsGross * 100) / 100;
     accumDepreciation = Math.round(accumDepreciation * 100) / 100;
@@ -1898,8 +2409,8 @@ export class AccountingEngine {
         totalShareholdersFunds
       },
       nonCurrentLiabilities: {
-        items: [],
-        total: 0
+        items: loanItems,
+        total: totalLoans
       },
       currentLiabilities: {
         tradePayables,
@@ -1972,12 +2483,18 @@ export class AccountingEngine {
               } else {
                 vendorDisbursements += line.credit;
               }
-            } else if (v.sourceType === "GST_FILING") {
+            } else if (v.sourceType === "GST_FILING" || v.sourceType === "GST_SETTLEMENT") {
               gstPaid += line.credit;
             } else if (v.sourceType === "TDS_DEPOSIT") {
               tdsPaid += line.credit;
             } else if (v.sourceType === "OPENING_BALANCE") {
               capitalIntroduced += line.debit;
+            } else if (v.sourceType === "LOAN_RECEIPT") {
+              capitalIntroduced += line.debit;
+            } else if (v.sourceType === "LOAN_REPAYMENT") {
+              drawingsWithdrawn += line.credit;
+            } else if (v.sourceType === "ASSET_DISPOSAL") {
+              capitalExpenditure -= line.debit;
             } else if (v.sourceType === "BANK_TRANSFER" && v.voucherNumber.startsWith("DRW")) {
               drawingsWithdrawn += line.credit;
             }
@@ -2887,6 +3404,10 @@ export class AccountingEngine {
       ratios: ratiosObj.ratios,
       managementInsights: insights
     };
+  }
+
+  static async getFinancialIntelligence(params?: FilterOptions) {
+    return this.getComprehensiveFinancialAnalysis(params);
   }
 }
 

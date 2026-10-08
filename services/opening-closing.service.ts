@@ -31,18 +31,25 @@ export class OpeningClosingService {
    * Upsert (add or update) an opening balance component
    */
   static async saveOpeningBalance(data: SaveOpeningBalanceInput) {
-    return await prisma.openingBalance.upsert({
+    const existing = await prisma.openingBalance.findFirst({
       where: {
-        financialYear_position: {
-          financialYear: data.financialYear,
-          position: data.position,
+        financialYear: data.financialYear,
+        position: data.position,
+      },
+    });
+
+    if (existing) {
+      return await prisma.openingBalance.update({
+        where: { id: existing.id },
+        data: {
+          amount: data.amount,
+          type: data.type,
         },
-      },
-      update: {
-        amount: data.amount,
-        type: data.type,
-      },
-      create: {
+      });
+    }
+
+    return await prisma.openingBalance.create({
+      data: {
         financialYear: data.financialYear,
         position: data.position,
         amount: data.amount,

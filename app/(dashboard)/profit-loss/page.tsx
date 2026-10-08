@@ -20,21 +20,15 @@ export default async function ProfitLossPage({
     toDate: toFilter ? new Date(toFilter) : undefined,
   };
 
-  const [
+  const dashboardData = await DashboardService.getUnifiedDashboardData(filters);
+  const {
     kpis,
     trends,
     expenseCategories,
     revenueCategories,
     topCustomers,
     monthlySummary
-  ] = await Promise.all([
-    DashboardService.getDashboardKPIs(filters),
-    DashboardService.getRevenueVsExpenseTrend(filters),
-    DashboardService.getExpenseByCategory(filters),
-    DashboardService.getRevenueByCategory(filters),
-    DashboardService.getRevenueByCustomer(filters),
-    DashboardService.getMonthlyFinancialSummary(filters),
-  ]);
+  } = dashboardData;
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8 print:p-0 print:space-y-0">

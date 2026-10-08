@@ -4,6 +4,20 @@ import { revalidatePath } from "next/cache";
 import { TaxInvoiceService } from "@/services/tax-invoice.service";
 import { prisma } from "@/lib/prisma";
 
+export async function createTaxInvoiceAction(data: any) {
+  try {
+    const invoice = await TaxInvoiceService.createTaxInvoice(data);
+    revalidatePath("/invoices");
+    revalidatePath("/finance");
+    revalidatePath("/dashboard");
+    revalidatePath("/reports");
+    return { success: true, data: invoice };
+  } catch (error: any) {
+    console.error("Failed to create tax invoice:", error);
+    return { success: false, error: error.message || "Failed to create tax invoice." };
+  }
+}
+
 export async function convertProformaToTaxInvoiceAction(proformaId: string) {
   try {
     const invoice = await TaxInvoiceService.convertProformaToTaxInvoice(proformaId);

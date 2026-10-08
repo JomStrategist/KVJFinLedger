@@ -47,7 +47,22 @@ model User {
   lastLogin         DateTime?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
-  expenses          Expense[]
+}
+
+model Employee {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  employeeCode String?   @unique
+  name         String
+  email        String?
+  phone        String?
+  department   String?
+  designation  String?
+  pan          String?
+  salary       Float?    @default(0)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  expenses     Expense[]
 }
 
 model CompanySettings {
@@ -295,6 +310,8 @@ model InvoicePayment {
   isCancelled     Boolean?    @default(false)
   cancelledAt     DateTime?
   cancellationReason String?
+  advanceAmount   Float?      @default(0)
+  isOnAccount     Boolean?    @default(false)
   createdAt       DateTime    @default(now())
 }
 
@@ -369,7 +386,7 @@ model FinancialStatementGroup {
   financialTypeId String        @db.ObjectId
   financialType   FinancialType @relation(fields: [financialTypeId], references: [id])
   name            String
-  code            String?       @unique
+  code            String?
   description     String?
   sortOrder       Int           @default(0)
   isActive        Boolean       @default(true)
@@ -385,7 +402,7 @@ model AccountNature {
   financialTypeId String        @db.ObjectId
   financialType   FinancialType @relation(fields: [financialTypeId], references: [id])
   name            String
-  code            String?       @unique
+  code            String?
   description     String?
   sortOrder       Int           @default(0)
   isActive        Boolean       @default(true)
@@ -399,7 +416,7 @@ model AccountNature {
 model ExpenseCategory {
   id                      String                   @id @default(auto()) @map("_id") @db.ObjectId
   name                    String                   @unique
-  code                    String?                  @unique
+  code                    String?
   description             String?
   parentId                String?                  @db.ObjectId
   parent                  ExpenseCategory?         @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -485,12 +502,13 @@ model Expense {
 
   paidBy            String?  @default("COMPANY")
   employeeId        String?  @db.ObjectId
-  employee          User?    @relation(fields: [employeeId], references: [id])
+  employee          Employee? @relation(fields: [employeeId], references: [id])
 
   status            ExpenseStatus @default(DRAFT)
   paymentStatus     PaymentStatus @default(UNPAID)
   paidAmount        Float?        @default(0)
   balancePayable    Float?        @default(0)
+  advanceAmount     Float?        @default(0)
 
   subtotal          Float
   discountAmount    Float @default(0)
@@ -500,6 +518,9 @@ model Expense {
   inputSGST         Float @default(0)
   inputIGST         Float @default(0)
   totalInputGST     Float @default(0)
+
+  isItcEligible     Boolean       @default(true)
+  itcIneligibleReason String?
 
   tdsRate           Float?
   tdsAmount         Float @default(0)
@@ -525,6 +546,7 @@ model Expense {
 
   items             ExpenseItem[]
   depreciations     AssetDepreciation[]
+  disposal          AssetDisposal?
 }
 
 model ExpenseItem {
@@ -576,6 +598,7 @@ model ExpenseItem {
 
   isAsset         Boolean  @default(false)
   depreciationRate Float?  @default(0)
+  isItcEligible   Boolean? @default(true)
 
   totalAmount     Float
 }
@@ -633,15 +656,21 @@ model BankTransfer {
 }
 
 model OpeningBalance {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  financialYear String
-  position      String
-  amount        Float
-  type          String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@unique([financialYear, position])
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  financialYear     String
+  position          String
+  amount            Float
+  type              String
+  customerId        String?   @db.ObjectId
+  vendorId          String?   @db.ObjectId
+  invoiceNumber     String?
+  invoiceDate       DateTime?
+  billNumber        String?
+  billDate          DateTime?
+  outstandingAmount Float?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 model GstFiling {
@@ -700,6 +729,104 @@ model AssetDepreciation {
   updatedAt           DateTime  @updatedAt
 
   @@unique([expenseId, financialYear])
+}
+
+model AssetDisposal {
+  id                      String    @id @default(auto()) @map("_id") @db.ObjectId
+  expenseId               String    @unique @db.ObjectId
+  expense                 Expense   @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  disposalDate            DateTime  @default(now())
+  saleProceeds            Float     @default(0)
+  grossCost               Float
+  accumulatedDepreciation Float     @default(0)
+  netBookValue            Float     @default(0)
+  gainOrLoss              Float     @default(0)
+  bankAccountId           String?   @db.ObjectId
+  buyerName               String?
+  notes                   String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
+
+model Loan {
+  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  loanNumber        String          @unique
+  lenderName        String
+  loanType          String          @default("TERM_LOAN") // TERM_LOAN, SECURED, UNSECURED, OVERDRAFT
+  principalAmount   Float
+  interestRate      Float?          @default(0)
+  disbursementDate  DateTime        @default(now())
+  bankAccountId     String?         @db.ObjectId
+  status            String          @default("ACTIVE") // ACTIVE, CLOSED
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  repayments        LoanRepayment[]
+}
+
+model LoanRepayment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  loanId          String   @db.ObjectId
+  loan            Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  paymentDate     DateTime @default(now())
+  totalAmount     Float
+  principalAmount Float
+  interestAmount  Float
+  bankAccountId   String?  @db.ObjectId
+  reference       String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BankStatementImport {
+  id              String              @id @default(auto()) @map("_id") @db.ObjectId
+  bankAccountId   String              @db.ObjectId
+  statementDate   DateTime            @default(now())
+  fileName        String
+  closingBalance  Float?              @default(0)
+  totalRecords    Int                 @default(0)
+  status          String              @default("IN_PROGRESS") // IN_PROGRESS, RECONCILED
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  lines           BankStatementLine[]
+}
+
+model BankStatementLine {
+  id              String              @id @default(auto()) @map("_id") @db.ObjectId
+  importId        String              @db.ObjectId
+  import          BankStatementImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  transactionDate DateTime
+  description     String
+  referenceNo     String?
+  withdrawal      Float               @default(0)
+  deposit         Float               @default(0)
+  balance         Float?
+  isReconciled    Boolean             @default(false)
+  matchedType     String?
+  matchedId       String?
+  matchedNotes    String?
+  reconciledAt    DateTime?
+  createdAt       DateTime            @default(now())
+}
+
+model GstSettlement {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  settlementNumber  String?   @unique
+  returnPeriod      String    // e.g. "09/2026" or "Q2 FY 2026-27"
+  paymentDate       DateTime  @default(now())
+  cgstPaid          Float     @default(0)
+  sgstPaid          Float     @default(0)
+  igstPaid          Float     @default(0)
+  totalPaid         Float     @default(0)
+  itcCgstUtilized   Float     @default(0)
+  itcSgstUtilized   Float     @default(0)
+  itcIgstUtilized   Float     @default(0)
+  bankAccountId     String?   @db.ObjectId
+  challanRef        String?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 

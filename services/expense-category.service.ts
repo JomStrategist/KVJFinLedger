@@ -175,7 +175,7 @@ export class ExpenseCategoryService {
 
       let seq = 1;
       let candidate = `${prefix}-${abbr}-${String(seq).padStart(3, "0")}`;
-      while (await prisma.expenseCategory.findUnique({ where: { code: candidate } })) {
+      while (await prisma.expenseCategory.findFirst({ where: { code: candidate } })) {
         seq++;
         candidate = `${prefix}-${abbr}-${String(seq).padStart(3, "0")}`;
       }
@@ -189,7 +189,7 @@ export class ExpenseCategoryService {
       throw new Error(`Category name "${name}" already exists.`);
     }
 
-    const existingCode = await prisma.expenseCategory.findUnique({
+    const existingCode = await prisma.expenseCategory.findFirst({
       where: { code }
     });
     if (existingCode) {
@@ -231,7 +231,7 @@ export class ExpenseCategoryService {
     }
 
     if (data.code) {
-      const existingCode = await prisma.expenseCategory.findUnique({
+      const existingCode = await prisma.expenseCategory.findFirst({
         where: { code: data.code.trim() }
       });
       if (existingCode && existingCode.id !== id) {

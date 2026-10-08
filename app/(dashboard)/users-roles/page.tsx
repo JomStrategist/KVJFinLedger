@@ -1,2 +1,5 @@
-import UsersPage from "../users/page";
-export default UsersPage;
+import { redirect } from 'next/navigation';
+
+export default function UsersRolesPage() {
+  redirect('/users');
+}

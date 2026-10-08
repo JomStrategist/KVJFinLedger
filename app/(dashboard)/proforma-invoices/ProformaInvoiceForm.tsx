@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createProformaInvoiceAction, updateProformaInvoiceAction } from "../invoices/proforma-actions";
-import { updateTaxInvoiceAction } from "../invoices/actions";
+import { createTaxInvoiceAction, updateTaxInvoiceAction } from "../invoices/actions";
 import { CustomerForm } from "../customers/CustomerForm";
 import { TaxEngine } from "@/lib/tax";
 import { BUSINESS_LOCATION } from "@/lib/config/business";
@@ -160,7 +160,7 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
 
   // Determine active tax logic based on Customer Type & GST Treatment
   const isKerala = !selectedCustomer?.state || selectedCustomer.state.trim().toLowerCase() === BUSINESS_LOCATION.state.toLowerCase();
-  const isExport = customerType === "B2B_EXPORT" || gstTreatment === "Export / Zero Rated";
+  const isExport = gstTreatment === "Export / Zero Rated";
   const isGstExempt = gstTreatment === "GST Not Applicable";
   const effectiveGstRate = isExport || isGstExempt ? 0 : globalGstRate;
 
@@ -395,6 +395,8 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
       let res;
       if (mode === "taxInvoice" && initialData) {
         res = await updateTaxInvoiceAction(initialData.id, payload);
+      } else if (mode === "taxInvoice") {
+        res = await createTaxInvoiceAction(payload);
       } else if (initialData) {
         res = await updateProformaInvoiceAction(initialData.id, payload);
       } else {
@@ -404,20 +406,21 @@ export function ProformaInvoiceForm({ initialData, customers: initialCustomers, 
       if (res.success) {
         setSuccess(
           mode === "taxInvoice"
-            ? "Tax Invoice updated successfully."
+            ? (initialData ? "Tax Invoice updated successfully." : "Tax Invoice created and posted successfully.")
             : initialData
             ? "Proforma Invoice updated successfully."
             : "Proforma Invoice saved as draft successfully."
         );
         setTimeout(() => {
           if (mode === "taxInvoice") {
-            router.push(`/invoices/${initialData.id}`);
+            const invoiceId = (res as any).data?.id;
+            router.push(invoiceId ? `/invoices/${invoiceId}` : "/invoices");
           } else {
             router.push("/invoices?tab=proforma");
           }
         }, 1200);
       } else {
-        setError(res.error || (mode === "taxInvoice" ? "Unable to update Tax Invoice." : "Unable to save Proforma Invoice."));
+        setError((res as any).error || (mode === "taxInvoice" ? "Unable to save Tax Invoice." : "Unable to save Proforma Invoice."));
       }
     });
   };

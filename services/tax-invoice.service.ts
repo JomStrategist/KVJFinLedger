@@ -484,6 +484,103 @@ export class TaxInvoiceService {
     return res;
   }
 
+  static async createTaxInvoice(data: any) {
+    const customer = await prisma.customer.findUnique({ where: { id: data.customerId } });
+    if (!customer) throw new Error("Customer not found.");
+
+    const primaryBank = await prisma.bankAccount.findFirst({ where: { isPrimary: true, isActive: true } });
+    const bankAcc = data.bankAccountId
+      ? (await prisma.bankAccount.findUnique({ where: { id: data.bankAccountId } })) || primaryBank
+      : primaryBank;
+
+    const res = await prisma.$transaction(async (tx) => {
+      const invoiceNumber = await this.generateInvoiceNumber(tx, {
+        customerType: customer.customerType,
+        gstin: customer.gstin,
+        date: data.invoiceDate ? new Date(data.invoiceDate) : new Date(),
+      });
+
+      const taxInvoice = await tx.taxInvoice.create({
+        data: {
+          invoiceNumber,
+          customerId: customer.id,
+          invoiceDate: data.invoiceDate ? new Date(data.invoiceDate) : new Date(),
+          
+          bankAccountId: bankAcc?.id || null,
+          accountNameSnapshot: bankAcc?.accountName || "KVJ Analytics",
+          bankNameSnapshot: bankAcc?.bankName || "Federal Bank",
+          branchSnapshot: bankAcc?.branch || "Kakkanad Branch",
+          accountNumberSnapshot: bankAcc?.accountNumber || "15240200004512",
+          ifscSnapshot: bankAcc?.ifsc || "FDRL0001524",
+
+          customerNameSnapshot: customer.legalName,
+          businessNameSnapshot: customer.tradeName,
+          gstinSnapshot: customer.gstin,
+          stateSnapshot: customer.state,
+          stateCodeSnapshot: customer.stateCode,
+          addressSnapshot: [customer.address, customer.city, customer.pinCode].filter(Boolean).join(", "),
+
+          subtotal: Number(data.subtotal || 0),
+          totalDiscount: Number(data.totalDiscount || 0),
+          taxableAmount: Number(data.taxableAmount || (Number(data.subtotal || 0) - Number(data.totalDiscount || 0))),
+          
+          totalCGST: Number(data.totalCGST || 0),
+          totalSGST: Number(data.totalSGST || 0),
+          totalIGST: Number(data.totalIGST || 0),
+          totalGST: Number(data.totalGST || data.totalTax || 0),
+          
+          tdsRate: Number(data.tdsRate || 0),
+          tdsAmount: Number(data.tdsAmount || 0),
+          
+          grossAmount: Number(data.grossAmount || 0),
+          netAmount: Number(data.netAmount || 0),
+          
+          notes: data.notes || null,
+          poNumber: data.poNumber || null,
+          status: "CONFIRMED",
+
+          items: {
+            create: (data.items || []).map((item: any) => ({
+              productId: item.productId || null,
+              name: item.name || "Service",
+              description: item.description || null,
+              hsnSacCode: item.hsnSacCode || null,
+              quantity: Number(item.quantity || 1),
+              unit: item.unit || "Unit",
+              unitPrice: Number(item.unitPrice || 0),
+              discountPercent: Number(item.discountPercent || 0),
+              discountAmount: Number(item.discountAmount || 0),
+              taxableAmount: Number(item.taxableAmount || 0),
+              gstRate: Number(item.gstRate || 0),
+              cgstAmount: Number(item.cgstAmount || 0),
+              sgstAmount: Number(item.sgstAmount || 0),
+              igstAmount: Number(item.igstAmount || 0),
+              totalGST: Number(item.totalGST || 0),
+              totalAmount: Number(item.totalAmount || 0),
+              incomeCategoryId: item.incomeCategoryId || null,
+            }))
+          }
+        }
+      });
+
+      await FinancialTransactionService.createRevenueTransaction(tx, {
+        sourceId: taxInvoice.id,
+        transactionDate: taxInvoice.invoiceDate,
+        description: `Revenue from Invoice ${taxInvoice.invoiceNumber}`,
+        amount: taxInvoice.grossAmount,
+        taxableAmount: taxInvoice.taxableAmount,
+        totalGST: taxInvoice.totalGST,
+        tdsAmount: taxInvoice.tdsAmount,
+        netAmount: taxInvoice.netAmount,
+      });
+
+      return taxInvoice;
+    }, { timeout: 15000 });
+
+    AccountingEngine.invalidateCache();
+    return res;
+  }
+
   static async cancelTaxInvoice(id: string, reason: string) {
     if (!reason || reason.trim() === "") throw new Error("Cancellation reason is required.");
 
