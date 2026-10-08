@@ -33,6 +33,7 @@ export interface RatioItem {
 
 export interface FinancialStatementsClientProps {
   basePath?: string;
+  hideTopHeader?: boolean;
   currentFilters: {
     financialYear: string;
     period: string;
@@ -321,166 +322,48 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
   const tbGroups = Array.from(new Set(props.trialBalance.items.map(i => i.accountGroup))).sort();
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Top Header & Context */}
-      <div className="no-print flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Financial Statements & Intelligence
-            </h1>
-            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-              KVJ FinLedger Engine
-            </span>
+    <div className="space-y-5 max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4">
+      {/* Top Header & Context - Only when not nested inside ReportsHub */}
+      {!props.hideTopHeader && (
+        <div className="no-print flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                Financial Statements
+              </h1>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                props.trialBalance.isBalanced
+                  ? "bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-300"
+                  : "bg-rose-50 text-rose-800 border border-rose-300"
+              }`}>
+                {props.trialBalance.isBalanced ? "✓ Double-Entry Balanced" : `⚠ Variance: ₹${props.trialBalance.difference}`}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Standard accounting reports from the General Ledger.
+            </p>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Authoritative double-entry financial reporting backed directly by the General Ledger.
-          </p>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={handlePrint}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 shadow-sm transition"
-          >
-            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            Print Statement
-          </button>
-
-          {(activeTab === "pnl" || activeTab === "balance-sheet" || activeTab === "comparative") && (
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => setShowVerticalAnalysis(!showVerticalAnalysis)}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border transition ${
-                showVerticalAnalysis
-                  ? "bg-teal-600 border-teal-600 text-white shadow"
-                  : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50"
-              }`}
+              onClick={handlePrint}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 shadow-xs transition"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              {showVerticalAnalysis ? "Vertical Analysis Active (%)" : "Toggle Vertical (%)"}
+              🖨️ Print
             </button>
-          )}
-
-          <Link
-            href="/ledgers"
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 shadow-sm transition"
-          >
-            Trace in Ledgers →
-          </Link>
-        </div>
-      </div>
-
-      {/* Universal Report Filter Bar */}
-      <div className="no-print bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* FY Slicer */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Financial Year:</label>
-              <select
-                value={selectedFy}
-                onChange={e => {
-                  setSelectedFy(e.target.value);
-                  applyFilters({ financialYear: e.target.value });
-                }}
-                className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-              >
-                <option value="FY 2026–27">FY 2026–27 (Current)</option>
-                <option value="FY 2025–26">FY 2025–26 (Previous)</option>
-                <option value="FY 2024–25">FY 2024–25</option>
-              </select>
-            </div>
-
-            {/* Period Slicer */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Period:</label>
-              <select
-                value={selectedPeriod}
-                onChange={e => {
-                  setSelectedPeriod(e.target.value);
-                  applyFilters({ period: e.target.value });
-                }}
-                className="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-              >
-                <option value="ALL">Full Financial Year (1 Apr - 31 Mar)</option>
-                <option value="Q1">Q1 (Apr - Jun)</option>
-                <option value="Q2">Q2 (Jul - Sep)</option>
-                <option value="Q3">Q3 (Oct - Dec)</option>
-                <option value="Q4">Q4 (Jan - Mar)</option>
-                <option value="YTD">Year to Date (YTD)</option>
-              </select>
-            </div>
-
-            {/* Slicers for Analysis */}
-            {activeTab === "analysis" && (
-              <>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Customer:</label>
-                  <select
-                    value={selectedCustomer}
-                    onChange={e => {
-                      setSelectedCustomer(e.target.value);
-                      applyFilters({ customerId: e.target.value });
-                    }}
-                    className="max-w-[160px] truncate px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
-                  >
-                    <option value="">All Accounts</option>
-                    {props.customers.map(c => (
-                      <option key={c.id} value={c.id}>{c.legalName}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Vendor:</label>
-                  <select
-                    value={selectedVendor}
-                    onChange={e => {
-                      setSelectedVendor(e.target.value);
-                      applyFilters({ vendorId: e.target.value });
-                    }}
-                    className="max-w-[160px] truncate px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-teal-500"
-                  >
-                    <option value="">All Vendors</option>
-                    {props.vendors.map(v => (
-                      <option key={v.id} value={v.id}>{v.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Quick Equilibrium Status */}
-          <div className="flex items-center gap-3">
-            <div className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 ${
-              props.trialBalance.isBalanced
-                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                : "bg-rose-50 text-rose-700 border border-rose-200"
-            }`}>
-              <span className={`w-2 h-2 rounded-full ${props.trialBalance.isBalanced ? "bg-emerald-500" : "bg-rose-500"}`} />
-              TB: {props.trialBalance.isBalanced ? "Balanced (₹0.00)" : `Diff ₹${props.trialBalance.difference}`}
-            </div>
-
-            <div className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 ${
-              props.balanceSheet.isBalanced
-                ? "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 border border-teal-200 dark:border-teal-800"
-                : "bg-rose-50 text-rose-700 border border-rose-200"
-            }`}>
-              <span className={`w-2 h-2 rounded-full ${props.balanceSheet.isBalanced ? "bg-teal-500" : "bg-rose-500"}`} />
-              BS: {props.balanceSheet.isBalanced ? "Assets = Liab + Eq (₹0.00)" : `Diff ₹${props.balanceSheet.difference}`}
-            </div>
+            <Link
+              href="/ledgers"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 shadow-xs transition"
+            >
+              Trace in Ledgers →
+            </Link>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Primary Statement Navigation Tabs */}
-      <div className="no-print border-b border-slate-200 dark:border-slate-800">
-        <nav className="-mb-px flex space-x-2 sm:space-x-4 overflow-x-auto" aria-label="Tabs">
+      {/* Primary Statement Navigation Ribbon */}
+      <div className="no-print bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-2">
+        <nav className="flex space-x-1.5 overflow-x-auto custom-scrollbar" aria-label="Statement Tabs">
           {[
             { id: "trial-balance", label: "Trial Balance", icon: "⚖️" },
             { id: "pnl", label: "Profit & Loss Account", icon: "📈" },
@@ -493,10 +376,10 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id as any)}
-                className={`whitespace-nowrap pb-3 px-3.5 border-b-2 font-medium text-sm flex items-center gap-2 transition ${
+                className={`whitespace-nowrap py-2 px-3.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
                   isActive
-                    ? "border-teal-600 text-teal-600 dark:border-teal-400 dark:text-teal-300 font-semibold"
-                    : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300"
+                    ? "bg-[#177B55] text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
                 <span>{tab.icon}</span>
@@ -511,129 +394,161 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
       {/* 1. TRIAL BALANCE TAB */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {activeTab === "trial-balance" && (
-        <div className="space-y-6">
-          {/* Header Card */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold tracking-widest text-teal-600 uppercase">Statement 1</span>
+        <div className="space-y-4">
+          {/* Trial Balance Table Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            {/* Integrated Toolbar */}
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-[#FAFBF9] dark:bg-slate-800/40">
+              <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+                <div className="relative flex-1 min-w-[180px] max-w-xs">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400 text-xs">
+                    🔍
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Search account or group..."
+                    value={tbSearch}
+                    onChange={e => setTbSearch(e.target.value)}
+                    className="w-full pl-8 pr-3.5 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                  />
+                </div>
+                <select
+                  value={tbGroupFilter}
+                  onChange={e => setTbGroupFilter(e.target.value)}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="ALL">All Account Groups</option>
+                  {tbGroups.map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedFy}
+                  onChange={e => {
+                    setSelectedFy(e.target.value);
+                    applyFilters({ financialYear: e.target.value });
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="FY 2026–27">FY 2026–27 (Current)</option>
+                  <option value="FY 2025–26">FY 2025–26 (Previous)</option>
+                  <option value="FY 2024–25">FY 2024–25</option>
+                </select>
+
+                <select
+                  value={selectedPeriod}
+                  onChange={e => {
+                    setSelectedPeriod(e.target.value);
+                    applyFilters({ period: e.target.value });
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="ALL">Full Financial Year (1 Apr - 31 Mar)</option>
+                  <option value="Q1">Q1 (Apr - Jun)</option>
+                  <option value="Q2">Q2 (Jul - Sep)</option>
+                  <option value="Q3">Q3 (Oct - Dec)</option>
+                  <option value="Q4">Q4 (Jan - Mar)</option>
+                  <option value="YTD">Year to Date (YTD)</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-500 font-medium">
+                  {filteredTbItems.length} Accounts
+                </span>
                 <span className="text-slate-300">•</span>
-                <span className="text-xs text-slate-500 font-medium">As of {new Date(props.trialBalance.asOfDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-              </div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
-                Trial Balance (Double Entry Equilibrium)
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Authoritative summation of all General Ledger debit and credit balances. Total debits must equal total credits exactly.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => exportCsv("trial_balance", ["Account", "Group", "Statement", "Debit", "Credit"], filteredTbItems.map(i => [
-                  i.accountName,
-                  i.accountGroup,
-                  i.financialStatement,
-                  i.closingDebit,
-                  i.closingCredit
-                ]))}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 shadow-sm"
-              >
-                Export CSV
-              </button>
-
-              <div className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 ${
-                props.trialBalance.isBalanced
-                  ? "bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-300"
-                  : "bg-rose-50 text-rose-800 border border-rose-300"
-              }`}>
-                {props.trialBalance.isBalanced ? "✓ Balanced (₹0.00 Variance)" : `⚠ Difference: ₹${props.trialBalance.difference}`}
+                <span className={`text-xs font-bold ${props.trialBalance.isBalanced ? "text-[#15803D]" : "text-rose-700"}`}>
+                  {props.trialBalance.isBalanced ? "✓ Balanced (₹0.00)" : `⚠ Variance: ₹${props.trialBalance.difference}`}
+                </span>
+                <button
+                  onClick={() => exportCsv("trial_balance", ["Account Particulars", "Account Group", "Debit", "Credit"], filteredTbItems.map(i => [
+                    i.accountName,
+                    i.accountGroup,
+                    i.closingDebit || 0,
+                    i.closingCredit || 0
+                  ]))}
+                  className="px-3 py-1.5 text-xs font-semibold text-[#177B55] bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition shadow-xs flex items-center gap-1 cursor-pointer"
+                  title="Export Trial Balance to CSV"
+                >
+                  📥 Export CSV
+                </button>
               </div>
             </div>
-          </div>
 
-          {/* Quick Filters */}
-          <div className="no-print flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2 flex-1 max-w-sm">
-              <input
-                type="text"
-                placeholder="Search ledger account or group..."
-                value={tbSearch}
-                onChange={e => setTbSearch(e.target.value)}
-                className="w-full px-3.5 py-1.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-semibold text-slate-500 uppercase">Group:</label>
-              <select
-                value={tbGroupFilter}
-                onChange={e => setTbGroupFilter(e.target.value)}
-                className="px-3 py-1.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-              >
-                <option value="ALL">All Account Groups</option>
-                {tbGroups.map(g => (
-                  <option key={g} value={g}>{g}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Trial Balance Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            {/* Table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    <th className="py-3.5 px-4">Account Particulars</th>
-                    <th className="py-3.5 px-4">Account Group</th>
-                    <th className="py-3.5 px-4">Statement Classification</th>
-                    <th className="py-3.5 px-4 text-right">Debit (Dr) ₹</th>
-                    <th className="py-3.5 px-4 text-right">Credit (Cr) ₹</th>
+                  <tr className="bg-[#FAFBF9] dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="py-3.5 px-4 font-semibold">ACCOUNT PARTICULARS</th>
+                    <th className="py-3.5 px-4 font-semibold">ACCOUNT GROUP</th>
+                    <th className="py-3.5 px-4 text-right font-semibold">DEBIT (₹)</th>
+                    <th className="py-3.5 px-4 text-right font-semibold">CREDIT (₹)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono text-slate-700 dark:text-slate-300">
-                  {filteredTbItems.map((item) => (
-                    <tr
-                      key={item.accountId}
-                      className="hover:bg-teal-50/40 dark:hover:bg-slate-800/40 transition group"
-                    >
-                      <td className="py-3 px-4 font-sans font-medium text-slate-900 dark:text-white">
-                        <Link
-                          href={`/ledgers?accountId=${encodeURIComponent(item.accountId)}`}
-                          className="hover:text-teal-600 dark:hover:text-teal-400 hover:underline flex items-center gap-1.5"
-                        >
-                          <span>{item.accountName}</span>
-                          <span className="opacity-0 group-hover:opacity-100 text-xs text-teal-500 font-sans">↗</span>
-                        </Link>
-                      </td>
-                      <td className="py-3 px-4 font-sans text-xs text-slate-500 dark:text-slate-400">
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800">
-                          {item.accountGroup}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-sans text-xs text-slate-500 dark:text-slate-400">
-                        {item.financialStatement === "PROFIT_LOSS" ? "Profit & Loss" : "Balance Sheet"}
-                      </td>
-                      <td className="py-3 px-4 text-right font-medium text-slate-800 dark:text-slate-200">
-                        {item.closingDebit > 0 ? formatCurrency(item.closingDebit) : "—"}
-                      </td>
-                      <td className="py-3 px-4 text-right font-medium text-slate-800 dark:text-slate-200">
-                        {item.closingCredit > 0 ? formatCurrency(item.closingCredit) : "—"}
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs text-slate-700 dark:text-slate-300">
+                  {filteredTbItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-slate-400">
+                        No ledger accounts match the selected filters.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredTbItems.map((item) => (
+                      <tr
+                        key={item.accountId}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition"
+                      >
+                        <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
+                          <Link
+                            href={`/ledgers?accountId=${encodeURIComponent(item.accountId)}`}
+                            className="hover:text-[#177B55] dark:hover:text-emerald-400 hover:underline"
+                            title="View General Ledger Statement"
+                          >
+                            {item.accountName}
+                          </Link>
+                        </td>
+                        <td className="py-3 px-4 text-xs text-slate-500 dark:text-slate-400">
+                          {item.accountGroup}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-medium text-slate-900 dark:text-white">
+                          {item.closingDebit > 0
+                            ? Number(item.closingDebit).toLocaleString('en-IN', {
+                                minimumFractionDigits: item.closingDebit % 1 !== 0 ? 2 : 0,
+                                maximumFractionDigits: 2
+                              })
+                            : "—"}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-medium text-slate-900 dark:text-white">
+                          {item.closingCredit > 0
+                            ? Number(item.closingCredit).toLocaleString('en-IN', {
+                                minimumFractionDigits: item.closingCredit % 1 !== 0 ? 2 : 0,
+                                maximumFractionDigits: 2
+                              })
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-slate-100 dark:bg-slate-800 font-bold border-t-2 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono">
-                    <td colSpan={3} className="py-4 px-4 font-sans text-right uppercase tracking-wider text-xs">
-                      Grand Totals & Equilibrium Check:
+                  <tr className="bg-[#F0FDF4] dark:bg-emerald-950/40 font-bold border-t border-emerald-200 dark:border-emerald-800/50 text-[#15803D] dark:text-emerald-300 font-mono text-xs">
+                    <td className="py-3.5 px-4 font-sans font-black text-[13px]">
+                      Total
                     </td>
-                    <td className="py-4 px-4 text-right text-base text-teal-700 dark:text-teal-300">
-                      {formatCurrency(props.trialBalance.totalDebit)}
+                    <td className="py-3.5 px-4"></td>
+                    <td className="py-3.5 px-4 text-right text-sm font-black">
+                      {Number(props.trialBalance.totalDebit).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
                     </td>
-                    <td className="py-4 px-4 text-right text-base text-teal-700 dark:text-teal-300">
-                      {formatCurrency(props.trialBalance.totalCredit)}
+                    <td className="py-3.5 px-4 text-right text-sm font-black">
+                      {Number(props.trialBalance.totalCredit).toLocaleString('en-IN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
                     </td>
                   </tr>
                 </tfoot>
@@ -647,41 +562,71 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
       {/* 2. PROFIT & LOSS ACCOUNT TAB */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {activeTab === "pnl" && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold tracking-widest text-teal-600 uppercase">Statement 2</span>
-                <span className="text-slate-300">•</span>
-                <span className="text-xs text-slate-500 font-medium">Schedule III Statement of Profit and Loss</span>
+        <div className="space-y-4">
+          {/* Schedule III P&L Table Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            {/* Integrated Toolbar */}
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-[#FAFBF9] dark:bg-slate-800/40">
+              <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+                <select
+                  value={selectedFy}
+                  onChange={e => {
+                    setSelectedFy(e.target.value);
+                    applyFilters({ financialYear: e.target.value });
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="FY 2026–27">FY 2026–27 (Current)</option>
+                  <option value="FY 2025–26">FY 2025–26 (Previous)</option>
+                  <option value="FY 2024–25">FY 2024–25</option>
+                </select>
+
+                <select
+                  value={selectedPeriod}
+                  onChange={e => {
+                    setSelectedPeriod(e.target.value);
+                    applyFilters({ period: e.target.value });
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="ALL">Full Financial Year (1 Apr - 31 Mar)</option>
+                  <option value="Q1">Q1 (Apr - Jun)</option>
+                  <option value="Q2">Q2 (Jul - Sep)</option>
+                  <option value="Q3">Q3 (Oct - Dec)</option>
+                  <option value="Q4">Q4 (Jan - Mar)</option>
+                  <option value="YTD">Year to Date (YTD)</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => setShowVerticalAnalysis(!showVerticalAnalysis)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition ${
+                    showVerticalAnalysis
+                      ? "bg-emerald-50 text-[#177B55] border-emerald-300"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  Vertical % {showVerticalAnalysis ? "✓" : ""}
+                </button>
               </div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
-                Profit & Loss Account ({props.comparativePnl.currentPeriodLabel})
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Operational income and expenditure recognized according to ICAI and GST double-entry guidelines.
-              </p>
+
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-[#15803D] border border-emerald-200">
+                  PAT: {formatCurrency(props.profitAndLoss.netProfitAfterTax)}
+                </span>
+                <button
+                  onClick={() => exportCsv("pnl_statement", ["Particulars", "Group", "Current (₹)", "Previous (₹)", "Variance (₹)", "Common Size %"], [
+                    ...props.comparativePnl.revenueItems.map(r => [r.name, r.group || "Revenue", r.currentAmount, r.previousAmount, r.varianceAmount, `${r.currentCommonSizePercent}%`]),
+                    ...props.comparativePnl.expenseItems.map(e => [e.name, e.group || "Expense", e.currentAmount, e.previousAmount, e.varianceAmount, `${e.currentCommonSizePercent}%`]),
+                  ])}
+                  className="px-3 py-1.5 text-xs font-semibold text-[#177B55] bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition shadow-xs flex items-center gap-1 cursor-pointer"
+                  title="Export P&L to CSV"
+                >
+                  📥 Export CSV
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => exportCsv("pnl_statement", ["Particulars", "Group", "Current (₹)", "Previous (₹)", "Variance (₹)", "Common Size %"], [
-                  ...props.comparativePnl.revenueItems.map(r => [r.name, r.group || "Revenue", r.currentAmount, r.previousAmount, r.varianceAmount, `${r.currentCommonSizePercent}%`]),
-                  ...props.comparativePnl.expenseItems.map(e => [e.name, e.group || "Expense", e.currentAmount, e.previousAmount, e.varianceAmount, `${e.currentCommonSizePercent}%`]),
-                ])}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 shadow-sm"
-              >
-                Export CSV
-              </button>
-
-              <div className="px-4 py-2 rounded-xl text-sm font-bold bg-teal-50 text-teal-800 border border-teal-300 dark:bg-teal-950/30 dark:text-teal-300">
-                PAT: {formatCurrency(props.profitAndLoss.netProfitAfterTax)}
-              </div>
-            </div>
-          </div>
-
-          {/* Schedule III P&L Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
@@ -801,45 +746,75 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
       {/* 3. BALANCE SHEET TAB */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {activeTab === "balance-sheet" && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold tracking-widest text-teal-600 uppercase">Statement 3</span>
-                <span className="text-slate-300">•</span>
-                <span className="text-xs text-slate-500 font-medium">Schedule III Horizontal & Vertical Statement of Financial Position</span>
+        <div className="space-y-4">
+          {/* Schedule III Balance Sheet Table Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            {/* Integrated Toolbar */}
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-[#FAFBF9] dark:bg-slate-800/40">
+              <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+                <select
+                  value={selectedFy}
+                  onChange={e => {
+                    setSelectedFy(e.target.value);
+                    applyFilters({ financialYear: e.target.value });
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="FY 2026–27">FY 2026–27 (Current)</option>
+                  <option value="FY 2025–26">FY 2025–26 (Previous)</option>
+                  <option value="FY 2024–25">FY 2024–25</option>
+                </select>
+
+                <select
+                  value={selectedPeriod}
+                  onChange={e => {
+                    setSelectedPeriod(e.target.value);
+                    applyFilters({ period: e.target.value });
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="ALL">Full Financial Year (1 Apr - 31 Mar)</option>
+                  <option value="Q1">Q1 (Apr - Jun)</option>
+                  <option value="Q2">Q2 (Jul - Sep)</option>
+                  <option value="Q3">Q3 (Oct - Dec)</option>
+                  <option value="Q4">Q4 (Jan - Mar)</option>
+                  <option value="YTD">Year to Date (YTD)</option>
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => setShowVerticalAnalysis(!showVerticalAnalysis)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition ${
+                    showVerticalAnalysis
+                      ? "bg-emerald-50 text-[#177B55] border-emerald-300"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  Common Size % {showVerticalAnalysis ? "✓" : ""}
+                </button>
               </div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
-                Balance Sheet ({props.comparativeBs.currentPeriodLabel})
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Shareholders’ Equity, Liabilities, and Assets verified to an exact ₹0.00 mathematical equilibrium.
-              </p>
+
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-[#15803D] border border-emerald-200">
+                  ✓ Equilibrium: {formatCurrency(props.balanceSheet.totalAssets)}
+                </span>
+                <button
+                  onClick={() => exportCsv("balance_sheet", ["Particulars", "Group", "Current (₹)", "Previous (₹)", "Variance (₹)", "Common Size %"], props.comparativeBs.items.map(i => [
+                    i.name,
+                    i.group || "Balance Sheet",
+                    i.currentAmount,
+                    i.previousAmount,
+                    i.varianceAmount,
+                    `${i.currentCommonSizePercent}%`
+                  ]))}
+                  className="px-3 py-1.5 text-xs font-semibold text-[#177B55] bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition shadow-xs flex items-center gap-1 cursor-pointer"
+                  title="Export Balance Sheet to CSV"
+                >
+                  📥 Export CSV
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => exportCsv("balance_sheet", ["Particulars", "Group", "Current (₹)", "Previous (₹)", "Variance (₹)", "Common Size %"], props.comparativeBs.items.map(i => [
-                  i.name,
-                  i.group || "Balance Sheet",
-                  i.currentAmount,
-                  i.previousAmount,
-                  i.varianceAmount,
-                  `${i.currentCommonSizePercent}%`
-                ]))}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 shadow-sm"
-              >
-                Export CSV
-              </button>
-
-              <div className="px-4 py-2 rounded-xl text-sm font-bold bg-teal-50 text-teal-800 border border-teal-300 dark:bg-teal-950/30 dark:text-teal-300">
-                ✓ Total Assets = Total Equity + Liab ({formatCurrency(props.balanceSheet.totalAssets)})
-              </div>
-            </div>
-          </div>
-
-          {/* Schedule III Balance Sheet Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
@@ -922,44 +897,62 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
       {/* 4. CASH FLOW STATEMENT TAB */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {activeTab === "cash-flow" && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold tracking-widest text-teal-600 uppercase">Statement 4</span>
-                <span className="text-slate-300">•</span>
-                <span className="text-xs text-slate-500 font-medium">AS-3 Cash Flow Statement</span>
+        <div className="space-y-4">
+          {/* Cash Flow Table Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            {/* Integrated Toolbar */}
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-[#FAFBF9] dark:bg-slate-800/40">
+              <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+                <select
+                  value={selectedFy}
+                  onChange={e => {
+                    setSelectedFy(e.target.value);
+                    applyFilters({ financialYear: e.target.value });
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="FY 2026–27">FY 2026–27 (Current)</option>
+                  <option value="FY 2025–26">FY 2025–26 (Previous)</option>
+                  <option value="FY 2024–25">FY 2024–25</option>
+                </select>
+
+                <select
+                  value={selectedPeriod}
+                  onChange={e => {
+                    setSelectedPeriod(e.target.value);
+                    applyFilters({ period: e.target.value });
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+                >
+                  <option value="ALL">Full Financial Year (1 Apr - 31 Mar)</option>
+                  <option value="Q1">Q1 (Apr - Jun)</option>
+                  <option value="Q2">Q2 (Jul - Sep)</option>
+                  <option value="Q3">Q3 (Oct - Dec)</option>
+                  <option value="Q4">Q4 (Jan - Mar)</option>
+                  <option value="YTD">Year to Date (YTD)</option>
+                </select>
               </div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
-                Cash Flow Statement ({props.comparativeCf.currentPeriodLabel})
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Direct accounting cash flow classified across Operating, Investing, and Financing activities.
-              </p>
+
+              <div className="flex items-center gap-3">
+                <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-[#15803D] border border-emerald-200">
+                  Closing Cash: {formatCurrency(props.cashFlow.closingCashAndBank)}
+                </span>
+                <button
+                  onClick={() => exportCsv("cash_flow_statement", ["Activity Item", "Group", "Current (₹)", "Previous (₹)", "Variance (₹)"], props.comparativeCf.items.map(i => [
+                    i.name,
+                    i.group || "Cash Flow",
+                    i.currentAmount,
+                    i.previousAmount,
+                    i.varianceAmount
+                  ]))}
+                  className="px-3 py-1.5 text-xs font-semibold text-[#177B55] bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition shadow-xs flex items-center gap-1 cursor-pointer"
+                  title="Export Cash Flow to CSV"
+                >
+                  📥 Export CSV
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => exportCsv("cash_flow_statement", ["Activity Item", "Group", "Current (₹)", "Previous (₹)", "Variance (₹)"], props.comparativeCf.items.map(i => [
-                  i.name,
-                  i.group || "Cash Flow",
-                  i.currentAmount,
-                  i.previousAmount,
-                  i.varianceAmount
-                ]))}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 shadow-sm"
-              >
-                Export CSV
-              </button>
-
-              <div className="px-4 py-2 rounded-xl text-sm font-bold bg-teal-50 text-teal-800 border border-teal-300 dark:bg-teal-950/30 dark:text-teal-300">
-                Closing Cash: {formatCurrency(props.cashFlow.closingCashAndBank)}
-              </div>
-            </div>
-          </div>
-
-          {/* Cash Flow Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
@@ -1025,20 +1018,44 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
       {/* 5. COMPARATIVE ANALYSIS TAB */}
       {/* ───────────────────────────────────────────────────────────────────────── */}
       {activeTab === "comparative" && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold tracking-widest text-teal-600 uppercase">Comparative Intelligence</span>
-                <span className="text-slate-300">•</span>
-                <span className="text-xs text-slate-500 font-medium">YoY Horizontal & Vertical Variance Analysis</span>
-              </div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
-                Comparative Financial Statements ({props.comparativePnl.currentPeriodLabel} vs {props.comparativePnl.previousPeriodLabel})
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Rigorous financial variance calculation handling zero/missing historical benchmarks cleanly.
-              </p>
+        <div className="space-y-4">
+          {/* Integrated Toolbar */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <select
+                value={selectedFy}
+                onChange={e => {
+                  setSelectedFy(e.target.value);
+                  applyFilters({ financialYear: e.target.value });
+                }}
+                className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+              >
+                <option value="FY 2026–27">FY 2026–27 (Current)</option>
+                <option value="FY 2025–26">FY 2025–26 (Previous)</option>
+                <option value="FY 2024–25">FY 2024–25</option>
+              </select>
+
+              <select
+                value={selectedPeriod}
+                onChange={e => {
+                  setSelectedPeriod(e.target.value);
+                  applyFilters({ period: e.target.value });
+                }}
+                className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+              >
+                <option value="ALL">Full Financial Year (1 Apr - 31 Mar)</option>
+                <option value="Q1">Q1 (Apr - Jun)</option>
+                <option value="Q2">Q2 (Jul - Sep)</option>
+                <option value="Q3">Q3 (Oct - Dec)</option>
+                <option value="Q4">Q4 (Jan - Mar)</option>
+                <option value="YTD">Year to Date (YTD)</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-500">
+                Comparing {props.comparativePnl.currentPeriodLabel} vs {props.comparativePnl.previousPeriodLabel}
+              </span>
             </div>
           </div>
 

@@ -22,17 +22,17 @@ export interface ReportsHubProps {
 }
 
 export const REPORT_CATEGORIES = [
-  { id: 'overview', name: 'Executive Reports', icon: '🏛️' },
-  { id: 'statements', name: 'Financial Statements', icon: '⚖️' },
-  { id: 'sales', name: 'Sales & Receivables', icon: '📈' },
-  { id: 'expenses', name: 'Expenses & Payables', icon: '📉' },
-  { id: 'gst', name: 'GST & Tax', icon: '📑' },
-  { id: 'tds', name: 'TDS', icon: '🏷️' },
-  { id: 'banking', name: 'Banking & Cash', icon: '🏦' },
-  { id: 'assets', name: 'Fixed Assets', icon: '🏢' },
-  { id: 'employees', name: 'Employees & Salary', icon: '👥' },
-  { id: 'analysis', name: 'Analysis', icon: '💡' },
-  { id: 'audit', name: 'Audit', icon: '🔍' },
+  { id: 'overview', name: 'Executive Reports', icon: '🏛️', description: 'High-level financial KPIs, health scorecard, and executive summary.' },
+  { id: 'statements', name: 'Financial Statements', icon: '⚖️', description: 'Standard accounting reports from the General Ledger.' },
+  { id: 'sales', name: 'Sales & Receivables', icon: '📈', description: 'Customer receivables, ageing analysis, and revenue insights.' },
+  { id: 'expenses', name: 'Expenses & Payables', icon: '📉', description: 'Vendor payables, ageing analysis, and expense categorization.' },
+  { id: 'gst', name: 'GST & Tax', icon: '📑', description: 'GSTR-1, GSTR-3B summaries, and tax liability reports.' },
+  { id: 'tds', name: 'TDS', icon: '🏷️', description: 'Tax Deducted at Source ledgers and quarterly returns.' },
+  { id: 'banking', name: 'Banking & Cash', icon: '🏦', description: 'Bank balances, cash in hand, and reconciliation statements.' },
+  { id: 'assets', name: 'Fixed Assets', icon: '🏢', description: 'Asset register and depreciation schedules.' },
+  { id: 'employees', name: 'Employees & Salary', icon: '👥', description: 'Payroll disbursements and employee advances.' },
+  { id: 'analysis', name: 'Analysis', icon: '💡', description: 'Financial ratios, variance analysis, and operational margins.' },
+  { id: 'audit', name: 'Audit', icon: '🔍', description: 'Audit trail, journal vouchers, and integrity validations.' },
 ];
 
 export function ReportsHubClient({
@@ -50,12 +50,8 @@ export function ReportsHubClient({
   const [selectedFY, setSelectedFY] = useState(financialYear || 'FY 2026–27');
   const [activeReportTab, setActiveReportTab] = useState<string>(tab || 'default');
 
-  const handleCategoryChange = (categoryId: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('category', categoryId);
-    params.delete('tab');
-    router.push(`/reports?${params.toString()}`);
-  };
+  const currentCategoryObj =
+    REPORT_CATEGORIES.find((c) => c.id === currentCategory) || REPORT_CATEGORIES[0];
 
   const handleFYChange = (newFY: string) => {
     setSelectedFY(newFY);
@@ -93,12 +89,14 @@ export function ReportsHubClient({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Header & Context */}
+    <div className="space-y-5">
+      {/* Dynamic Top Header & Context */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-[#D9E3DC] shadow-xs">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black text-[#17211B] tracking-tight">Reports</h1>
+            <h1 className="text-2xl font-black text-[#17211B] tracking-tight">
+              {currentCategoryObj.name}
+            </h1>
             <span
               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                 accountingEquilibrium.isBalanced
@@ -110,23 +108,25 @@ export function ReportsHubClient({
             </span>
           </div>
           <p className="text-xs text-[#68756C] mt-1 font-normal">
-            Authoritative financial and statutory reporting driven by AccountingEngine.
+            {currentCategoryObj.description}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-[#68756C]">FY:</label>
-            <select
-              value={selectedFY}
-              onChange={(e) => handleFYChange(e.target.value)}
-              className="px-3 py-1.5 text-xs bg-white border border-[#D9E3DC] rounded-xl font-semibold text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#177B55]"
-            >
-              <option value="FY 2026–27">FY 2026–27</option>
-              <option value="FY 2025–26">FY 2025–26</option>
-              <option value="FY 2024–25">FY 2024–25</option>
-            </select>
-          </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {currentCategory !== 'statements' && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-[#68756C]">FY:</label>
+              <select
+                value={selectedFY}
+                onChange={(e) => handleFYChange(e.target.value)}
+                className="px-3 py-1.5 text-xs bg-white border border-[#D9E3DC] rounded-xl font-semibold text-[#17211B] focus:outline-none focus:ring-2 focus:ring-[#177B55]"
+              >
+                <option value="FY 2026–27">FY 2026–27</option>
+                <option value="FY 2025–26">FY 2025–26</option>
+                <option value="FY 2024–25">FY 2024–25</option>
+              </select>
+            </div>
+          )}
 
           <button
             onClick={() => window.print()}
@@ -134,42 +134,27 @@ export function ReportsHubClient({
           >
             🖨️ Print
           </button>
-          <button
-            onClick={handleExportCSV}
-            className="px-3 py-1.5 text-xs font-semibold text-[#177B55] bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition"
+
+          <Link
+            href="/ledgers"
+            className="px-3 py-1.5 text-xs font-semibold text-[#4B5563] bg-white border border-[#D9E3DC] rounded-xl hover:bg-[#F4F7F3] shadow-xs transition inline-flex items-center gap-1"
           >
-            📥 Export CSV
-          </button>
+            Trace in Ledgers →
+          </Link>
+
+          {currentCategory !== 'statements' && (
+            <button
+              onClick={handleExportCSV}
+              className="px-3 py-1.5 text-xs font-semibold text-[#177B55] bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition shadow-xs flex items-center gap-1"
+            >
+              📥 Export CSV
+            </button>
+          )}
         </div>
       </div>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      {/* 1. REPORT CATEGORY NAVIGATION (Only in Reports)               */}
-      {/* ───────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs p-2 overflow-x-auto custom-scrollbar">
-        <nav className="flex space-x-1.5 min-w-max" aria-label="Report Categories">
-          {REPORT_CATEGORIES.map((cat) => {
-            const isActive = currentCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => handleCategoryChange(cat.id)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-                  isActive
-                    ? 'bg-[#177B55] text-white shadow-xs'
-                    : 'text-[#4B5563] hover:text-[#17211B] hover:bg-[#F4F7F3]'
-                }`}
-              >
-                <span>{cat.icon}</span>
-                <span>{cat.name}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* 2. REPORT CONTENT & RIBBON                                    */}
+      {/* REPORT CONTENT & RIBBON                                       */}
       {/* ───────────────────────────────────────────────────────────── */}
       {currentCategory === 'statements' ? (
         <FinancialStatementsRenderer
@@ -214,6 +199,7 @@ function FinancialStatementsRenderer({
 
   return (
     <FinancialStatementsClient
+      hideTopHeader={true}
       basePath="/reports?category=statements"
       currentFilters={{
         financialYear: selectedFY,

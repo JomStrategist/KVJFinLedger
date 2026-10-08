@@ -4,7 +4,18 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 
-const navItems = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ReactNode;
+  subItems?: {
+    name: string;
+    href: string;
+    icon: string;
+  }[];
+}
+
+const navItems: NavItem[] = [
   {
     name: "Dashboard",
     href: "/dashboard",
@@ -86,7 +97,20 @@ const navItems = [
         <rect x="9.75" y="4" width="4.5" height="17" rx="1.5" fill="#10B981" />
         <rect x="16.5" y="8" width="4.5" height="13" rx="1.5" fill="#EF4444" />
       </svg>
-    )
+    ),
+    subItems: [
+      { name: "Executive Reports", href: "/reports?category=overview", icon: "🏛️" },
+      { name: "Financial Statements", href: "/reports?category=statements", icon: "⚖️" },
+      { name: "Sales & Receivables", href: "/reports?category=sales", icon: "📈" },
+      { name: "Expenses & Payables", href: "/reports?category=expenses", icon: "📉" },
+      { name: "GST & Tax", href: "/reports?category=gst", icon: "📑" },
+      { name: "TDS", href: "/reports?category=tds", icon: "🏷️" },
+      { name: "Banking & Cash", href: "/reports?category=banking", icon: "🏦" },
+      { name: "Fixed Assets", href: "/reports?category=assets", icon: "🏢" },
+      { name: "Employees & Salary", href: "/reports?category=employees", icon: "👥" },
+      { name: "Analysis", href: "/reports?category=analysis", icon: "💡" },
+      { name: "Audit", href: "/reports?category=audit", icon: "🔍" },
+    ]
   },
   {
     name: "Opening/Closing",
@@ -167,27 +191,19 @@ export function Sidebar({
     if (!pathname.startsWith("/reports")) return false;
     
     // Check optimistic destination during transition
-    const activeUrl = optimisticHref || href;
-    const currentSubtab = searchParams?.get("subtab") || "overview";
+    const currentCategory = searchParams?.get("category") || searchParams?.get("subtab") || "overview";
     
-    let targetSubtab: string | null = null;
+    let targetCategory: string | null = null;
     try {
       const url = new URL(href, "http://localhost");
-      targetSubtab = url.searchParams.get("subtab");
+      targetCategory = url.searchParams.get("category") || url.searchParams.get("subtab");
     } catch {
-      targetSubtab = href.split("subtab=")[1] || null;
+      targetCategory = href.split("category=")[1]?.split("&")[0] || href.split("subtab=")[1]?.split("&")[0] || null;
     }
 
     if (optimisticHref && optimisticHref === href) return true;
 
-    if (targetSubtab === currentSubtab) return true;
-
-    // Grouping aliases for parent report sections
-    if (targetSubtab === "overview" && (!currentSubtab || currentSubtab === "overview" || currentSubtab === "insights" || currentSubtab === "ratios" || currentSubtab === "comparative")) return true;
-    if (targetSubtab === "pnl" && (currentSubtab === "bs" || currentSubtab === "cashflow")) return true;
-    if (targetSubtab === "receivables" && (currentSubtab === "payables" || currentSubtab === "revenue_ops" || currentSubtab === "expense_ops")) return true;
-    if (targetSubtab === "gst" && currentSubtab === "tds") return true;
-    if (targetSubtab === "schedule" && currentSubtab === "assets") return true;
+    if (targetCategory === currentCategory) return true;
 
     return false;
   };
