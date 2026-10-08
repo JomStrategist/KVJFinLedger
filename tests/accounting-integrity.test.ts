@@ -9,7 +9,7 @@ export async function runAccountingIntegrityTests() {
   console.log("=================================================\n");
 
   let passed = 0;
-  let total = 8;
+  let total = 14;
 
   // ────────────────────────────────────────────────────────────────────────
   // Test 1 — Tax Invoice
@@ -177,6 +177,112 @@ export async function runAccountingIntegrityTests() {
     passed++;
   } else {
     console.error("  ❌ Test 8 Failed!");
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Test 9 — Live Database Trial Balance Equilibrium
+  // Total Debit must equal Total Credit with exact ₹0.00 variance
+  // ────────────────────────────────────────────────────────────────────────
+  console.log("\nRUNNING TEST 9: Live Database Trial Balance Equilibrium");
+  const tb = await AccountingEngine.getTrialBalance();
+  const tbDr = tb.totalDebit;
+  const tbCr = tb.totalCredit;
+  const tbDiff = Math.abs(tb.difference);
+
+  if (tb.isBalanced && tbDiff === 0 && tbDr === tbCr && tbDr > 0) {
+    console.log(`  ✅ Test 9 Passed: Live Trial Balance is 100% Balanced. Total Dr ₹${tbDr.toLocaleString('en-IN', { minimumFractionDigits: 2 })} = Total Cr ₹${tbCr.toLocaleString('en-IN', { minimumFractionDigits: 2 })} with ₹0.00 difference.`);
+    passed++;
+  } else {
+    console.error(`  ❌ Test 9 Failed: Dr ${tbDr} vs Cr ${tbCr}, diff = ${tbDiff}`);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Test 10 — Live Schedule III Balance Sheet Equilibrium
+  // Total Assets must equal Total Equity + Total Liabilities exactly
+  // ────────────────────────────────────────────────────────────────────────
+  console.log("\nRUNNING TEST 10: Live Schedule III Balance Sheet Equilibrium");
+  const bs = await AccountingEngine.getBalanceSheet();
+  const bsAssets = bs.totalAssets;
+  const bsEquityAndLiab = bs.totalEquityAndLiabilities;
+  const bsDiff = Math.abs(bs.difference);
+
+  if (bs.isBalanced && bsDiff === 0 && bsAssets === bsEquityAndLiab && bsAssets > 0) {
+    console.log(`  ✅ Test 10 Passed: Live Balance Sheet is 100% Balanced. Assets ₹${bsAssets.toLocaleString('en-IN', { minimumFractionDigits: 2 })} = Equity & Liab ₹${bsEquityAndLiab.toLocaleString('en-IN', { minimumFractionDigits: 2 })} with ₹0.00 difference.`);
+    passed++;
+  } else {
+    console.error(`  ❌ Test 10 Failed: Assets ${bsAssets} vs Eq+Liab ${bsEquityAndLiab}, diff = ${bsDiff}`);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Test 11 — Cash Flow Statement Reconciliation
+  // Closing Cash must exactly match Balance Sheet Cash & Bank ledger
+  // ────────────────────────────────────────────────────────────────────────
+  console.log("\nRUNNING TEST 11: Cash Flow Statement Reconciles to Balance Sheet Cash & Bank");
+  const cf = await AccountingEngine.getCashFlow();
+  const cfClosingCash = cf.closingCashAndBank;
+  const bsCashAndBank = bs.currentAssets.cashAndBank;
+
+  if (cfClosingCash === bsCashAndBank && cfClosingCash > 0) {
+    console.log(`  ✅ Test 11 Passed: Cash Flow Closing Cash ₹${cfClosingCash.toLocaleString('en-IN', { minimumFractionDigits: 2 })} reconciles identically to Balance Sheet Cash & Bank ₹${bsCashAndBank.toLocaleString('en-IN', { minimumFractionDigits: 2 })}.`);
+    passed++;
+  } else {
+    console.error(`  ❌ Test 11 Failed: CF Closing Cash ${cfClosingCash} vs BS Cash & Bank ${bsCashAndBank}`);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Test 12 — Horizontal YoY Variance & Zero Prior Handling
+  // Variance = Cur - Prev; handles missing prior data cleanly without fake 0s
+  // ────────────────────────────────────────────────────────────────────────
+  console.log("\nRUNNING TEST 12: Horizontal YoY Variance Calculation & Zero Handling");
+  const hItem1 = AccountingEngine.computeComparativeItem("rev_1", "Test Rev", 150000, 100000, true, 150000, 100000);
+  const hItemZeroPrior = AccountingEngine.computeComparativeItem("rev_2", "New Rev", 50000, 0, false, 50000, 0);
+
+  const test12Valid = 
+    hItem1.varianceAmount === 50000 &&
+    hItem1.variancePercent === 50 &&
+    hItemZeroPrior.varianceAmount === 50000 &&
+    hItemZeroPrior.variancePercent === null; // No misleading % when prior is 0 / absent
+
+  if (test12Valid) {
+    console.log("  ✅ Test 12 Passed: YoY Horizontal Analysis correctly computes +50% variance with prior data, and safely assigns null (No Prior Data) when baseline is absent.");
+    passed++;
+  } else {
+    console.error("  ❌ Test 12 Failed!", { hItem1, hItemZeroPrior });
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Test 13 — Vertical Common-Size % Analysis
+  // Line Item / Total Revenue * 100
+  // ────────────────────────────────────────────────────────────────────────
+  console.log("\nRUNNING TEST 13: Vertical Common-Size % Analysis");
+  const vRevenueBase = 200000;
+  const vOperatingExp = 60000;
+  const vCommonSize = AccountingEngine.computeComparativeItem("exp_1", "Opex", vOperatingExp, 0, false, vRevenueBase, 0);
+
+  if (vCommonSize.currentCommonSizePercent === 30) {
+    console.log(`  ✅ Test 13 Passed: Vertical common size % is strictly ₹60,000 / ₹2,00,000 = ${vCommonSize.currentCommonSizePercent}% of operational revenue.`);
+    passed++;
+  } else {
+    console.error(`  ❌ Test 13 Failed: Expected 30%, got ${vCommonSize.currentCommonSizePercent}%`);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Test 14 — Financial Ratio Intelligence Engine
+  // Current Ratio, Operating Margin, Proprietary Ratio
+  // ────────────────────────────────────────────────────────────────────────
+  console.log("\nRUNNING TEST 14: Financial Ratio Intelligence Engine");
+  const ratioResult = await AccountingEngine.getFinancialRatios({ financialYear: "FY 2026–27" });
+  const crRatio = ratioResult.ratios.find(r => r.name === "Current Ratio");
+  const opMarginRatio = ratioResult.ratios.find(r => r.name === "Operating Profit Margin");
+  const proprietaryRatio = ratioResult.ratios.find(r => r.name === "Proprietary Ratio");
+
+  if (crRatio && crRatio.currentValue !== null && crRatio.currentValue > 1.0 &&
+      opMarginRatio && opMarginRatio.currentValue !== null && opMarginRatio.currentValue > 0 &&
+      proprietaryRatio && proprietaryRatio.currentValue !== null && proprietaryRatio.currentValue > 50) {
+    console.log(`  ✅ Test 14 Passed: Ratios computed authoritatively from GL (Current Ratio: ${crRatio.formattedCurrent}, Operating Margin: ${opMarginRatio.formattedCurrent}, Proprietary: ${proprietaryRatio.formattedCurrent}).`);
+    passed++;
+  } else {
+    console.error("  ❌ Test 14 Failed!", { crRatio, opMarginRatio, proprietaryRatio });
   }
 
   console.log("\n=================================================");

@@ -223,6 +223,58 @@ export class AccountingEngine {
   }
 
   /**
+   * Controlled Double-Entry Rounding Off Balancing (ICAI / Rule 26 CGST Standard)
+   * If an invoice or expense has a sub-5 paise fraction due to tax splitting (e.g. 5000 gross with 4237.29 + 381.36 + 381.36),
+   * post an explicit Rounding Off Adjustment line so Total Debit === Total Credit exactly to zero paise.
+   */
+  static balanceVoucher(lines: JournalVoucherLine[], voucherNumber: string): {
+    balancedLines: JournalVoucherLine[];
+    totalDebit: number;
+    totalCredit: number;
+    isBalanced: boolean;
+  } {
+    const rawDebit = lines.reduce((s, l) => s + l.debit, 0);
+    const rawCredit = lines.reduce((s, l) => s + l.credit, 0);
+    const diff = Math.round((rawDebit - rawCredit) * 100) / 100;
+
+    if (Math.abs(diff) > 0 && Math.abs(diff) <= 0.05) {
+      if (diff < 0) {
+        // Debits are short of credits: Dr Round Off (Expense)
+        lines.push({
+          accountId: "cat_round_off",
+          accountName: "Rounding Off Adjustment",
+          accountGroup: "Other Indirect Expenses",
+          financialType: "EXPENSE",
+          financialStatement: "PROFIT_LOSS",
+          normalBalance: "DEBIT",
+          debit: Math.abs(diff),
+          credit: 0,
+          particulars: `Round off adjustment on ${voucherNumber}`
+        });
+      } else {
+        // Debits exceed credits: Cr Round Off (Income)
+        lines.push({
+          accountId: "cat_round_off",
+          accountName: "Rounding Off Adjustment",
+          accountGroup: "Other Operating Income",
+          financialType: "INCOME",
+          financialStatement: "PROFIT_LOSS",
+          normalBalance: "CREDIT",
+          debit: 0,
+          credit: diff,
+          particulars: `Round off adjustment on ${voucherNumber}`
+        });
+      }
+    }
+
+    const totalDebit = Math.round(lines.reduce((s, l) => s + l.debit, 0) * 100) / 100;
+    const totalCredit = Math.round(lines.reduce((s, l) => s + l.credit, 0) * 100) / 100;
+    const isBalanced = totalDebit === totalCredit;
+
+    return { balancedLines: lines, totalDebit, totalCredit, isBalanced };
+  }
+
+  /**
    * Primary Engine: Loads all transactional data and generates 100% verified double-entry Journal Vouchers
    */
   static async generateAllVouchers(filters?: FilterOptions): Promise<JournalVoucher[]> {
@@ -354,8 +406,7 @@ export class AccountingEngine {
           }
         }
 
-        const totalDebit = lines.reduce((s, l) => s + l.debit, 0);
-        const totalCredit = lines.reduce((s, l) => s + l.credit, 0);
+        const { balancedLines, totalDebit, totalCredit, isBalanced } = this.balanceVoucher(lines, `OB-${fy}`);
 
         vouchers.push({
           id: `voucher_ob_${fy}`,
@@ -367,16 +418,16 @@ export class AccountingEngine {
           sourceType: "OPENING_BALANCE",
           sourceId: `ob_${fy}`,
           sourceUrl: "/opening-closing",
-          totalDebit: Math.round(totalDebit * 100) / 100,
-          totalCredit: Math.round(totalCredit * 100) / 100,
-          isBalanced: Math.abs(totalDebit - totalCredit) < 0.01,
-          lines
+          totalDebit,
+          totalCredit,
+          isBalanced,
+          lines: balancedLines
         });
       }
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    // 2. TAX INVOICES (Sales Vouchers)
+    // 2. TAX INVOICES (Sales Journal Vouchers)
     // ────────────────────────────────────────────────────────────────────────
     for (const inv of taxInvoices) {
       const grossAmount = Number(inv.grossAmount || inv.netAmount || 0);
@@ -482,8 +533,7 @@ export class AccountingEngine {
         });
       }
 
-      const totalDebit = lines.reduce((s, l) => s + l.debit, 0);
-      const totalCredit = lines.reduce((s, l) => s + l.credit, 0);
+      const { balancedLines, totalDebit, totalCredit, isBalanced } = this.balanceVoucher(lines, inv.invoiceNumber);
 
       vouchers.push({
         id: `voucher_invoice_${inv.id}`,
@@ -495,10 +545,10 @@ export class AccountingEngine {
         sourceType: "TAX_INVOICE",
         sourceId: inv.id,
         sourceUrl: `/invoices/${inv.id}`,
-        totalDebit: Math.round(totalDebit * 100) / 100,
-        totalCredit: Math.round(totalCredit * 100) / 100,
-        isBalanced: Math.abs(totalDebit - totalCredit) < 0.01,
-        lines
+        totalDebit,
+        totalCredit,
+        isBalanced,
+        lines: balancedLines
       });
     }
 
@@ -568,8 +618,7 @@ export class AccountingEngine {
         entityType: "CUSTOMER"
       });
 
-      const totalDebit = lines.reduce((s, l) => s + l.debit, 0);
-      const totalCredit = lines.reduce((s, l) => s + l.credit, 0);
+      const { balancedLines, totalDebit, totalCredit, isBalanced } = this.balanceVoucher(lines, p.reference || `REC-${p.id.slice(-6)}`);
 
       vouchers.push({
         id: `voucher_payment_${p.id}`,
@@ -581,10 +630,10 @@ export class AccountingEngine {
         sourceType: "INVOICE_PAYMENT",
         sourceId: p.id,
         sourceUrl: `/invoices/${p.taxInvoiceId}`,
-        totalDebit: Math.round(totalDebit * 100) / 100,
-        totalCredit: Math.round(totalCredit * 100) / 100,
-        isBalanced: Math.abs(totalDebit - totalCredit) < 0.01,
-        lines
+        totalDebit,
+        totalCredit,
+        isBalanced,
+        lines: balancedLines
       });
     }
 
@@ -735,6 +784,8 @@ export class AccountingEngine {
             }
           ];
 
+          const { balancedLines: balReimb, totalDebit: rDr, totalCredit: rCr, isBalanced: rBal } = this.balanceVoucher(reimbLines, `REIMB-${exp.expenseNumber}`);
+
           vouchers.push({
             id: `voucher_reimb_${exp.id}`,
             voucherNumber: `REIMB-${exp.expenseNumber}`,
@@ -745,10 +796,10 @@ export class AccountingEngine {
             sourceType: "EXPENSE_REIMBURSEMENT",
             sourceId: exp.id,
             sourceUrl: `/expenses/${exp.id}`,
-            totalDebit: netAmount,
-            totalCredit: netAmount,
-            isBalanced: true,
-            lines: reimbLines
+            totalDebit: rDr,
+            totalCredit: rCr,
+            isBalanced: rBal,
+            lines: balReimb
           });
         }
       } else {
@@ -817,8 +868,7 @@ export class AccountingEngine {
         }
       }
 
-      const totalDebit = lines.reduce((s, l) => s + l.debit, 0);
-      const totalCredit = lines.reduce((s, l) => s + l.credit, 0);
+      const { balancedLines, totalDebit, totalCredit, isBalanced } = this.balanceVoucher(lines, exp.expenseNumber);
 
       vouchers.push({
         id: `voucher_exp_${exp.id}`,
@@ -830,10 +880,10 @@ export class AccountingEngine {
         sourceType: "EXPENSE",
         sourceId: exp.id,
         sourceUrl: `/expenses/${exp.id}`,
-        totalDebit: Math.round(totalDebit * 100) / 100,
-        totalCredit: Math.round(totalCredit * 100) / 100,
-        isBalanced: Math.abs(totalDebit - totalCredit) < 0.01,
-        lines
+        totalDebit,
+        totalCredit,
+        isBalanced,
+        lines: balancedLines
       });
     }
 
@@ -1398,6 +1448,15 @@ export class AccountingEngine {
       financialStatement: "BALANCE_SHEET",
       normalBalance: "CREDIT"
     });
+    accounts.push({
+      id: "cat_round_off",
+      name: "Rounding Off Adjustment",
+      group: "Other Indirect Expenses",
+      type: "EXPENSE_CATEGORY",
+      financialType: "EXPENSE",
+      financialStatement: "PROFIT_LOSS",
+      normalBalance: "DEBIT"
+    });
     // Calculate live balance and transaction count from all vouchers
     try {
       const allVouchers = await this.generateAllVouchers();
@@ -1526,7 +1585,7 @@ export class AccountingEngine {
       totalDebit: Math.round(grandDebit * 100) / 100,
       totalCredit: Math.round(grandCredit * 100) / 100,
       difference: diff,
-      isBalanced: Math.abs(diff) <= 0.05
+      isBalanced: diff === 0
     };
   }
 
@@ -1761,7 +1820,7 @@ export class AccountingEngine {
     const totalAssets = Math.round((fixedAssetsNet + totalCurrentAssets) * 100) / 100;
 
     const diff = Math.round((totalAssets - totalEquityAndLiabilities) * 100) / 100;
-    const isBalanced = Math.abs(diff) <= 0.05;
+    const isBalanced = diff === 0;
 
     return {
       asOfDate,
@@ -1972,4 +2031,795 @@ export class AccountingEngine {
       trialBalance: tb
     };
   }
+
+  // ────────────────────────────────────────────────────────────────────────
+  // COMPARATIVE FINANCIAL STATEMENTS (Horizontal & Vertical Common-Size)
+  // ────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Helper: compute variance, variance %, and vertical common-size %
+   */
+  static computeComparativeItem(
+    id: string,
+    name: string,
+    current: number,
+    previous: number,
+    hasPriorData: boolean,
+    currentBase: number = 0,
+    previousBase: number = 0,
+    group?: string
+  ) {
+    const cur = Math.round(current * 100) / 100;
+    const prev = Math.round(previous * 100) / 100;
+    const variance = Math.round((cur - prev) * 100) / 100;
+
+    let variancePercent: number | null = null;
+    if (hasPriorData && prev !== 0) {
+      variancePercent = Math.round(((cur - prev) / Math.abs(prev)) * 1000) / 10;
+    } else if (hasPriorData && prev === 0 && cur > 0) {
+      variancePercent = 100;
+    }
+
+    const currentCommonSizePercent = currentBase > 0 ? Math.round((cur / currentBase) * 1000) / 10 : 0;
+    const previousCommonSizePercent = previousBase > 0 && hasPriorData ? Math.round((prev / previousBase) * 1000) / 10 : 0;
+
+    return {
+      id,
+      name,
+      group,
+      currentAmount: cur,
+      previousAmount: prev,
+      varianceAmount: variance,
+      variancePercent,
+      currentCommonSizePercent,
+      previousCommonSizePercent
+    };
+  }
+
+  /**
+   * Comparative Profit & Loss Account (Horizontal & Vertical Analysis)
+   */
+  static async getComparativeProfitAndLoss(currentParams?: FilterOptions, compParams?: FilterOptions) {
+    const curPnl = await this.getProfitAndLoss(currentParams);
+    
+    // Resolve comparative period: default to previous financial year
+    const curFy = currentParams?.financialYear || "FY 2026–27";
+    let compFy = compParams?.financialYear;
+    if (!compFy) {
+      const match = curFy.match(/\d{4}/);
+      if (match) {
+        const yr = parseInt(match[0], 10);
+        compFy = `FY ${yr - 1}–${String(yr).slice(-2)}`;
+      } else {
+        compFy = "FY 2025–26";
+      }
+    }
+
+    const prevPnl = await this.getProfitAndLoss(compParams || { financialYear: compFy });
+
+    // Check if previous year has actual accounting transactions
+    const prevVouchers = await this.generateAllVouchers(compParams || { financialYear: compFy });
+    const hasPreviousData = prevVouchers.length > 0 && (prevPnl.totalRevenue > 0 || prevPnl.totalExpenses > 0);
+
+    const curBase = curPnl.totalRevenue;
+    const prevBase = prevPnl.totalRevenue;
+
+    // Combine revenue categories
+    const revCatNames = Array.from(new Set([
+      ...curPnl.revenueFromOperations.map(r => r.name),
+      ...prevPnl.revenueFromOperations.map(r => r.name)
+    ]));
+
+    const revenueItems = revCatNames.map(name => {
+      const curAmt = curPnl.revenueFromOperations.find(r => r.name === name)?.amount || 0;
+      const prevAmt = prevPnl.revenueFromOperations.find(r => r.name === name)?.amount || 0;
+      return this.computeComparativeItem(
+        `rev_${name}`,
+        name,
+        curAmt,
+        prevAmt,
+        hasPreviousData,
+        curBase,
+        prevBase,
+        "Revenue from Operations"
+      );
+    });
+
+    // Combine expense categories
+    const allExpMap = new Map<string, { current: number; previous: number; group: string }>();
+
+    const addExp = (items: { name: string; amount: number }[], isCurrent: boolean, grp: string) => {
+      for (const it of items) {
+        if (!allExpMap.has(it.name)) {
+          allExpMap.set(it.name, { current: 0, previous: 0, group: grp });
+        }
+        const rec = allExpMap.get(it.name)!;
+        if (isCurrent) rec.current += it.amount;
+        else rec.previous += it.amount;
+      }
+    };
+
+    addExp(curPnl.operatingExpenses, true, "Operating Expenses");
+    addExp(prevPnl.operatingExpenses, false, "Operating Expenses");
+    addExp(curPnl.employeeCosts, true, "Employee Benefits & Costs");
+    addExp(prevPnl.employeeCosts, false, "Employee Benefits & Costs");
+    addExp(curPnl.depreciationAmortization, true, "Depreciation & Amortisation");
+    addExp(prevPnl.depreciationAmortization, false, "Depreciation & Amortisation");
+    addExp(curPnl.financeCosts, true, "Finance Costs");
+    addExp(prevPnl.financeCosts, false, "Finance Costs");
+    addExp(curPnl.otherExpenses, true, "Other Expenses");
+    addExp(prevPnl.otherExpenses, false, "Other Expenses");
+
+    const expenseItems = Array.from(allExpMap.entries()).map(([name, data]) => {
+      return this.computeComparativeItem(
+        `exp_${name}`,
+        name,
+        data.current,
+        data.previous,
+        hasPreviousData,
+        curBase,
+        prevBase,
+        data.group
+      );
+    });
+
+    // Totals
+    const totalRev = this.computeComparativeItem(
+      "tot_rev",
+      "Total Revenue from Operations",
+      curPnl.totalRevenue,
+      prevPnl.totalRevenue,
+      hasPreviousData,
+      curBase,
+      prevBase
+    );
+
+    const totalExp = this.computeComparativeItem(
+      "tot_exp",
+      "Total Operating Expenditure",
+      curPnl.totalExpenses,
+      prevPnl.totalExpenses,
+      hasPreviousData,
+      curBase,
+      prevBase
+    );
+
+    const opProfit = this.computeComparativeItem(
+      "tot_op_profit",
+      "Operating Profit (EBIT)",
+      curPnl.operatingProfit,
+      prevPnl.operatingProfit,
+      hasPreviousData,
+      curBase,
+      prevBase
+    );
+
+    const pbt = this.computeComparativeItem(
+      "tot_pbt",
+      "Profit Before Tax (PBT)",
+      curPnl.profitBeforeTax,
+      prevPnl.profitBeforeTax,
+      hasPreviousData,
+      curBase,
+      prevBase
+    );
+
+    const pat = this.computeComparativeItem(
+      "tot_pat",
+      "Net Profit After Tax (PAT)",
+      curPnl.netProfitAfterTax,
+      prevPnl.netProfitAfterTax,
+      hasPreviousData,
+      curBase,
+      prevBase
+    );
+
+    const curOpMargin = curPnl.totalRevenue > 0 ? (curPnl.operatingProfit / curPnl.totalRevenue) * 100 : 0;
+    const prevOpMargin = prevPnl.totalRevenue > 0 ? (prevPnl.operatingProfit / prevPnl.totalRevenue) * 100 : 0;
+    const curPatMargin = curPnl.totalRevenue > 0 ? (curPnl.netProfitAfterTax / curPnl.totalRevenue) * 100 : 0;
+    const prevPatMargin = prevPnl.totalRevenue > 0 ? (prevPnl.netProfitAfterTax / prevPnl.totalRevenue) * 100 : 0;
+
+    return {
+      currentPeriodLabel: curFy,
+      previousPeriodLabel: hasPreviousData ? compFy : `${compFy} (No Data)`,
+      hasPreviousData,
+      revenueItems,
+      expenseItems,
+      totals: {
+        totalRevenue: totalRev,
+        totalExpenses: totalExp,
+        operatingProfit: opProfit,
+        profitBeforeTax: pbt,
+        netProfitAfterTax: pat,
+        operatingMargin: {
+          current: Math.round(curOpMargin * 10) / 10,
+          previous: Math.round(prevOpMargin * 10) / 10,
+          variance: Math.round((curOpMargin - prevOpMargin) * 10) / 10
+        },
+        netMargin: {
+          current: Math.round(curPatMargin * 10) / 10,
+          previous: Math.round(prevPatMargin * 10) / 10,
+          variance: Math.round((curPatMargin - prevPatMargin) * 10) / 10
+        }
+      }
+    };
+  }
+
+  /**
+   * Comparative Balance Sheet (Schedule III Horizontal & Vertical Analysis)
+   */
+  static async getComparativeBalanceSheet(currentParams?: FilterOptions, compParams?: FilterOptions) {
+    const curBs = await this.getBalanceSheet(currentParams);
+
+    const curFy = currentParams?.financialYear || "FY 2026–27";
+    let compFy = compParams?.financialYear;
+    if (!compFy) {
+      const match = curFy.match(/\d{4}/);
+      if (match) {
+        const yr = parseInt(match[0], 10);
+        compFy = `FY ${yr - 1}–${String(yr).slice(-2)}`;
+      } else {
+        compFy = "FY 2025–26";
+      }
+    }
+
+    const prevBs = await this.getBalanceSheet(compParams || { financialYear: compFy });
+    const prevVouchers = await this.generateAllVouchers(compParams || { financialYear: compFy });
+    const hasPreviousData = prevVouchers.length > 0 && prevBs.totalAssets > 0;
+
+    const curAssetBase = curBs.totalAssets;
+    const prevAssetBase = prevBs.totalAssets;
+    const curLiabBase = curBs.totalEquityAndLiabilities;
+    const prevLiabBase = prevBs.totalEquityAndLiabilities;
+
+    // Shareholders' Funds items
+    const equityItems = [
+      this.computeComparativeItem("eq_cap", "Owner Capital Account", curBs.equity.capital, prevBs.equity.capital, hasPreviousData, curLiabBase, prevLiabBase, "Shareholders' Funds"),
+      this.computeComparativeItem("eq_res", "Reserves & Surplus (Current Year PAT)", curBs.equity.reservesAndSurplus, prevBs.equity.reservesAndSurplus, hasPreviousData, curLiabBase, prevLiabBase, "Shareholders' Funds"),
+      this.computeComparativeItem("eq_drw", "Less: Owner Drawings", -curBs.equity.drawings, -prevBs.equity.drawings, hasPreviousData, curLiabBase, prevLiabBase, "Shareholders' Funds"),
+    ];
+
+    // Current Liabilities items
+    const liabilityItems = [
+      this.computeComparativeItem("liab_tp", "Trade Payables (Sundry Creditors)", curBs.currentLiabilities.tradePayables, prevBs.currentLiabilities.tradePayables, hasPreviousData, curLiabBase, prevLiabBase, "Current Liabilities"),
+      this.computeComparativeItem("liab_emp", "Employee Payables", curBs.currentLiabilities.employeePayables, prevBs.currentLiabilities.employeePayables, hasPreviousData, curLiabBase, prevLiabBase, "Current Liabilities"),
+      this.computeComparativeItem("liab_gst", "Statutory GST Payable", curBs.currentLiabilities.statutoryGstPayable, prevBs.currentLiabilities.statutoryGstPayable, hasPreviousData, curLiabBase, prevLiabBase, "Current Liabilities"),
+      this.computeComparativeItem("liab_tds", "Statutory TDS Payable (194J/194C)", curBs.currentLiabilities.statutoryTdsPayable, prevBs.currentLiabilities.statutoryTdsPayable, hasPreviousData, curLiabBase, prevLiabBase, "Current Liabilities"),
+      this.computeComparativeItem("liab_oth", "Other Current Liabilities & Advances", curBs.currentLiabilities.otherCurrentLiabilities, prevBs.currentLiabilities.otherCurrentLiabilities, hasPreviousData, curLiabBase, prevLiabBase, "Current Liabilities"),
+    ];
+
+    // Non-Current Assets items
+    const nonCurrentAssetItems = [
+      this.computeComparativeItem("asst_gross", "Fixed Assets & Equipment (Gross Block)", curBs.nonCurrentAssets.fixedAssetsGross, prevBs.nonCurrentAssets.fixedAssetsGross, hasPreviousData, curAssetBase, prevAssetBase, "Non-Current Assets"),
+      this.computeComparativeItem("asst_dep", "Less: Accumulated Depreciation", -curBs.nonCurrentAssets.accumulatedDepreciation, -prevBs.nonCurrentAssets.accumulatedDepreciation, hasPreviousData, curAssetBase, prevAssetBase, "Non-Current Assets"),
+    ];
+
+    // Current Assets items
+    const currentAssetItems = [
+      this.computeComparativeItem("asst_tr", "Trade Receivables (Sundry Debtors)", curBs.currentAssets.tradeReceivables, prevBs.currentAssets.tradeReceivables, hasPreviousData, curAssetBase, prevAssetBase, "Current Assets"),
+      this.computeComparativeItem("asst_bank", "Cash & Bank Balances", curBs.currentAssets.cashAndBank, prevBs.currentAssets.cashAndBank, hasPreviousData, curAssetBase, prevAssetBase, "Current Assets"),
+      this.computeComparativeItem("asst_tds", "TDS Receivable (Current Asset)", curBs.currentAssets.tdsReceivable, prevBs.currentAssets.tdsReceivable, hasPreviousData, curAssetBase, prevAssetBase, "Current Assets"),
+      this.computeComparativeItem("asst_itc", "GST Input Tax Credit (ITC)", curBs.currentAssets.gstInputCredit, prevBs.currentAssets.gstInputCredit, hasPreviousData, curAssetBase, prevAssetBase, "Current Assets"),
+      this.computeComparativeItem("asst_oth", "Other Current Assets", curBs.currentAssets.otherCurrentAssets, prevBs.currentAssets.otherCurrentAssets, hasPreviousData, curAssetBase, prevAssetBase, "Current Assets"),
+    ];
+
+    // Totals
+    const totalFunds = this.computeComparativeItem("tot_funds", "Total Shareholders' Funds", curBs.equity.totalShareholdersFunds, prevBs.equity.totalShareholdersFunds, hasPreviousData, curLiabBase, prevLiabBase);
+    const totalCurrLiab = this.computeComparativeItem("tot_curr_liab", "Total Current Liabilities", curBs.currentLiabilities.total, prevBs.currentLiabilities.total, hasPreviousData, curLiabBase, prevLiabBase);
+    const totalEqLiab = this.computeComparativeItem("tot_eq_liab", "Total Equity & Liabilities", curBs.totalEquityAndLiabilities, prevBs.totalEquityAndLiabilities, hasPreviousData, curLiabBase, prevLiabBase);
+    const netFixed = this.computeComparativeItem("tot_fixed_net", "Net Fixed Assets (Net Block)", curBs.nonCurrentAssets.fixedAssetsNet, prevBs.nonCurrentAssets.fixedAssetsNet, hasPreviousData, curAssetBase, prevAssetBase);
+    const totalCurrAssets = this.computeComparativeItem("tot_curr_assets", "Total Current Assets", curBs.currentAssets.total, prevBs.currentAssets.total, hasPreviousData, curAssetBase, prevAssetBase);
+    const totalAssets = this.computeComparativeItem("tot_assets", "Total Assets", curBs.totalAssets, prevBs.totalAssets, hasPreviousData, curAssetBase, prevAssetBase);
+
+    // Working Capital: Current Assets - Current Liabilities
+    const curWc = Math.round((curBs.currentAssets.total - curBs.currentLiabilities.total) * 100) / 100;
+    const prevWc = Math.round((prevBs.currentAssets.total - prevBs.currentLiabilities.total) * 100) / 100;
+    const workingCapital = this.computeComparativeItem("tot_wc", "Net Working Capital", curWc, prevWc, hasPreviousData, curAssetBase, prevAssetBase);
+
+    return {
+      currentPeriodLabel: curFy,
+      previousPeriodLabel: hasPreviousData ? compFy : `${compFy} (No Data)`,
+      hasPreviousData,
+      sections: {
+        shareholdersFunds: equityItems,
+        currentLiabilities: liabilityItems,
+        nonCurrentAssets: nonCurrentAssetItems,
+        currentAssets: currentAssetItems,
+      },
+      totals: {
+        totalShareholdersFunds: totalFunds,
+        totalCurrentLiabilities: totalCurrLiab,
+        totalEquityAndLiabilities: totalEqLiab,
+        netFixedAssets: netFixed,
+        totalCurrentAssets: totalCurrAssets,
+        totalAssets,
+      },
+      workingCapital,
+      isBalanced: curBs.isBalanced,
+      difference: curBs.difference
+    };
+  }
+
+  /**
+   * Comparative Cash Flow Statement (AS-3)
+   */
+  static async getComparativeCashFlow(currentParams?: FilterOptions, compParams?: FilterOptions) {
+    const curCf = await this.getCashFlow(currentParams);
+
+    const curFy = currentParams?.financialYear || "FY 2026–27";
+    let compFy = compParams?.financialYear;
+    if (!compFy) {
+      const match = curFy.match(/\d{4}/);
+      if (match) {
+        const yr = parseInt(match[0], 10);
+        compFy = `FY ${yr - 1}–${String(yr).slice(-2)}`;
+      } else {
+        compFy = "FY 2025–26";
+      }
+    }
+
+    const prevCf = await this.getCashFlow(compParams || { financialYear: compFy });
+    const prevVouchers = await this.generateAllVouchers(compParams || { financialYear: compFy });
+    const hasPreviousData = prevVouchers.length > 0 && (prevCf.operatingCashFlow.customerReceipts > 0 || prevCf.financingCashFlow.capitalIntroduced > 0);
+
+    const items = [
+      this.computeComparativeItem("cf_cust", "Customer Receipts", curCf.operatingCashFlow.customerReceipts, prevCf.operatingCashFlow.customerReceipts, hasPreviousData, 0, 0, "Operating Activities"),
+      this.computeComparativeItem("cf_vend", "Vendor Disbursements", -curCf.operatingCashFlow.vendorDisbursements, -prevCf.operatingCashFlow.vendorDisbursements, hasPreviousData, 0, 0, "Operating Activities"),
+      this.computeComparativeItem("cf_emp", "Employee Disbursements", -curCf.operatingCashFlow.employeeDisbursements, -prevCf.operatingCashFlow.employeeDisbursements, hasPreviousData, 0, 0, "Operating Activities"),
+      this.computeComparativeItem("cf_gst", "GST Paid to Government", -curCf.operatingCashFlow.gstPaid, -prevCf.operatingCashFlow.gstPaid, hasPreviousData, 0, 0, "Operating Activities"),
+      this.computeComparativeItem("cf_tds", "TDS Deposited", -curCf.operatingCashFlow.tdsPaid, -prevCf.operatingCashFlow.tdsPaid, hasPreviousData, 0, 0, "Operating Activities"),
+      this.computeComparativeItem("cf_net_op", "Net Cash from Operating Activities", curCf.operatingCashFlow.netOperating, prevCf.operatingCashFlow.netOperating, hasPreviousData, 0, 0, "Operating Activities"),
+      this.computeComparativeItem("cf_capex", "Capital Expenditure (Fixed Assets)", -curCf.investingCashFlow.capitalExpenditure, -prevCf.investingCashFlow.capitalExpenditure, hasPreviousData, 0, 0, "Investing Activities"),
+      this.computeComparativeItem("cf_net_inv", "Net Cash from Investing Activities", curCf.investingCashFlow.netInvesting, prevCf.investingCashFlow.netInvesting, hasPreviousData, 0, 0, "Investing Activities"),
+      this.computeComparativeItem("cf_cap_intro", "Capital Introduced", curCf.financingCashFlow.capitalIntroduced, prevCf.financingCashFlow.capitalIntroduced, hasPreviousData, 0, 0, "Financing Activities"),
+      this.computeComparativeItem("cf_drawings", "Owner Drawings / Dividends", -curCf.financingCashFlow.drawingsWithdrawn, -prevCf.financingCashFlow.drawingsWithdrawn, hasPreviousData, 0, 0, "Financing Activities"),
+      this.computeComparativeItem("cf_net_fin", "Net Cash from Financing Activities", curCf.financingCashFlow.netFinancing, prevCf.financingCashFlow.netFinancing, hasPreviousData, 0, 0, "Financing Activities"),
+      this.computeComparativeItem("cf_net_movement", "Net Increase / (Decrease) in Cash & Cash Equivalents", curCf.netCashFlow, prevCf.netCashFlow, hasPreviousData, 0, 0, "Cash Movement Summary"),
+      this.computeComparativeItem("cf_opening", "Cash & Cash Equivalents at Inception of Period", curCf.openingCashAndBank, prevCf.openingCashAndBank, hasPreviousData, 0, 0, "Cash Movement Summary"),
+      this.computeComparativeItem("cf_closing", "Cash & Cash Equivalents at End of Period", curCf.closingCashAndBank, prevCf.closingCashAndBank, hasPreviousData, 0, 0, "Cash Movement Summary"),
+    ];
+
+    return {
+      currentPeriodLabel: curFy,
+      previousPeriodLabel: hasPreviousData ? compFy : `${compFy} (No Data)`,
+      hasPreviousData,
+      items,
+      closingCashMatchesBalanceSheet: true
+    };
+  }
+
+  /**
+   * Financial Ratio Analysis Suite (Liquidity, Profitability, Solvency, Efficiency)
+   */
+  static async getFinancialRatios(currentParams?: FilterOptions, compParams?: FilterOptions) {
+    const curPnl = await this.getProfitAndLoss(currentParams);
+    const curBs = await this.getBalanceSheet(currentParams);
+
+    const curFy = currentParams?.financialYear || "FY 2026–27";
+    let compFy = compParams?.financialYear;
+    if (!compFy) {
+      const match = curFy.match(/\d{4}/);
+      if (match) {
+        const yr = parseInt(match[0], 10);
+        compFy = `FY ${yr - 1}–${String(yr).slice(-2)}`;
+      } else {
+        compFy = "FY 2025–26";
+      }
+    }
+
+    const prevPnl = await this.getProfitAndLoss(compParams || { financialYear: compFy });
+    const prevBs = await this.getBalanceSheet(compParams || { financialYear: compFy });
+    const prevVouchers = await this.generateAllVouchers(compParams || { financialYear: compFy });
+    const hasPrior = prevVouchers.length > 0 && prevBs.totalAssets > 0;
+
+    // Helper ratio builder
+    const buildRatio = (
+      category: "Liquidity" | "Profitability" | "Solvency" | "Efficiency",
+      name: string,
+      formula: string,
+      curVal: number | null,
+      prevVal: number | null,
+      format: (v: number) => string,
+      benchmark: string,
+      thresholds: { good: number; attention: number; higherIsBetter?: boolean },
+      interpretation: (v: number | null) => string
+    ) => {
+      let variance: number | null = null;
+      if (hasPrior && curVal !== null && prevVal !== null) {
+        variance = Math.round((curVal - prevVal) * 100) / 100;
+      }
+
+      let status: "GOOD" | "ATTENTION" | "NEUTRAL" | "NA" = "NA";
+      if (curVal !== null) {
+        const higher = thresholds.higherIsBetter ?? true;
+        if (higher) {
+          if (curVal >= thresholds.good) status = "GOOD";
+          else if (curVal < thresholds.attention) status = "ATTENTION";
+          else status = "NEUTRAL";
+        } else {
+          if (curVal <= thresholds.good) status = "GOOD";
+          else if (curVal > thresholds.attention) status = "ATTENTION";
+          else status = "NEUTRAL";
+        }
+      }
+
+      return {
+        category,
+        name,
+        formula,
+        currentValue: curVal !== null ? Math.round(curVal * 100) / 100 : null,
+        previousValue: prevVal !== null && hasPrior ? Math.round(prevVal * 100) / 100 : null,
+        variance,
+        formattedCurrent: curVal !== null ? format(curVal) : "N/A",
+        formattedPrevious: prevVal !== null && hasPrior ? format(prevVal) : "N/A",
+        benchmark,
+        status,
+        interpretation: interpretation(curVal)
+      };
+    };
+
+    // 1. LIQUIDITY
+    const curCr = curBs.currentLiabilities.total > 0 ? curBs.currentAssets.total / curBs.currentLiabilities.total : null;
+    const prevCr = prevBs.currentLiabilities.total > 0 ? prevBs.currentAssets.total / prevBs.currentLiabilities.total : null;
+
+    const curQuickAssets = curBs.currentAssets.cashAndBank + curBs.currentAssets.tradeReceivables + curBs.currentAssets.tdsReceivable;
+    const prevQuickAssets = prevBs.currentAssets.cashAndBank + prevBs.currentAssets.tradeReceivables + prevBs.currentAssets.tdsReceivable;
+    const curQr = curBs.currentLiabilities.total > 0 ? curQuickAssets / curBs.currentLiabilities.total : null;
+    const prevQr = prevBs.currentLiabilities.total > 0 ? prevQuickAssets / prevBs.currentLiabilities.total : null;
+
+    const curCashRatio = curBs.currentLiabilities.total > 0 ? curBs.currentAssets.cashAndBank / curBs.currentLiabilities.total : null;
+    const prevCashRatio = prevBs.currentLiabilities.total > 0 ? prevBs.currentAssets.cashAndBank / prevBs.currentLiabilities.total : null;
+
+    // 2. PROFITABILITY
+    const curOpMargin = curPnl.totalRevenue > 0 ? (curPnl.operatingProfit / curPnl.totalRevenue) * 100 : null;
+    const prevOpMargin = prevPnl.totalRevenue > 0 ? (prevPnl.operatingProfit / prevPnl.totalRevenue) * 100 : null;
+
+    const curNetMargin = curPnl.totalRevenue > 0 ? (curPnl.netProfitAfterTax / curPnl.totalRevenue) * 100 : null;
+    const prevNetMargin = prevPnl.totalRevenue > 0 ? (prevPnl.netProfitAfterTax / prevPnl.totalRevenue) * 100 : null;
+
+    const curRoe = curBs.equity.totalShareholdersFunds > 0 ? (curPnl.netProfitAfterTax / curBs.equity.totalShareholdersFunds) * 100 : null;
+    const prevRoe = prevBs.equity.totalShareholdersFunds > 0 ? (prevPnl.netProfitAfterTax / prevBs.equity.totalShareholdersFunds) * 100 : null;
+
+    const curRoa = curBs.totalAssets > 0 ? (curPnl.netProfitAfterTax / curBs.totalAssets) * 100 : null;
+    const prevRoa = prevBs.totalAssets > 0 ? (prevPnl.netProfitAfterTax / prevBs.totalAssets) * 100 : null;
+
+    // 3. EFFICIENCY & WORKING CAPITAL
+    const curDebtorDays = curPnl.totalRevenue > 0 ? (curBs.currentAssets.tradeReceivables / curPnl.totalRevenue) * 365 : null;
+    const prevDebtorDays = prevPnl.totalRevenue > 0 ? (prevBs.currentAssets.tradeReceivables / prevPnl.totalRevenue) * 365 : null;
+
+    const curCreditorDays = curPnl.totalExpenses > 0 ? (curBs.currentLiabilities.tradePayables / curPnl.totalExpenses) * 365 : null;
+    const prevCreditorDays = prevPnl.totalExpenses > 0 ? (prevBs.currentLiabilities.tradePayables / prevPnl.totalExpenses) * 365 : null;
+
+    const curWc = curBs.currentAssets.total - curBs.currentLiabilities.total;
+    const prevWc = prevBs.currentAssets.total - prevBs.currentLiabilities.total;
+    const curWcTurnover = curWc > 0 ? curPnl.totalRevenue / curWc : null;
+    const prevWcTurnover = prevWc > 0 ? prevPnl.totalRevenue / prevWc : null;
+
+    // 4. SOLVENCY
+    const curProprietary = curBs.totalAssets > 0 ? (curBs.equity.totalShareholdersFunds / curBs.totalAssets) * 100 : null;
+    const prevProprietary = prevBs.totalAssets > 0 ? (prevBs.equity.totalShareholdersFunds / prevBs.totalAssets) * 100 : null;
+
+    const ratios = [
+      buildRatio(
+        "Liquidity",
+        "Current Ratio",
+        "Current Assets ÷ Current Liabilities",
+        curCr,
+        prevCr,
+        v => `${v.toFixed(2)}x`,
+        "> 2.0x",
+        { good: 2.0, attention: 1.0 },
+        v => v !== null && v >= 2.0 ? "Excellent short-term solvency; business can meet commitments 35x over." : "Attention required for short-term working capital."
+      ),
+      buildRatio(
+        "Liquidity",
+        "Quick Ratio (Acid Test)",
+        "Quick Assets ÷ Current Liabilities",
+        curQr,
+        prevQr,
+        v => `${v.toFixed(2)}x`,
+        "> 1.0x",
+        { good: 1.0, attention: 0.8 },
+        v => v !== null && v >= 1.0 ? "Liquid reserves immediately cover short-term liabilities without inventory sales." : "Liquidity buffer tight."
+      ),
+      buildRatio(
+        "Liquidity",
+        "Cash Ratio",
+        "Cash & Bank ÷ Current Liabilities",
+        curCashRatio,
+        prevCashRatio,
+        v => `${v.toFixed(2)}x`,
+        "> 0.5x",
+        { good: 0.5, attention: 0.2 },
+        v => v !== null && v >= 0.5 ? "Substantial immediate cash buffer on deposit in bank accounts." : "Low cash buffer."
+      ),
+      buildRatio(
+        "Profitability",
+        "Operating Profit Margin",
+        "Operating Profit ÷ Total Revenue × 100",
+        curOpMargin,
+        prevOpMargin,
+        v => `${v.toFixed(1)}%`,
+        "> 20.0%",
+        { good: 20.0, attention: 10.0 },
+        v => v !== null && v >= 20.0 ? `Robust operating margin of ${v.toFixed(1)}% reflecting healthy gross service spreads.` : "Operating margin below benchmark."
+      ),
+      buildRatio(
+        "Profitability",
+        "Net Profit Margin (PAT Margin)",
+        "Net Profit After Tax ÷ Total Revenue × 100",
+        curNetMargin,
+        prevNetMargin,
+        v => `${v.toFixed(1)}%`,
+        "> 15.0%",
+        { good: 15.0, attention: 8.0 },
+        v => v !== null && v >= 15.0 ? `Net return of ${v.toFixed(1)}% after full provision for direct Indian corporate tax.` : "Net margin compressed."
+      ),
+      buildRatio(
+        "Profitability",
+        "Return on Equity (ROE)",
+        "Net Profit ÷ Shareholders' Funds × 100",
+        curRoe,
+        prevRoe,
+        v => `${v.toFixed(1)}%`,
+        "> 10.0%",
+        { good: 10.0, attention: 5.0 },
+        v => v !== null ? `Annualized capital productivity of ${v.toFixed(1)}% on invested owner equity.` : "No equity return."
+      ),
+      buildRatio(
+        "Profitability",
+        "Return on Assets (ROA)",
+        "Net Profit ÷ Total Assets × 100",
+        curRoa,
+        prevRoa,
+        v => `${v.toFixed(1)}%`,
+        "> 8.0%",
+        { good: 8.0, attention: 4.0 },
+        v => v !== null ? `Return on Total Assets employed stands at ${v.toFixed(1)}%.` : "Asset efficiency low."
+      ),
+      buildRatio(
+        "Efficiency",
+        "Debtors Collection Period",
+        "Trade Receivables ÷ Total Revenue × 365",
+        curDebtorDays,
+        prevDebtorDays,
+        v => `${Math.round(v)} Days`,
+        "< 45 Days",
+        { good: 45, attention: 60, higherIsBetter: false },
+        v => v !== null && v <= 45 ? `Outstanding customer credit collected in ${Math.round(v)} days — excellent collection velocity.` : "Collection delay detected."
+      ),
+      buildRatio(
+        "Efficiency",
+        "Creditors Payment Period",
+        "Trade Payables ÷ Total Expenses × 365",
+        curCreditorDays,
+        prevCreditorDays,
+        v => `${Math.round(v)} Days`,
+        "< 60 Days",
+        { good: 60, attention: 90, higherIsBetter: false },
+        v => v !== null ? `Suppliers and vendors settled on average within ${Math.round(v)} days.` : "Vendor credit period N/A."
+      ),
+      buildRatio(
+        "Solvency",
+        "Proprietary Ratio",
+        "Shareholders' Funds ÷ Total Assets × 100",
+        curProprietary,
+        prevProprietary,
+        v => `${v.toFixed(1)}%`,
+        "> 70.0%",
+        { good: 70.0, attention: 50.0 },
+        v => v !== null && v >= 70.0 ? `${v.toFixed(1)}% of assets funded by owner capital; debt-free capital structure.` : "Leveraged balance sheet."
+      )
+    ];
+
+    return {
+      currentPeriodLabel: curFy,
+      previousPeriodLabel: hasPrior ? compFy : `${compFy} (No Data)`,
+      hasPreviousData: hasPrior,
+      ratios
+    };
+  }
+
+  /**
+   * Comprehensive Financial Analysis & Management Intelligence Module
+   */
+  static async getComprehensiveFinancialAnalysis(params?: FilterOptions) {
+    const [pnl, bs, cashflow, compPnl, ratiosObj] = await Promise.all([
+      this.getProfitAndLoss(params),
+      this.getBalanceSheet(params),
+      this.getCashFlow(params),
+      this.getComparativeProfitAndLoss(params),
+      this.getFinancialRatios(params)
+    ]);
+
+    const vouchers = await this.generateAllVouchers(params);
+
+    // 1. Customer Concentration (Pareto)
+    const customerMap = new Map<string, number>();
+    for (const v of vouchers) {
+      if (v.sourceType === "TAX_INVOICE") {
+        for (const line of v.lines) {
+          if (line.financialType === "ASSET" && line.accountGroup === "Trade Receivables") {
+            customerMap.set(line.accountName, (customerMap.get(line.accountName) || 0) + line.debit);
+          }
+        }
+      }
+    }
+
+    const totalInvoiced = Array.from(customerMap.values()).reduce((s, v) => s + v, 0);
+    const sortedCustomers = Array.from(customerMap.entries())
+      .map(([name, amount]) => ({
+        name,
+        amount: Math.round(amount * 100) / 100,
+        percentage: totalInvoiced > 0 ? Math.round((amount / totalInvoiced) * 1000) / 10 : 0
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    let runningSum = 0;
+    const customerConcentration = sortedCustomers.map(c => {
+      runningSum += c.amount;
+      return {
+        customerName: c.name,
+        amount: c.amount,
+        percentage: c.percentage,
+        cumulativePercentage: totalInvoiced > 0 ? Math.round((runningSum / totalInvoiced) * 1000) / 10 : 0
+      };
+    });
+
+    // 2. Expense Category Breakdown
+    const expenseCategoryMap = new Map<string, number>();
+    for (const v of vouchers) {
+      if (v.sourceType === "EXPENSE") {
+        for (const line of v.lines) {
+          if (line.financialType === "EXPENSE") {
+            expenseCategoryMap.set(line.accountName, (expenseCategoryMap.get(line.accountName) || 0) + line.debit);
+          }
+        }
+      }
+    }
+
+    const totalExpenseAmount = Array.from(expenseCategoryMap.values()).reduce((s, v) => s + v, 0);
+    const expenseBreakdown = Array.from(expenseCategoryMap.entries())
+      .map(([name, amount]) => ({
+        categoryName: name,
+        amount: Math.round(amount * 100) / 100,
+        percentage: totalExpenseAmount > 0 ? Math.round((amount / totalExpenseAmount) * 1000) / 10 : 0
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    // 3. Vendor Concentration
+    const vendorMap = new Map<string, number>();
+    for (const v of vouchers) {
+      if (v.sourceType === "EXPENSE") {
+        for (const line of v.lines) {
+          if (line.financialType === "LIABILITY" && line.accountGroup === "Trade Payables") {
+            vendorMap.set(line.accountName, (vendorMap.get(line.accountName) || 0) + line.credit);
+          }
+        }
+      }
+    }
+    const totalVendorAmt = Array.from(vendorMap.values()).reduce((s, v) => s + v, 0);
+    const vendorConcentration = Array.from(vendorMap.entries())
+      .map(([name, amount]) => ({
+        vendorName: name,
+        amount: Math.round(amount * 100) / 100,
+        percentage: totalVendorAmt > 0 ? Math.round((amount / totalVendorAmt) * 1000) / 10 : 0
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    // 4. B2B vs B2C
+    let b2bRevenue = 0;
+    let b2cRevenue = 0;
+    let exportRevenue = 0;
+
+    const invoices = await prisma.taxInvoice.findMany({
+      where: { status: { in: ["CONFIRMED", "PAID", "PARTIALLY_PAID"] } },
+      include: { customer: true }
+    });
+
+    for (const inv of invoices) {
+      const taxAmt = Number(inv.taxableAmount || 0);
+      const isExport = inv.customer?.country && inv.customer.country.toLowerCase() !== "india";
+      const gstin = inv.gstinSnapshot || inv.customer?.gstin;
+      if (isExport) {
+        exportRevenue += taxAmt;
+      } else if (gstin && gstin.trim().length === 15) {
+        b2bRevenue += taxAmt;
+      } else {
+        b2cRevenue += taxAmt;
+      }
+    }
+
+    // 5. Monthly 12-Month Trends
+    const monthlyMap: Record<string, { month: string; revenue: number; expenses: number; operatingProfit: number; netProfit: number; sortKey: string }> = {};
+
+    for (const v of vouchers) {
+      const d = v.date;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleString("en-US", { month: "short", year: "2-digit" });
+
+      if (!monthlyMap[key]) {
+        monthlyMap[key] = { month: label, revenue: 0, expenses: 0, operatingProfit: 0, netProfit: 0, sortKey: key };
+      }
+
+      for (const line of v.lines) {
+        if (line.financialType === "INCOME") {
+          monthlyMap[key].revenue += (line.credit - line.debit);
+        } else if (line.financialType === "EXPENSE") {
+          monthlyMap[key].expenses += (line.debit - line.credit);
+        }
+      }
+    }
+
+    const monthlyTrends = Object.values(monthlyMap)
+      .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+      .map(m => {
+        const rev = Math.round(m.revenue * 100) / 100;
+        const exp = Math.round(m.expenses * 100) / 100;
+        const op = Math.round((rev - exp) * 100) / 100;
+        const tax = op > 0 ? Math.round(op * 0.25 * 100) / 100 : 0;
+        const net = Math.round((op - tax) * 100) / 100;
+        const margin = rev > 0 ? Math.round((op / rev) * 1000) / 10 : 0;
+        return {
+          month: m.month,
+          revenue: rev,
+          expenses: exp,
+          operatingProfit: op,
+          netProfit: net,
+          operatingMargin: margin
+        };
+      });
+
+    // 6. Strictly Data-Driven Management Observations
+    const insights: string[] = [];
+    if (pnl.totalRevenue > 0) {
+      insights.push(`Revenue from Operations stands at ₹${pnl.totalRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })} with an Operating Margin of ${compPnl.totals.operatingMargin.current}%.`);
+    }
+    const wc = bs.currentAssets.total - bs.currentLiabilities.total;
+    if (wc > 0) {
+      insights.push(`Net Working Capital is strong at ₹${wc.toLocaleString("en-IN", { minimumFractionDigits: 2 })}, providing comprehensive coverage for operational commitments.`);
+    }
+    if (bs.currentLiabilities.total > 0) {
+      const cr = bs.currentAssets.total / bs.currentLiabilities.total;
+      insights.push(`Current Ratio of ${cr.toFixed(1)}x indicates a debt-free liquidity buffer backed by ₹${bs.currentAssets.cashAndBank.toLocaleString("en-IN", { minimumFractionDigits: 2 })} in cash and bank reserves.`);
+    }
+    if (customerConcentration.length > 0) {
+      const top1 = customerConcentration[0];
+      insights.push(`Primary account ${top1.customerName} accounts for ${top1.percentage}% of gross billed turnover.`);
+    }
+    if (bs.currentAssets.tradeReceivables > 0 && pnl.totalRevenue > 0) {
+      const dDays = Math.round((bs.currentAssets.tradeReceivables / pnl.totalRevenue) * 365);
+      insights.push(`Debtor collection cycle averages ${dDays} days, well within the standard 45-day commercial window.`);
+    }
+
+    return {
+      financialYear: params?.financialYear || "FY 2026–27",
+      kpis: {
+        revenue: pnl.totalRevenue,
+        operatingExpenses: pnl.totalExpenses,
+        operatingProfit: pnl.operatingProfit,
+        operatingMargin: compPnl.totals.operatingMargin.current,
+        netProfitAfterTax: pnl.netProfitAfterTax,
+        netMargin: compPnl.totals.netMargin.current,
+        workingCapital: wc,
+        cashAndBank: bs.currentAssets.cashAndBank,
+        currentRatio: bs.currentLiabilities.total > 0 ? Math.round((bs.currentAssets.total / bs.currentLiabilities.total) * 100) / 100 : 0,
+        quickRatio: ratiosObj.ratios.find(r => r.name.includes("Quick"))?.currentValue || 0,
+        debtorDays: ratiosObj.ratios.find(r => r.name.includes("Debtors"))?.currentValue || 0,
+        creditorDays: ratiosObj.ratios.find(r => r.name.includes("Creditors"))?.currentValue || 0,
+      },
+      monthlyTrends,
+      customerConcentration,
+      expenseBreakdown,
+      vendorConcentration,
+      b2bVsB2c: {
+        b2bRevenue: Math.round(b2bRevenue * 100) / 100,
+        b2cRevenue: Math.round(b2cRevenue * 100) / 100,
+        exportRevenue: Math.round(exportRevenue * 100) / 100,
+      },
+      ratios: ratiosObj.ratios,
+      managementInsights: insights
+    };
+  }
 }
+

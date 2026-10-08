@@ -78,6 +78,23 @@ const navItems = [
     )
   },
   {
+    name: "Financial Statements",
+    href: "/financial-statements",
+    icon: (
+      <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+    subItems: [
+      { name: "Trial Balance", href: "/financial-statements?tab=trial-balance", icon: "⚖️" },
+      { name: "Profit & Loss", href: "/financial-statements?tab=pnl", icon: "📈" },
+      { name: "Balance Sheet", href: "/financial-statements?tab=balance-sheet", icon: "🏛️" },
+      { name: "Cash Flow", href: "/financial-statements?tab=cash-flow", icon: "💵" },
+      { name: "Comparative Analysis", href: "/financial-statements?tab=comparative", icon: "📊" },
+      { name: "Financial Intelligence", href: "/financial-statements?tab=analysis", icon: "💡" },
+    ],
+  },
+  {
     name: "Reports",
     href: "/reports",
     icon: (
@@ -89,8 +106,8 @@ const navItems = [
     ),
     subItems: [
       { name: "Executive Dashboard", href: "/reports?subtab=overview", icon: "🏛️" },
-      { name: "Financial Statements", href: "/reports?subtab=pnl", icon: "📊" },
-      { name: "Trial Balance", href: "/reports/trial-balance", icon: "⚖️" },
+      { name: "Financial Statements", href: "/financial-statements?tab=pnl", icon: "📊" },
+      { name: "Trial Balance", href: "/financial-statements?tab=trial-balance", icon: "⚖️" },
       { name: "Working Capital", href: "/reports?subtab=receivables", icon: "💼" },
       { name: "Tax & Statutory", href: "/reports?subtab=gst", icon: "📑" },
       { name: "Fixed Assets & Depreciation", href: "/reports?subtab=schedule", icon: "🏢" },
@@ -209,6 +226,7 @@ export function Sidebar({
     if (href === "/expenses") return currentHref.startsWith("/expenses") || currentHref.startsWith("/expense-categories");
     if (href === "/opening-closing") return currentHref.startsWith("/opening-closing");
     if (href === "/users") return currentHref.startsWith("/users");
+    if (href === "/financial-statements") return currentHref.startsWith("/financial-statements");
     if (href === "/reports") return currentHref.startsWith("/reports");
     return currentHref.startsWith(href);
   };

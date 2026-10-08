@@ -12,6 +12,9 @@ export default async function AnalysisPage({
   for (const [key, val] of Object.entries(params)) {
     if (val) query.set(key, val);
   }
+  if (!query.has("tab")) {
+    query.set("tab", "analysis");
+  }
   const qs = query.toString();
-  redirect(qs ? `/reports?${qs}` : "/reports");
+  redirect(`/financial-statements?${qs}`);
 }
