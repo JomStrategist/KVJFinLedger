@@ -23,9 +23,9 @@ export default async function TdsReportPage({
   const { data: expenses, summary } = await ReportsService.getTdsReport(filters);
 
   // Flatten data for export
-  const exportData = expenses.map(exp => ({
+  const exportData = (expenses || []).map((exp: any) => ({
     "Expense Number": exp.expenseNumber,
-    "Date": exp.expenseDate.toLocaleDateString('en-IN'),
+    "Date": exp.expenseDate ? new Date(exp.expenseDate).toLocaleDateString('en-IN') : '',
     "Vendor": exp.vendor?.name || 'Unknown',
     "Vendor PAN": exp.vendor?.pan || '',
     "TDS Rate": `${exp.tdsRate || 0}%`,
@@ -98,7 +98,7 @@ export default async function TdsReportPage({
                   <td colSpan={7} className="px-4 py-8 text-center text-sm text-theme-text-muted">No TDS deductions found for the selected criteria.</td>
                 </tr>
               ) : (
-                expenses.map((exp) => (
+                (expenses || []).map((exp: any) => (
                   <tr key={exp.id} className="hover:bg-theme-surface-hover">
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-theme-primary">
                       <Link href={`/expenses/${exp.id}`}>{exp.expenseNumber}</Link>

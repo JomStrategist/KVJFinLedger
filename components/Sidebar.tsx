@@ -90,6 +90,7 @@ const navItems = [
     subItems: [
       { name: "Executive Dashboard", href: "/reports?subtab=overview", icon: "🏛️" },
       { name: "Financial Statements", href: "/reports?subtab=pnl", icon: "📊" },
+      { name: "Trial Balance", href: "/reports/trial-balance", icon: "⚖️" },
       { name: "Working Capital", href: "/reports?subtab=receivables", icon: "💼" },
       { name: "Tax & Statutory", href: "/reports?subtab=gst", icon: "📑" },
       { name: "Fixed Assets & Depreciation", href: "/reports?subtab=schedule", icon: "🏢" },

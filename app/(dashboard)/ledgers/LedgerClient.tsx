@@ -292,7 +292,9 @@ export default function LedgerClient({
   // Unique types list for the dropdown
   const availableTypes = useMemo(() => {
     const set = new Set<string>();
-    accountList.forEach((a) => set.add(a.type));
+    accountList.forEach((a) => {
+      if (a.type) set.add(a.type);
+    });
     return Array.from(set);
   }, [accountList]);
 

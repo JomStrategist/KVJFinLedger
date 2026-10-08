@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { AccountingEngine } from "./accounting-engine.service";
 
 export interface AnalysisFilters {
   financialYear?: string; // e.g. "FY 2026–27" or "ALL"
@@ -224,111 +225,69 @@ export class AnalysisService {
       })
     ]);
 
-    // Financial Metrics Calculation
-    let totalRevenue = 0;
-    let taxableRevenue = 0;
+    // Derived strictly from AccountingEngine double-entry ledger
+    const [pnl, bs] = await Promise.all([
+      AccountingEngine.getProfitAndLoss({ fromDate: dates.fromDate, toDate: dates.toDate }),
+      AccountingEngine.getBalanceSheet({ toDate: dates.toDate }),
+    ]);
+
+    const totalRevenue = pnl.totalRevenue;
+    const taxableRevenue = pnl.totalRevenue;
+    const directCosts = 0;
+    const grossProfit = totalRevenue;
+    const grossProfitMargin = totalRevenue > 0 ? 100 : 0;
+    const operatingExpenses = pnl.totalExpenses;
+    const financeCosts = pnl.financeCosts.reduce((s, i) => s + i.amount, 0);
+    const depreciation = pnl.depreciationAmortization.reduce((s, i) => s + i.amount, 0);
+    const otherExpenses = pnl.otherExpenses.reduce((s, i) => s + i.amount, 0);
+    const totalExpenses = pnl.totalExpenses;
+    const taxableExpenses = pnl.totalExpenses;
+    const netProfit = pnl.netProfitAfterTax;
+    const profitMargin = totalRevenue > 0 ? (pnl.operatingProfit / totalRevenue) * 100 : 0;
+
     let outputCGST = 0;
     let outputSGST = 0;
     let outputIGST = 0;
     let totalOutputGST = 0;
-    let tdsReceivable = 0;
-    let outstandingReceivables = 0;
 
     for (const inv of invoices) {
-      const net = Number(inv.netAmount || 0);
-      totalRevenue += net;
-      taxableRevenue += Number(inv.taxableAmount || 0);
       outputCGST += Number(inv.totalCGST || 0);
       outputSGST += Number(inv.totalSGST || 0);
       outputIGST += Number(inv.totalIGST || 0);
       totalOutputGST += Number(inv.totalGST || 0);
-      tdsReceivable += Number(inv.tdsAmount || 0);
-
-      const paidAmount = (inv.payments || []).reduce((sum, p) => sum + Number(p.paymentAmount || 0), 0);
-      if (inv.status !== "PAID") {
-        const remaining = net - paidAmount;
-        if (remaining > 0) outstandingReceivables += remaining;
-      }
     }
-
-    let totalExpenses = 0;
-    let taxableExpenses = 0;
-    let directCosts = 0; // Cost of goods / materials
-    let operatingExpenses = 0;
-    let financeCosts = 0;
-    let depreciation = 0;
-    let otherExpenses = 0;
 
     let inputCGST = 0;
     let inputSGST = 0;
     let inputIGST = 0;
     let totalInputGST = 0;
-    let tdsPayable = 0;
-    let outstandingPayables = 0;
-
-    let fixedAssetAdditions = 0;
-
     for (const exp of expenses) {
-      const net = Number(exp.netAmount || 0);
-      totalExpenses += net;
-      taxableExpenses += Number(exp.taxableAmount || 0);
-
       inputCGST += Number(exp.inputCGST || 0);
       inputSGST += Number(exp.inputSGST || 0);
       inputIGST += Number(exp.inputIGST || 0);
       totalInputGST += Number(exp.totalInputGST || 0);
-      tdsPayable += Number(exp.tdsAmount || 0);
-
-      if (exp.paymentStatus !== "PAID") {
-        outstandingPayables += net;
-      }
-
-      if (exp.isAsset) {
-        fixedAssetAdditions += net;
-      }
-
-      // Group classification
-      const catName = exp.category?.name?.toLowerCase() || "";
-      const groupName = exp.category?.statementGroup?.toLowerCase() || "";
-
-      if (catName.includes("direct") || catName.includes("cost of sales") || catName.includes("purchase") || catName.includes("material")) {
-        directCosts += net;
-      } else if (catName.includes("finance") || catName.includes("interest") || catName.includes("bank charge")) {
-        financeCosts += net;
-      } else if (catName.includes("depreciation") || catName.includes("amortisation")) {
-        depreciation += net;
-      } else if (catName.includes("admin") || catName.includes("salary") || catName.includes("rent") || catName.includes("office") || catName.includes("travel")) {
-        operatingExpenses += net;
-      } else {
-        otherExpenses += net;
-      }
     }
 
-    const grossProfit = totalRevenue - directCosts;
-    const netProfit = totalRevenue - totalExpenses;
-    const profitMargin = this.safePercent(netProfit, totalRevenue) || 0;
-    const grossProfitMargin = this.safePercent(grossProfit, totalRevenue) || 0;
+    const netGstLiability = bs.currentLiabilities.statutoryGstPayable;
+    const tdsReceivable = bs.currentAssets.tdsReceivable;
+    const tdsPayable = bs.currentLiabilities.statutoryTdsPayable;
+    const outstandingReceivables = bs.currentAssets.tradeReceivables;
+    const outstandingPayables = bs.currentLiabilities.tradePayables + bs.currentLiabilities.employeePayables;
+    const cashBankBalance = bs.currentAssets.cashAndBank;
 
-    // Balance Sheet Elements
-    // Opening balance integration
-    const cashOpening = openingBalances.find(o => o.position?.toLowerCase().includes("cash"))?.amount || 50000;
-    const bankOpening = openingBalances.find(o => o.position?.toLowerCase().includes("bank"))?.amount || 250000;
+    const fixedAssetsGross = bs.nonCurrentAssets.fixedAssetsGross;
+    const fixedAssetAdditions = fixedAssetsGross;
+    const accumulatedDepreciation = bs.nonCurrentAssets.accumulatedDepreciation;
+    const fixedAssetsNetBlock = bs.nonCurrentAssets.fixedAssetsNet;
 
-    const cashBankBalance = cashOpening + bankOpening + totalRevenue - totalExpenses;
-    const fixedAssetsGross = fixedAssetAdditions + 500000; // Base historical block + additions
-    const accumulatedDepreciation = depreciation + 50000;
-    const fixedAssetsNetBlock = Math.max(0, fixedAssetsGross - accumulatedDepreciation);
+    const totalCurrentAssets = bs.currentAssets.total;
+    const totalAssets = bs.totalAssets;
+    const totalCurrentLiabilities = bs.currentLiabilities.total;
+    const totalLiabilities = bs.currentLiabilities.total;
 
-    const totalCurrentAssets = cashBankBalance + outstandingReceivables + (totalInputGST > totalOutputGST ? totalInputGST - totalOutputGST : 0);
-    const totalAssets = fixedAssetsNetBlock + totalCurrentAssets;
-
-    const netGstLiability = Math.max(0, totalOutputGST - totalInputGST);
-    const totalCurrentLiabilities = outstandingPayables + netGstLiability + tdsPayable;
-    const totalLiabilities = totalCurrentLiabilities;
-
-    const capitalEquity = 500000;
-    const retainedEarnings = totalAssets - totalLiabilities - capitalEquity;
-    const totalEquity = capitalEquity + retainedEarnings;
+    const capitalEquity = bs.equity.capital;
+    const retainedEarnings = bs.equity.reservesAndSurplus;
+    const totalEquity = bs.equity.totalShareholdersFunds;
 
     return {
       invoices,

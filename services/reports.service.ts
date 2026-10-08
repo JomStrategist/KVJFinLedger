@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-
+import { AccountingEngine } from "./accounting-engine.service";
 
 export interface ReportDateFilter {
   fromDate?: Date;
@@ -42,7 +42,11 @@ export class ReportsService {
 
     const invoices = await prisma.taxInvoice.findMany({
       where,
-      include: { customer: true },
+      include: {
+        customer: true,
+        payments: true,
+        items: true,
+      },
       orderBy: { invoiceDate: 'desc' }
     });
 
@@ -50,24 +54,48 @@ export class ReportsService {
     let totalTaxableAmount = 0;
     let totalGST = 0;
     let outstandingReceivables = 0;
+    let totalCollected = 0;
+    let totalTdsDeducted = 0;
 
-    for (const inv of invoices) {
-      totalSales += Number(inv.netAmount);
-      totalTaxableAmount += Number(inv.taxableAmount);
-      totalGST += Number(inv.totalGST);
-      if (inv.status !== "PAID") {
-        outstandingReceivables += Number(inv.netAmount); // Simplified logic
-      }
-    }
+    const enrichedInvoices = invoices.map(inv => {
+      const gross = Number(inv.grossAmount || inv.netAmount || 0);
+      const taxable = Number(inv.taxableAmount || 0);
+      const gst = Number(inv.totalGST || 0);
+
+      const paidSoFar = (inv.payments || []).reduce((sum, p) => sum + Number(p.paymentAmount || 0), 0);
+      const tdsSoFar = (inv.payments || []).reduce((sum, p) => sum + (p.isTdsDeducted ? Number(p.tdsAmount || 0) : 0), 0);
+      const bankSoFar = (inv.payments || []).reduce((sum, p) => sum + Number(p.bankReceipt || 0), 0);
+      const balanceRemaining = Math.max(0, gross - paidSoFar);
+
+      totalSales += taxable;
+      totalTaxableAmount += taxable;
+      totalGST += gst;
+      outstandingReceivables += balanceRemaining;
+      totalCollected += bankSoFar;
+      totalTdsDeducted += tdsSoFar;
+
+      return {
+        ...inv,
+        grossAmount: gross,
+        taxableAmount: taxable,
+        totalGST: gst,
+        paidSoFar,
+        tdsSoFar,
+        bankSoFar,
+        balanceRemaining,
+      };
+    });
 
     return {
-      data: invoices,
+      data: enrichedInvoices,
       summary: {
-        totalSales,
+        totalSales: Math.round(totalSales * 100) / 100,
         numberOfInvoices: invoices.length,
-        totalTaxableAmount,
-        totalGST,
-        outstandingReceivables
+        totalTaxableAmount: Math.round(totalTaxableAmount * 100) / 100,
+        totalGST: Math.round(totalGST * 100) / 100,
+        outstandingReceivables: Math.round(outstandingReceivables * 100) / 100,
+        totalCollected: Math.round(totalCollected * 100) / 100,
+        totalTdsDeducted: Math.round(totalTdsDeducted * 100) / 100,
       }
     };
   }
@@ -96,41 +124,48 @@ export class ReportsService {
 
     const expenses = await prisma.expense.findMany({
       where,
-      include: { vendor: true, category: true },
+      include: { vendor: true, category: true, employee: true },
       orderBy: { expenseDate: 'desc' }
     });
 
     let totalExpenses = 0;
+    let totalFixedAssets = 0;
     let totalInputGST = 0;
     let totalTDS = 0;
     let paidExpenses = 0;
     let unpaidExpenses = 0;
 
     for (const exp of expenses) {
-      const net = Number(exp.netAmount);
-      totalExpenses += net;
-      totalInputGST += Number(exp.totalInputGST);
-      totalTDS += Number(exp.tdsAmount);
-      
-      if (exp.paymentStatus === "PAID") {
-        paidExpenses += net;
-      } else if (exp.paymentStatus === "PARTIALLY_PAID") {
-        const paid = Number(exp.paidAmount || 0);
-        paidExpenses += paid;
-        unpaidExpenses += Math.max(0, net - paid);
+      const taxable = Number(exp.taxableAmount || 0);
+      const net = Number(exp.netAmount || exp.grossAmount || 0);
+      const isAsset = Boolean(exp.isAsset);
+
+      if (isAsset) {
+        totalFixedAssets += taxable;
       } else {
-        unpaidExpenses += net;
+        totalExpenses += taxable;
       }
+
+      totalInputGST += Number(exp.totalInputGST || 0);
+      totalTDS += Number(exp.tdsAmount || 0);
+
+      const paid = Number(exp.paidAmount || (exp.paymentStatus === "PAID" ? net : 0));
+      const unpaid = Math.max(0, net - paid);
+
+      paidExpenses += paid;
+      unpaidExpenses += unpaid;
     }
 
     return {
       data: expenses,
       summary: {
-        totalExpenses,
-        totalInputGST,
-        totalTDS,
-        paidExpenses,
-        unpaidExpenses
+        totalExpenses: Math.round(totalExpenses * 100) / 100,
+        totalFixedAssets: Math.round(totalFixedAssets * 100) / 100,
+        totalInputGST: Math.round(totalInputGST * 100) / 100,
+        totalTDS: Math.round(totalTDS * 100) / 100,
+        paidExpenses: Math.round(paidExpenses * 100) / 100,
+        unpaidExpenses: Math.round(unpaidExpenses * 100) / 100,
+        numberOfTransactions: expenses.length,
       }
     };
   }
@@ -145,21 +180,21 @@ export class ReportsService {
     let totalOutputGST = 0;
 
     for (const inv of invoices) {
-      totalTaxableValue += Number(inv.taxableAmount);
-      totalCGST += Number(inv.totalCGST);
-      totalSGST += Number(inv.totalSGST);
-      totalIGST += Number(inv.totalIGST);
-      totalOutputGST += Number(inv.totalGST);
+      totalTaxableValue += Number(inv.taxableAmount || 0);
+      totalCGST += Number(inv.totalCGST || 0);
+      totalSGST += Number(inv.totalSGST || 0);
+      totalIGST += Number(inv.totalIGST || 0);
+      totalOutputGST += Number(inv.totalGST || 0);
     }
 
     return {
       data: invoices,
       summary: {
-        totalTaxableValue,
-        totalCGST,
-        totalSGST,
-        totalIGST,
-        totalOutputGST
+        totalTaxableValue: Math.round(totalTaxableValue * 100) / 100,
+        totalCGST: Math.round(totalCGST * 100) / 100,
+        totalSGST: Math.round(totalSGST * 100) / 100,
+        totalIGST: Math.round(totalIGST * 100) / 100,
+        totalOutputGST: Math.round(totalOutputGST * 100) / 100
       }
     };
   }
@@ -174,105 +209,175 @@ export class ReportsService {
     let totalInputGST = 0;
 
     for (const exp of expenses) {
-      totalTaxablePurchases += Number(exp.taxableAmount);
-      totalInputCGST += Number(exp.inputCGST);
-      totalInputSGST += Number(exp.inputSGST);
-      totalInputIGST += Number(exp.inputIGST);
-      totalInputGST += Number(exp.totalInputGST);
+      totalTaxablePurchases += Number(exp.taxableAmount || 0);
+      totalInputCGST += Number(exp.inputCGST || 0);
+      totalInputSGST += Number(exp.inputSGST || 0);
+      totalInputIGST += Number(exp.inputIGST || 0);
+      totalInputGST += Number(exp.totalInputGST || 0);
     }
 
     return {
       data: expenses,
       summary: {
-        totalTaxablePurchases,
-        totalInputCGST,
-        totalInputSGST,
-        totalInputIGST,
-        totalInputGST
+        totalTaxablePurchases: Math.round(totalTaxablePurchases * 100) / 100,
+        totalInputCGST: Math.round(totalInputCGST * 100) / 100,
+        totalInputSGST: Math.round(totalInputSGST * 100) / 100,
+        totalInputIGST: Math.round(totalInputIGST * 100) / 100,
+        totalInputGST: Math.round(totalInputGST * 100) / 100
       }
     };
   }
 
   static async getTdsReport(filters?: ReportDateFilter) {
-    const where: any = {
-      status: "APPROVED",
-      tdsAmount: { gt: 0 },
-      ...this.getSourceDateWhereClause("expenseDate", filters)
-    };
+    // 1. TDS Payable (we deducted from vendors)
+    const { data: expenses } = await this.getExpenseReport(filters);
+    const vendorTdsExpenses = expenses.filter(e => Number(e.tdsAmount || 0) > 0);
 
-    const expenses = await prisma.expense.findMany({
-      where,
-      include: { vendor: true },
-      orderBy: { expenseDate: 'desc' }
-    });
-
-    let totalGrossAmount = 0;
-    let totalTDSDeducted = 0;
-
-    for (const exp of expenses) {
-      totalGrossAmount += Number(exp.grossAmount);
-      totalTDSDeducted += Number(exp.tdsAmount);
+    let totalTdsPayable = 0;
+    for (const exp of vendorTdsExpenses) {
+      totalTdsPayable += Number(exp.tdsAmount || 0);
     }
 
+    // 2. TDS Receivable (customers deducted from us)
+    const { data: invoices } = await this.getSalesReport(filters);
+    let totalTdsReceivable = 0;
+    const customerTdsRecords: any[] = [];
+
+    for (const inv of invoices) {
+      for (const p of inv.payments || []) {
+        if (p.isTdsDeducted && Number(p.tdsAmount || 0) > 0) {
+          totalTdsReceivable += Number(p.tdsAmount);
+          customerTdsRecords.push({
+            id: p.id,
+            invoiceNumber: inv.invoiceNumber,
+            customerName: inv.customerNameSnapshot || inv.customer?.legalName,
+            paymentDate: p.paymentDate,
+            tdsRate: p.tdsRate,
+            tdsAmount: p.tdsAmount,
+            bankReceipt: p.bankReceipt,
+          });
+        }
+      }
+    }
+
+    const vendorGross = vendorTdsExpenses.reduce((s, e) => s + Number(e.grossAmount || 0), 0);
+
     return {
-      data: expenses,
+      data: vendorTdsExpenses,
+      tdsPayable: {
+        records: vendorTdsExpenses,
+        totalAmount: Math.round(totalTdsPayable * 100) / 100,
+        totalGross: Math.round(vendorGross * 100) / 100,
+      },
+      tdsReceivable: {
+        records: customerTdsRecords,
+        totalAmount: Math.round(totalTdsReceivable * 100) / 100,
+      },
       summary: {
-        totalGrossAmount,
-        totalTDSDeducted,
-        numberOfTransactions: expenses.length
+        totalGrossAmount: Math.round(vendorGross * 100) / 100,
+        totalTDSDeducted: Math.round(totalTdsPayable * 100) / 100,
+        numberOfTransactions: vendorTdsExpenses.length,
+        totalTdsPayable: Math.round(totalTdsPayable * 100) / 100,
+        totalTdsReceivable: Math.round(totalTdsReceivable * 100) / 100,
       }
     };
   }
 
   static async getReceivablesReport(filters?: ReportDateFilter) {
     const { data: invoices } = await this.getSalesReport({ ...filters, paymentStatus: undefined });
-    // Filter out PAID
-    const receivables = invoices.filter(inv => inv.status !== "PAID");
+    const now = new Date().getTime();
 
-    let totalReceivables = 0;
+    // Only invoices with positive balance remaining
+    const receivables = invoices
+      .filter(inv => Number(inv.balanceRemaining || 0) > 0)
+      .map(inv => {
+        const invDate = new Date(inv.invoiceDate).getTime();
+        const daysDiff = Math.max(0, Math.floor((now - invDate) / (1000 * 60 * 60 * 24)));
+
+        let bucket = "CURRENT";
+        if (daysDiff <= 30) bucket = "0_30";
+        else if (daysDiff <= 60) bucket = "31_60";
+        else if (daysDiff <= 90) bucket = "61_90";
+        else bucket = "90_PLUS";
+
+        return {
+          ...inv,
+          ageInDays: daysDiff,
+          ageingBucket: bucket,
+        };
+      });
+
+    let totalGrossInvoiced = 0;
+    let totalReceived = 0;
     let outstandingAmount = 0;
 
     for (const inv of receivables) {
-      const net = Number(inv.netAmount);
-      totalReceivables += net;
-      outstandingAmount += net;
+      totalGrossInvoiced += Number(inv.grossAmount || 0);
+      totalReceived += Number(inv.paidSoFar || 0);
+      outstandingAmount += Number(inv.balanceRemaining || 0);
     }
 
     return {
       data: receivables,
       summary: {
-        totalReceivables,
-        paidAmount: 0, // Simplified without tracking partial sums properly
-        outstandingAmount,
-        numberOfUnpaidInvoices: receivables.length
+        totalGrossInvoiced: Math.round(totalGrossInvoiced * 100) / 100,
+        totalReceivables: Math.round(totalGrossInvoiced * 100) / 100,
+        totalReceived: Math.round(totalReceived * 100) / 100,
+        paidAmount: Math.round(totalReceived * 100) / 100,
+        outstandingAmount: Math.round(outstandingAmount * 100) / 100,
+        numberOfUnpaidInvoices: receivables.length,
       }
     };
   }
 
   static async getPayablesReport(filters?: ReportDateFilter) {
     const { data: expenses } = await this.getExpenseReport({ ...filters, paymentStatus: undefined });
-    const payables = expenses.filter(exp => exp.paymentStatus !== "PAID" && exp.status !== "CANCELLED");
+    const now = new Date().getTime();
+
+    const payables = expenses
+      .filter(exp => exp.paymentStatus !== "PAID" && exp.status !== "CANCELLED")
+      .map(exp => {
+        const net = Number(exp.netAmount || exp.grossAmount || 0);
+        const paid = Number(exp.paidAmount || 0);
+        const outstanding = Math.max(0, net - paid);
+
+        const expDate = new Date(exp.expenseDate).getTime();
+        const daysDiff = Math.max(0, Math.floor((now - expDate) / (1000 * 60 * 60 * 24)));
+
+        let bucket = "CURRENT";
+        if (daysDiff <= 30) bucket = "0_30";
+        else if (daysDiff <= 60) bucket = "31_60";
+        else if (daysDiff <= 90) bucket = "61_90";
+        else bucket = "90_PLUS";
+
+        return {
+          ...exp,
+          netAmount: net,
+          paidAmount: paid,
+          balanceOutstanding: outstanding,
+          ageInDays: daysDiff,
+          ageingBucket: bucket,
+        };
+      })
+      .filter(p => p.balanceOutstanding > 0);
 
     let totalPayables = 0;
     let paidAmount = 0;
     let outstandingAmount = 0;
 
     for (const exp of payables) {
-      const net = Number(exp.netAmount);
-      const paid = exp.paymentStatus === "PARTIALLY_PAID" ? Number(exp.paidAmount || 0) : 0;
-      const outstanding = Math.max(0, net - paid);
-      totalPayables += net;
-      paidAmount += paid;
-      outstandingAmount += outstanding;
+      totalPayables += exp.netAmount;
+      paidAmount += exp.paidAmount;
+      outstandingAmount += exp.balanceOutstanding;
     }
 
     return {
       data: payables,
       summary: {
-        totalPayables,
-        paidAmount,
-        outstandingAmount,
-        numberOfUnpaidExpenses: payables.length
+        totalPayables: Math.round(totalPayables * 100) / 100,
+        paidAmount: Math.round(paidAmount * 100) / 100,
+        outstandingAmount: Math.round(outstandingAmount * 100) / 100,
+        numberOfUnpaidExpenses: payables.length,
       }
     };
   }
