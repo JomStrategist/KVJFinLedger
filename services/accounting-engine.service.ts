@@ -362,6 +362,7 @@ export class AccountingEngine {
         orderBy: { invoiceDate: "asc" }
       }),
       prisma.invoicePayment.findMany({
+        where: { OR: [{ isCancelled: false }, { isCancelled: null }] },
         include: {
           taxInvoice: {
             include: { customer: true }
@@ -616,7 +617,7 @@ export class AccountingEngine {
     // 3. INVOICE PAYMENTS (Receipt Vouchers)
     // ────────────────────────────────────────────────────────────────────────
     for (const p of payments) {
-      if (!p.taxInvoice) continue;
+      if (!p.taxInvoice || p.isCancelled) continue;
 
       const customerName = p.taxInvoice.customerNameSnapshot || p.taxInvoice.customer?.legalName || "Customer";
       const customerId = `customer_${p.taxInvoice.customerId}`;
@@ -814,8 +815,14 @@ export class AccountingEngine {
           entityType: "EMPLOYEE"
         });
 
-        // If reimbursed to employee, create reimbursement voucher
-        if (exp.paymentStatus === "PAID") {
+        // If reimbursed to employee (full or partial), create reimbursement voucher
+        const reimbursed = exp.paymentStatus === "PAID" 
+          ? netAmount 
+          : exp.paymentStatus === "PARTIALLY_PAID" 
+          ? Number(exp.paidAmount || 0) 
+          : 0;
+
+        if (reimbursed > 0) {
           const reimbLines: JournalVoucherLine[] = [
             {
               accountId: employeeId,
@@ -824,7 +831,7 @@ export class AccountingEngine {
               financialType: "LIABILITY",
               financialStatement: "BALANCE_SHEET",
               normalBalance: "CREDIT",
-              debit: netAmount,
+              debit: reimbursed,
               credit: 0,
               particulars: `Reimbursement paid to employee ${employeeName}`,
               entityId: exp.employeeId || undefined,
@@ -838,7 +845,7 @@ export class AccountingEngine {
               financialStatement: "BALANCE_SHEET",
               normalBalance: "DEBIT",
               debit: 0,
-              credit: netAmount,
+              credit: reimbursed,
               particulars: `Bank disbursement for employee reimbursement`,
               entityType: "BANK"
             }

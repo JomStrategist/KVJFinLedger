@@ -42,7 +42,9 @@ export default async function ExpenseDetailPage({
                 ${expense.paymentStatus === 'PAID' ? 'bg-green-100 text-green-800' : 
                   expense.paymentStatus === 'PARTIALLY_PAID' ? 'bg-orange-100 text-orange-800' : 
                   'bg-red-100 text-red-800'}`}>
-                {expense.paymentStatus}
+                {expense.paidBy === "EMPLOYEE" 
+                  ? (expense.paymentStatus === "PAID" ? "FULLY REIMBURSED" : expense.paymentStatus === "PARTIALLY_PAID" ? "PARTIALLY REIMBURSED" : "NOT REIMBURSED")
+                  : (expense.paymentStatus === "UNPAID" ? "NOT PAID" : expense.paymentStatus.replace("_", " "))}
               </span>
             )}
           </div>

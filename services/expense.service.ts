@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { PrismaClient, ExpenseStatus, PaymentStatus } from "@prisma/client";
 import { FinancialTransactionService } from "./financial-transaction.service";
+import { AccountingEngine } from "./accounting-engine.service";
 
 
 export class ExpenseService {
@@ -111,7 +112,7 @@ export class ExpenseService {
   }
 
   static async createExpense(data: any) {
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       const expenseNumber = await this.generateExpenseNumber(tx);
 
       const netAmount = Number(data.netAmount ?? data.grossAmount ?? (Number(data.taxableAmount || 0) + Number(data.totalGST || 0) - Number(data.tdsAmount || 0)));
@@ -207,6 +208,9 @@ export class ExpenseService {
 
       return expense;
     });
+
+    AccountingEngine.invalidateCache();
+    return res;
   }
 
   static async updateExpense(id: string, data: any) {
@@ -214,7 +218,7 @@ export class ExpenseService {
     if (!current) throw new Error("Expense not found");
     if (current.status === "CANCELLED") throw new Error("Cannot edit a cancelled expense.");
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       // Delete existing items
       await tx.expenseItem.deleteMany({ where: { expenseId: id } });
 
@@ -311,6 +315,9 @@ export class ExpenseService {
 
       return updatedExpense;
     });
+
+    AccountingEngine.invalidateCache();
+    return res;
   }
 
   static async approveExpense(id: string) {
@@ -318,7 +325,7 @@ export class ExpenseService {
     if (!current) throw new Error("Expense not found");
     if (current.status !== "DRAFT") throw new Error("Only draft expenses can be approved.");
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       const updatedExpense = await tx.expense.update({
         where: { id },
         data: { status: "APPROVED" }
@@ -339,6 +346,9 @@ export class ExpenseService {
 
       return updatedExpense;
     });
+
+    AccountingEngine.invalidateCache();
+    return res;
   }
 
   static async cancelExpense(id: string, reason: string) {
@@ -348,7 +358,7 @@ export class ExpenseService {
     if (current.status === "CANCELLED") throw new Error("Expense is already cancelled.");
     if (current.paymentStatus === "PAID") throw new Error("Cannot cancel a paid expense.");
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       const updatedExpense = await tx.expense.update({
         where: { id },
         data: {
@@ -362,6 +372,9 @@ export class ExpenseService {
 
       return updatedExpense;
     });
+
+    AccountingEngine.invalidateCache();
+    return res;
   }
 
   static async updatePaymentStatus(id: string, status: PaymentStatus, paidAmount?: number) {
@@ -378,7 +391,7 @@ export class ExpenseService {
     }
     const balancePayable = Math.max(0, netAmount - resolvedPaidAmount);
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       const updated = await tx.expense.update({
         where: { id },
         data: { 
@@ -405,5 +418,25 @@ export class ExpenseService {
 
       return updated;
     });
+
+    AccountingEngine.invalidateCache();
+    return res;
+  }
+
+  static async deleteExpense(id: string) {
+    const current = await prisma.expense.findUnique({ where: { id } });
+    if (!current) throw new Error("Expense not found");
+    if (current.paymentStatus === "PAID" || Number(current.paidAmount || 0) > 0) {
+      throw new Error("Cannot delete expense with existing payment activity. Cancel or reverse payment first.");
+    }
+
+    const res = await prisma.$transaction(async (tx) => {
+      await tx.expenseItem.deleteMany({ where: { expenseId: id } });
+      await FinancialTransactionService.deleteTransactionBySource(tx, "EXPENSE", id);
+      return await tx.expense.delete({ where: { id } });
+    });
+
+    AccountingEngine.invalidateCache();
+    return res;
   }
 }

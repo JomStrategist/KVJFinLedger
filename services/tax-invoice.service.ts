@@ -3,6 +3,7 @@ import { PrismaClient, Prisma, TaxInvoiceStatus } from "@prisma/client";
 import { FinancialTransactionService } from "./financial-transaction.service";
 import { generateFormattedInvoiceNumber } from "@/lib/invoice-number";
 import { ProformaInvoiceService, CreateProformaInvoiceInput } from "./proforma-invoice.service";
+import { AccountingEngine } from "./accounting-engine.service";
 
 export class TaxInvoiceService {
   private static async generateInvoiceNumber(
@@ -90,7 +91,7 @@ export class TaxInvoiceService {
     if (!invoice) throw new Error("Invoice not found.");
     if (invoice.status === "CANCELLED") throw new Error("Cannot record payment for a cancelled invoice.");
 
-    return await prisma.$transaction(async (tx) => {
+    const payment = await prisma.$transaction(async (tx) => {
       // 1. Create payment record
       const payment = await tx.invoicePayment.create({
         data: {
@@ -106,14 +107,15 @@ export class TaxInvoiceService {
         }
       });
 
-      // 2. Compute total settlements (paymentAmount already includes bankReceipt + tdsAmount)
-      const allPayments = [...invoice.payments, payment];
-      const totalPaidAmount = allPayments.reduce((sum, p) => sum + Number(p.paymentAmount), 0);
+      // 2. Compute total settlements (exclude cancelled payments)
+      const activeExisting = invoice.payments.filter((p: any) => !p.isCancelled);
+      const allPayments = [...activeExisting, payment];
+      const totalPaidAmount = allPayments.reduce((sum: number, p: any) => sum + Number(p.paymentAmount), 0);
       const totalSettled = totalPaidAmount;
 
       const invoiceTotal = Number(invoice.grossAmount);
       let newStatus: TaxInvoiceStatus = "CONFIRMED";
-      if (totalSettled >= invoiceTotal - 0.5) { // allow 50 paisa rounding tolerance
+      if (totalSettled >= invoiceTotal - 0.5 && totalSettled > 0) { // allow 50 paisa rounding tolerance
         newStatus = "PAID";
       } else if (totalSettled > 0) {
         newStatus = "PARTIALLY_PAID";
@@ -134,6 +136,9 @@ export class TaxInvoiceService {
 
       return payment;
     });
+
+    AccountingEngine.invalidateCache();
+    return payment;
   }
 
   static async updatePayment(
@@ -156,7 +161,7 @@ export class TaxInvoiceService {
     if (!existingPayment) throw new Error("Payment record not found.");
     const invoiceId = existingPayment.taxInvoiceId;
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       await tx.invoicePayment.update({
         where: { id: paymentId },
         data: {
@@ -171,12 +176,12 @@ export class TaxInvoiceService {
         }
       });
 
-      const allPayments = await tx.invoicePayment.findMany({ where: { taxInvoiceId: invoiceId } });
-      const totalPaidAmount = allPayments.reduce((sum, p) => sum + Number(p.paymentAmount), 0);
+      const allPayments = (await tx.invoicePayment.findMany({ where: { taxInvoiceId: invoiceId } })).filter((p: any) => !p.isCancelled);
+      const totalPaidAmount = allPayments.reduce((sum: number, p: any) => sum + Number(p.paymentAmount), 0);
       const invoiceTotal = Number(existingPayment.taxInvoice.grossAmount);
 
       let newStatus: TaxInvoiceStatus = "CONFIRMED";
-      if (totalPaidAmount >= invoiceTotal - 0.5) {
+      if (totalPaidAmount >= invoiceTotal - 0.5 && totalPaidAmount > 0) {
         newStatus = "PAID";
       } else if (totalPaidAmount > 0) {
         newStatus = "PARTIALLY_PAID";
@@ -195,6 +200,57 @@ export class TaxInvoiceService {
 
       return { success: true };
     });
+
+    AccountingEngine.invalidateCache();
+    return res;
+  }
+
+  static async cancelPayment(paymentId: string, reason?: string) {
+    const existingPayment = await prisma.invoicePayment.findUnique({
+      where: { id: paymentId },
+      include: { taxInvoice: true }
+    });
+    if (!existingPayment) throw new Error("Payment record not found.");
+    if (existingPayment.isCancelled) throw new Error("Payment is already cancelled.");
+    const invoiceId = existingPayment.taxInvoiceId;
+
+    const res = await prisma.$transaction(async (tx) => {
+      await tx.invoicePayment.update({
+        where: { id: paymentId },
+        data: {
+          isCancelled: true,
+          cancelledAt: new Date(),
+          cancellationReason: reason || "Cancelled by user"
+        }
+      });
+
+      const allPayments = (await tx.invoicePayment.findMany({ where: { taxInvoiceId: invoiceId } })).filter((p: any) => !p.isCancelled && p.id !== paymentId);
+      const totalPaidAmount = allPayments.reduce((sum: number, p: any) => sum + Number(p.paymentAmount), 0);
+      const invoiceTotal = Number(existingPayment.taxInvoice.grossAmount);
+
+      let newStatus: TaxInvoiceStatus = "CONFIRMED";
+      if (totalPaidAmount >= invoiceTotal - 0.5 && totalPaidAmount > 0) {
+        newStatus = "PAID";
+      } else if (totalPaidAmount > 0) {
+        newStatus = "PARTIALLY_PAID";
+      }
+
+      await tx.taxInvoice.update({
+        where: { id: invoiceId },
+        data: { status: newStatus }
+      });
+
+      const ftStatus = newStatus === "PAID" ? "PAID" : newStatus === "PARTIALLY_PAID" ? "PARTIALLY_PAID" : "UNPAID";
+      await tx.financialTransaction.updateMany({
+        where: { sourceId: invoiceId, sourceType: "TAX_INVOICE" },
+        data: { paymentStatus: ftStatus }
+      });
+
+      return { success: true };
+    });
+
+    AccountingEngine.invalidateCache();
+    return res;
   }
 
   static async deletePayment(paymentId: string) {
@@ -205,15 +261,15 @@ export class TaxInvoiceService {
     if (!existingPayment) throw new Error("Payment record not found.");
     const invoiceId = existingPayment.taxInvoiceId;
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       await tx.invoicePayment.delete({ where: { id: paymentId } });
 
-      const allPayments = await tx.invoicePayment.findMany({ where: { taxInvoiceId: invoiceId } });
-      const totalPaidAmount = allPayments.reduce((sum, p) => sum + Number(p.paymentAmount), 0);
+      const allPayments = (await tx.invoicePayment.findMany({ where: { taxInvoiceId: invoiceId } })).filter((p: any) => !p.isCancelled);
+      const totalPaidAmount = allPayments.reduce((sum: number, p: any) => sum + Number(p.paymentAmount), 0);
       const invoiceTotal = Number(existingPayment.taxInvoice.grossAmount);
 
       let newStatus: TaxInvoiceStatus = "CONFIRMED";
-      if (totalPaidAmount >= invoiceTotal - 0.5) {
+      if (totalPaidAmount >= invoiceTotal - 0.5 && totalPaidAmount > 0) {
         newStatus = "PAID";
       } else if (totalPaidAmount > 0) {
         newStatus = "PARTIALLY_PAID";
@@ -232,6 +288,31 @@ export class TaxInvoiceService {
 
       return { success: true };
     });
+
+    AccountingEngine.invalidateCache();
+    return res;
+  }
+
+  static async deleteTaxInvoice(id: string) {
+    const invoice = await prisma.taxInvoice.findUnique({
+      where: { id },
+      include: { payments: true }
+    });
+    if (!invoice) throw new Error("Tax invoice not found.");
+    const activePayments = invoice.payments.filter((p: any) => !p.isCancelled);
+    if (activePayments.length > 0) {
+      throw new Error("Cannot delete invoice with existing payment activity. Delete or cancel payments first, or cancel the invoice.");
+    }
+
+    const res = await prisma.$transaction(async (tx) => {
+      await tx.taxInvoiceItem.deleteMany({ where: { taxInvoiceId: id } });
+      await tx.invoicePayment.deleteMany({ where: { taxInvoiceId: id } });
+      await FinancialTransactionService.deleteTransactionBySource(tx, "TAX_INVOICE", id);
+      return await tx.taxInvoice.delete({ where: { id } });
+    });
+
+    AccountingEngine.invalidateCache();
+    return res;
   }
 
   static async getDashboardMetrics() {
@@ -291,7 +372,7 @@ export class TaxInvoiceService {
       ? (await prisma.bankAccount.findUnique({ where: { id: proforma.bankAccountId } })) || primaryBank
       : primaryBank;
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       const invoiceNumber = await this.generateInvoiceNumber(tx, {
         customerType: proforma.customer.customerType,
         gstin: proforma.customer.gstin,
@@ -399,6 +480,8 @@ export class TaxInvoiceService {
 
       return taxInvoice;
     }, { timeout: 15000 });
+    AccountingEngine.invalidateCache();
+    return res;
   }
 
   static async cancelTaxInvoice(id: string, reason: string) {
@@ -409,7 +492,7 @@ export class TaxInvoiceService {
     if (invoice.status === "CANCELLED") throw new Error("Invoice is already cancelled.");
     if (invoice.status === "PAID") throw new Error("Cannot cancel a paid invoice.");
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       const updatedInvoice = await tx.taxInvoice.update({
         where: { id },
         data: { 
@@ -423,6 +506,9 @@ export class TaxInvoiceService {
 
       return updatedInvoice;
     });
+
+    AccountingEngine.invalidateCache();
+    return res;
   }
 
   static async updateTaxInvoice(id: string, data: CreateProformaInvoiceInput) {
@@ -438,7 +524,7 @@ export class TaxInvoiceService {
 
     const calculationResult = await ProformaInvoiceService.processCalculations(data);
 
-    return await prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       await tx.taxInvoiceItem.deleteMany({
         where: { taxInvoiceId: id }
       });
@@ -537,5 +623,8 @@ export class TaxInvoiceService {
 
       return updated;
     }, { timeout: 15000 });
+
+    AccountingEngine.invalidateCache();
+    return res;
   }
 }

@@ -158,9 +158,21 @@ export async function ExpensesList({
                           {expense.status}
                         </span>
                         {expense.status !== "CANCELLED" && (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${getPaymentStatusColor(expense.paymentStatus)}`}>
-                            {expense.paymentStatus}
-                          </span>
+                          expense.paidBy === "EMPLOYEE" ? (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                              expense.paymentStatus === "PAID" 
+                                ? "bg-green-50 text-green-700 border border-green-200" 
+                                : expense.paymentStatus === "PARTIALLY_PAID"
+                                ? "bg-orange-50 text-orange-700 border border-orange-200"
+                                : "bg-amber-50 text-amber-800 border border-amber-200"
+                            }`}>
+                              {expense.paymentStatus === "PAID" ? "FULLY REIMBURSED" : expense.paymentStatus === "PARTIALLY_PAID" ? "PARTIALLY REIMBURSED" : "NOT REIMBURSED"}
+                            </span>
+                          ) : (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${getPaymentStatusColor(expense.paymentStatus)}`}>
+                              {expense.paymentStatus === "UNPAID" ? "NOT PAID" : expense.paymentStatus.replace("_", " ")}
+                            </span>
+                          )
                         )}
                       </div>
                     </td>

@@ -292,6 +292,9 @@ model InvoicePayment {
   bankReceipt     Float
   reference       String?
   remarks         String?
+  isCancelled     Boolean?    @default(false)
+  cancelledAt     DateTime?
+  cancellationReason String?
   createdAt       DateTime    @default(now())
 }
 
