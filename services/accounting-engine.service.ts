@@ -274,10 +274,70 @@ export class AccountingEngine {
     return { balancedLines: lines, totalDebit, totalCredit, isBalanced };
   }
 
+  private static cachedAllVouchers: JournalVoucher[] | null = null;
+  private static cacheTimestamp: number = 0;
+  private static inFlightVoucherPromise: Promise<JournalVoucher[]> | null = null;
+  private static readonly VOUCHER_CACHE_TTL_MS = 30_000; // 30 seconds TTL
+
+  private static cachedAccountDescriptors: AccountDescriptor[] | null = null;
+  private static accountCacheTimestamp: number = 0;
+
+  static invalidateCache() {
+    this.cachedAllVouchers = null;
+    this.cacheTimestamp = 0;
+    this.inFlightVoucherPromise = null;
+    this.cachedAccountDescriptors = null;
+    this.accountCacheTimestamp = 0;
+  }
+
   /**
-   * Primary Engine: Loads all transactional data and generates 100% verified double-entry Journal Vouchers
+   * Primary Engine: Returns double-entry Journal Vouchers with in-flight deduplication & 30s cache
    */
   static async generateAllVouchers(filters?: FilterOptions): Promise<JournalVoucher[]> {
+    const now = Date.now();
+    let vouchers: JournalVoucher[];
+
+    if (this.cachedAllVouchers && (now - this.cacheTimestamp < this.VOUCHER_CACHE_TTL_MS)) {
+      vouchers = this.cachedAllVouchers;
+    } else if (this.inFlightVoucherPromise) {
+      vouchers = await this.inFlightVoucherPromise;
+    } else {
+      this.inFlightVoucherPromise = this.buildAllRawVouchers();
+      try {
+        vouchers = await this.inFlightVoucherPromise;
+        this.cachedAllVouchers = vouchers;
+        this.cacheTimestamp = Date.now();
+      } finally {
+        this.inFlightVoucherPromise = null;
+      }
+    }
+
+    if (filters?.fromDate || filters?.toDate || filters?.financialYear) {
+      const bounds = filters.fromDate && filters.toDate
+        ? { fromDate: filters.fromDate, toDate: filters.toDate }
+        : filters.financialYear
+        ? this.getFinancialYearBounds(filters.financialYear)
+        : null;
+
+      if (bounds) {
+        return vouchers.filter(v => v.date >= bounds.fromDate && v.date <= bounds.toDate);
+      }
+      if (filters.fromDate || filters.toDate) {
+        return vouchers.filter(v => {
+          if (filters.fromDate && v.date < filters.fromDate) return false;
+          if (filters.toDate && v.date > filters.toDate) return false;
+          return true;
+        });
+      }
+    }
+
+    return vouchers;
+  }
+
+  /**
+   * Internal database loader: fetches transactions from MongoDB Atlas and builds vouchers
+   */
+  private static async buildAllRawVouchers(): Promise<JournalVoucher[]> {
     const [
       taxInvoices,
       payments,
@@ -1112,16 +1172,6 @@ export class AccountingEngine {
 
     // Sort all vouchers chronologically
     vouchers.sort((a, b) => a.date.getTime() - b.date.getTime());
-
-    // Apply optional date filters if provided
-    if (filters?.fromDate || filters?.toDate) {
-      return vouchers.filter(v => {
-        if (filters.fromDate && v.date < filters.fromDate) return false;
-        if (filters.toDate && v.date > filters.toDate) return false;
-        return true;
-      });
-    }
-
     return vouchers;
   }
 
@@ -1221,7 +1271,12 @@ export class AccountingEngine {
   /**
    * Full Chart of Accounts list with live balances
    */
-  static async getAccountList(): Promise<AccountDescriptor[]> {
+  static async getAccountList(precomputedVouchers?: JournalVoucher[]): Promise<AccountDescriptor[]> {
+    const now = Date.now();
+    if (!precomputedVouchers && this.cachedAccountDescriptors && (now - this.accountCacheTimestamp < 30_000)) {
+      return this.cachedAccountDescriptors;
+    }
+
     const [customers, vendors, bankAccounts, categories, users] = await Promise.all([
       prisma.customer.findMany({ select: { id: true, legalName: true, tradeName: true, gstin: true, pan: true } }),
       prisma.vendor.findMany({ select: { id: true, name: true, businessName: true, gstin: true, pan: true } }),
@@ -1459,7 +1514,7 @@ export class AccountingEngine {
     });
     // Calculate live balance and transaction count from all vouchers
     try {
-      const allVouchers = await this.generateAllVouchers();
+      const allVouchers = precomputedVouchers || (await this.generateAllVouchers());
       const balanceMap = new Map<string, { balance: number; count: number }>();
 
       for (const v of allVouchers) {
@@ -1495,6 +1550,11 @@ export class AccountingEngine {
       console.warn("Could not precompute account card balances:", err);
     }
 
+    if (!precomputedVouchers) {
+      this.cachedAccountDescriptors = accounts;
+      this.accountCacheTimestamp = Date.now();
+    }
+
     return accounts;
   }
 
@@ -1507,7 +1567,7 @@ export class AccountingEngine {
       financialYear: params?.financialYear
     });
 
-    const accountList = await this.getAccountList();
+    const accountList = await this.getAccountList(vouchers);
     const accountMap = new Map<string, AccountDescriptor>(accountList.map(a => [a.id, a]));
 
     const balances = new Map<string, { dr: number; cr: number; count: number }>();
