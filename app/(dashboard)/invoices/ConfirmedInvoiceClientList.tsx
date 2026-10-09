@@ -5,7 +5,7 @@ import Link from "next/link";
 import { TaxInvoiceStatus } from "@prisma/client";
 import { InvoicePaymentModal } from "./InvoicePaymentModal";
 import { useRouter } from "next/navigation";
-import { markInvoiceGstPaidAction } from "./actions";
+import { markInvoiceGstPaidAction, deleteTaxInvoiceAction } from "./actions";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 function getMonthRange(offset: 0 | -1): { start: Date; end: Date } {
@@ -45,6 +45,26 @@ export function ConfirmedInvoiceClientList({
 
   // Selected invoice for payment modal
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const handleDeleteInvoice = async (id: string) => {
+    setIsDeleting(id);
+    try {
+      const res = await deleteTaxInvoiceAction(id);
+      if (res.success) {
+        setInvoices((prev: any[]) => prev.filter((inv: any) => inv.id !== id));
+        setDeleteConfirmId(null);
+        router.refresh();
+      } else {
+        alert(res.error || "Failed to delete invoice");
+      }
+    } catch (err: any) {
+      alert(err.message || "An error occurred");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   const customerOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -475,6 +495,34 @@ export function ConfirmedInvoiceClientList({
                           >
                             View
                           </Link>
+                          {deleteConfirmId === invoice.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteInvoice(invoice.id)}
+                                disabled={isDeleting === invoice.id}
+                                className="px-2 py-0.5 border border-red-600 rounded-lg text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-2xs text-center cursor-pointer disabled:opacity-50"
+                              >
+                                {isDeleting === invoice.id ? "..." : "Confirm"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmId(null)}
+                                className="px-1.5 py-0.5 border border-gray-300 rounded-lg text-[10px] font-bold text-gray-600 hover:bg-gray-100 transition-colors shadow-2xs text-center cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmId(invoice.id)}
+                              disabled={isDeleting === invoice.id}
+                              className="px-2.5 py-0.5 border border-red-200 rounded-lg text-[11px] font-bold text-red-600 hover:bg-red-50 transition-colors shadow-2xs bg-white text-center min-w-[50px] cursor-pointer disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

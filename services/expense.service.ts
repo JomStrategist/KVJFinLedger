@@ -426,11 +426,10 @@ export class ExpenseService {
   static async deleteExpense(id: string) {
     const current = await prisma.expense.findUnique({ where: { id } });
     if (!current) throw new Error("Expense not found");
-    if (current.paymentStatus === "PAID" || Number(current.paidAmount || 0) > 0) {
-      throw new Error("Cannot delete expense with existing payment activity. Cancel or reverse payment first.");
-    }
 
     const res = await prisma.$transaction(async (tx) => {
+      await tx.assetDepreciation.deleteMany({ where: { expenseId: id } });
+      await tx.assetDisposal.deleteMany({ where: { expenseId: id } });
       await tx.expenseItem.deleteMany({ where: { expenseId: id } });
       await FinancialTransactionService.deleteTransactionBySource(tx, "EXPENSE", id);
       return await tx.expense.delete({ where: { id } });

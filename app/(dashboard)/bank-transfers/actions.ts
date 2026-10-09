@@ -49,3 +49,15 @@ export async function updateBankTransferAction(
     return { success: false, error: error.message || "Failed to update bank transfer." };
   }
 }
+
+export async function deleteBankTransferAction(id: string) {
+  try {
+    const res = await BankTransferService.deleteBankTransfer(id);
+    revalidatePath("/bank-transfers");
+    revalidatePath("/finance");
+    return { success: true, data: res };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to delete bank transfer." };
+  }
+}
+

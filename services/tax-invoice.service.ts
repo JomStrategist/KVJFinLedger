@@ -299,10 +299,6 @@ export class TaxInvoiceService {
       include: { payments: true }
     });
     if (!invoice) throw new Error("Tax invoice not found.");
-    const activePayments = invoice.payments.filter((p: any) => !p.isCancelled);
-    if (activePayments.length > 0) {
-      throw new Error("Cannot delete invoice with existing payment activity. Delete or cancel payments first, or cancel the invoice.");
-    }
 
     const res = await prisma.$transaction(async (tx) => {
       await tx.taxInvoiceItem.deleteMany({ where: { taxInvoiceId: id } });

@@ -68,3 +68,13 @@ export async function updatePaymentStatusAction(id: string, status: PaymentStatu
     return { success: false, error: error.message || "Failed to update payment status." };
   }
 }
+
+export async function deleteExpenseAction(id: string) {
+  try {
+    await ExpenseService.deleteExpense(id);
+    revalidateAllExpenseRoutes(id);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to delete expense." };
+  }
+}

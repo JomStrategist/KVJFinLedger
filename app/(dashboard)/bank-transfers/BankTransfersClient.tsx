@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BankTransferModal } from "./BankTransferModal";
 import { useRouter } from "next/navigation";
+import { deleteBankTransferAction } from "./actions";
 
 export function BankTransfersClient({
   initialTransfers = [],
@@ -16,6 +17,7 @@ export function BankTransfersClient({
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"ALL" | "TRANSFER" | "DRAWINGS" | "CASH">("ALL");
 
@@ -27,6 +29,25 @@ export function BankTransfersClient({
   const handleOpenEdit = (transfer: any) => {
     setSelectedTransfer(transfer);
     setIsModalOpen(true);
+  };
+
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const handleDeleteTransfer = async (id: string) => {
+    setIsDeleting(id);
+    try {
+      const res = await deleteBankTransferAction(id);
+      if (res.success) {
+        setDeleteConfirmId(null);
+        router.refresh();
+      } else {
+        alert(res.error || "Failed to delete bank transfer");
+      }
+    } catch (err: any) {
+      alert(err.message || "An error occurred");
+    } finally {
+      setIsDeleting(null);
+    }
   };
 
   const filteredTransfers = initialTransfers.filter((item) => {
@@ -207,13 +228,43 @@ export function BankTransfersClient({
                         {item.description || "—"}
                       </td>
                       <td className="py-3.5 px-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(item)}
-                          className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
-                        >
-                          Edit
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(item)}
+                            className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+                          >
+                            Edit
+                          </button>
+                          {deleteConfirmId === item.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteTransfer(item.id)}
+                                disabled={isDeleting === item.id}
+                                className="bg-red-600 border border-red-600 rounded-lg px-2.5 py-1 text-xs font-bold text-white hover:bg-red-700 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                              >
+                                {isDeleting === item.id ? "..." : "Confirm"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmId(null)}
+                                className="bg-white border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold text-gray-600 hover:bg-gray-100 transition-colors shadow-2xs cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmId(item.id)}
+                              disabled={isDeleting === item.id}
+                              className="bg-white border border-red-200 rounded-lg px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

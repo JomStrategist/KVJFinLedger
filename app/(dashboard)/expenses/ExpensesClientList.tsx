@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { ExpenseModal } from "./ExpenseModal";
 import { useRouter } from "next/navigation";
 import { markExpenseTdsPaidAction } from "../reports/tds-actions";
+import { deleteExpenseAction } from "./actions";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 function getMonthRange(offset: 0 | -1): { start: Date; end: Date } {
@@ -43,6 +44,7 @@ export function ExpensesClientList({
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   // Compute date bounds
   const dateBounds = useMemo<{ start: Date | null; end: Date | null }>(() => {
@@ -68,6 +70,25 @@ export function ExpensesClientList({
       router.refresh();
     } else {
       alert(res.error || "Failed to mark TDS paid");
+    }
+  };
+
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const handleDeleteExpense = async (id: string) => {
+    setIsDeleting(id);
+    try {
+      const res = await deleteExpenseAction(id);
+      if (res.success) {
+        setDeleteConfirmId(null);
+        router.refresh();
+      } else {
+        alert(res.error || "Failed to delete expense");
+      }
+    } catch (err: any) {
+      alert(err.message || "An error occurred");
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -469,6 +490,34 @@ export function ExpensesClientList({
                           >
                             Edit
                           </button>
+                          {deleteConfirmId === expense.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteExpense(expense.id)}
+                                disabled={isDeleting === expense.id}
+                                className="bg-red-600 border border-red-600 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                              >
+                                {isDeleting === expense.id ? "..." : "Confirm"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmId(null)}
+                                className="bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-100 transition-colors shadow-2xs cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmId(expense.id)}
+                              disabled={isDeleting === expense.id}
+                              className="bg-white border border-red-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

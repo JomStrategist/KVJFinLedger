@@ -158,3 +158,17 @@ export async function updateTaxInvoiceAction(id: string, payload: any) {
     return { success: false, error: error.message || "Failed to update tax invoice." };
   }
 }
+
+export async function deleteTaxInvoiceAction(id: string) {
+  try {
+    const res = await TaxInvoiceService.deleteTaxInvoice(id);
+    revalidatePath("/invoices");
+    revalidatePath("/finance");
+    revalidatePath("/dashboard");
+    revalidatePath("/reports");
+    return { success: true, data: res };
+  } catch (error: any) {
+    console.error("Failed to delete tax invoice:", error);
+    return { success: false, error: error.message || "Failed to delete tax invoice." };
+  }
+}
