@@ -10,7 +10,7 @@ export function InvoicePaymentModal({
 }: {
   invoice: any;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (updatedInvoice?: any) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +67,7 @@ export function InvoicePaymentModal({
     startTransition(async () => {
       const res = await deleteInvoicePaymentAction(paymentId, invoice.id);
       if (res.success) {
-        if (onSuccess) onSuccess();
+        if (onSuccess) onSuccess((res as any).invoice);
         onClose();
       } else {
         setError(res.error || "Failed to delete payment.");
@@ -103,7 +103,7 @@ export function InvoicePaymentModal({
         });
 
         if (res.success) {
-          if (onSuccess) onSuccess();
+          if (onSuccess) onSuccess((res as any).invoice);
           onClose();
         } else {
           setError(res.error || "Failed to update payment.");
@@ -123,7 +123,7 @@ export function InvoicePaymentModal({
         });
 
         if (res.success) {
-          if (onSuccess) onSuccess();
+          if (onSuccess) onSuccess((res as any).invoice);
           onClose();
         } else {
           setError(res.error || "Failed to record payment.");

@@ -64,7 +64,12 @@ export async function recordInvoicePaymentAction(
     revalidatePath("/finance");
     revalidatePath("/dashboard");
     revalidatePath("/reports");
-    return { success: true, data: payment };
+    const updatedInvoice = await TaxInvoiceService.getTaxInvoiceById(invoiceId);
+    return {
+      success: true,
+      data: payment,
+      invoice: updatedInvoice ? JSON.parse(JSON.stringify(updatedInvoice)) : null,
+    };
   } catch (error: any) {
     console.error("Failed to record invoice payment:", error);
     return { success: false, error: error.message || "Failed to record payment." };
@@ -92,7 +97,12 @@ export async function updateInvoicePaymentAction(
     revalidatePath("/finance");
     revalidatePath("/dashboard");
     revalidatePath("/reports");
-    return { success: true, data: res };
+    const updatedInvoice = await TaxInvoiceService.getTaxInvoiceById(invoiceId);
+    return {
+      success: true,
+      data: res,
+      invoice: updatedInvoice ? JSON.parse(JSON.stringify(updatedInvoice)) : null,
+    };
   } catch (error: any) {
     console.error("Failed to update invoice payment:", error);
     return { success: false, error: error.message || "Failed to update payment." };
@@ -107,7 +117,12 @@ export async function deleteInvoicePaymentAction(paymentId: string, invoiceId: s
     revalidatePath("/finance");
     revalidatePath("/dashboard");
     revalidatePath("/reports");
-    return { success: true, data: res };
+    const updatedInvoice = await TaxInvoiceService.getTaxInvoiceById(invoiceId);
+    return {
+      success: true,
+      data: res,
+      invoice: updatedInvoice ? JSON.parse(JSON.stringify(updatedInvoice)) : null,
+    };
   } catch (error: any) {
     console.error("Failed to delete invoice payment:", error);
     return { success: false, error: error.message || "Failed to delete payment." };

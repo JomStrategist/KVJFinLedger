@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProformaInvoiceStatus } from "@prisma/client";
@@ -16,6 +16,11 @@ export function ProformaInvoiceClientList({
 }) {
   const router = useRouter();
   const [invoices, setInvoices] = useState(initialInvoices);
+
+  // Sync state whenever parent server props change (e.g. after router.refresh())
+  useEffect(() => {
+    setInvoices(initialInvoices);
+  }, [initialInvoices]);
   const [isPending, startTransition] = useTransition();
   const [isConverting, startConvertTransition] = useTransition();
 

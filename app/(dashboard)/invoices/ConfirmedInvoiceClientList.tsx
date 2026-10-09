@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { TaxInvoiceStatus } from "@prisma/client";
 import { InvoicePaymentModal } from "./InvoicePaymentModal";
@@ -27,6 +27,11 @@ export function ConfirmedInvoiceClientList({
   const router = useRouter();
 
   const [invoices, setInvoices] = useState(initialInvoices);
+
+  // Sync state whenever parent server props change (e.g. after router.refresh())
+  useEffect(() => {
+    setInvoices(initialInvoices);
+  }, [initialInvoices]);
   const [search, setSearch] = useState("");
   const [customerFilter, setCustomerFilter] = useState<string>("ALL");
   const [customerTypeFilter, setCustomerTypeFilter] = useState<string>("ALL");
@@ -472,13 +477,13 @@ export function ConfirmedInvoiceClientList({
                       {/* Action */}
                       <td className="py-3 px-2 text-right align-middle whitespace-nowrap">
                         <div className="flex flex-col items-end justify-center gap-1">
-                          {invoice.status !== "PAID" && invoice.status !== "CANCELLED" && (
+                          {invoice.status !== "CANCELLED" && (
                             <button
                               type="button"
                               onClick={() => setSelectedInvoiceForPayment(invoice)}
                               className="px-2.5 py-0.5 border border-[#D9E3DC] rounded-lg text-[11px] font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs cursor-pointer bg-[#F9FAF8]"
                             >
-                              Payment
+                              {invoice.status === "PAID" ? "Payments" : "Payment"}
                             </button>
                           )}
                           {invoice.status !== "CANCELLED" && (
@@ -539,7 +544,14 @@ export function ConfirmedInvoiceClientList({
         <InvoicePaymentModal
           invoice={selectedInvoiceForPayment}
           onClose={() => setSelectedInvoiceForPayment(null)}
-          onSuccess={() => {
+          onSuccess={(updatedInvoice?: any) => {
+            if (updatedInvoice) {
+              setInvoices((prev: any[]) =>
+                prev.map((inv: any) =>
+                  inv.id === updatedInvoice.id ? { ...inv, ...updatedInvoice } : inv
+                )
+              );
+            }
             router.refresh();
           }}
         />
