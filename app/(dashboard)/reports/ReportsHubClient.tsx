@@ -816,25 +816,239 @@ function FixedAssetsView({
   ];
   const currentTab = tabs.some((t) => t.id === activeTab) ? activeTab : 'register';
 
+  const assets = data?.assets || [];
+  const depreciations = data?.depreciations || [];
+  const disposals = data?.disposals || [];
+
+  const totalGross = assets.reduce((sum: number, a: any) => sum + (a.grossAmount || 0), 0);
+  const totalAccDep = assets.reduce((sum: number, a: any) => {
+    const acc = (a.depreciations || []).reduce((dSum: number, d: any) => dSum + (d.depreciationAmount || 0), 0);
+    return sum + acc;
+  }, 0);
+  const totalNetBookValue = totalGross - totalAccDep;
+
   return (
     <div className="space-y-6">
       <CategoryRibbon tabs={tabs} activeTab={currentTab} onTabChange={setActiveTab} />
 
-      <div className="p-6 bg-[#FAFBF9] border border-[#D9E3DC] rounded-xl text-center space-y-3">
-        <div className="text-4xl">🏢</div>
-        <h3 className="font-bold text-[#17211B] text-sm">Fixed Assets Schedule</h3>
-        <p className="text-xs text-[#68756C] max-w-md mx-auto">
-          Capitalized asset costs incorporate non-eligible GST. Annual depreciation is recognized strictly per ICAI standards.
-        </p>
-        <div className="pt-2">
-          <Link
-            href="/reports?category=statements&tab=balance-sheet"
-            className="px-4 py-2 bg-[#177B55] text-white rounded-xl text-xs font-bold hover:bg-[#0B5F46] transition"
-          >
-            View in Balance Sheet →
-          </Link>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl shadow-xs">
+          <p className="text-xs font-semibold text-[#68756C]">Gross Block (Cost)</p>
+          <p className="text-xl font-bold text-[#17211B] mt-1">{formatCurrency(totalGross)}</p>
+        </div>
+        <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl shadow-xs">
+          <p className="text-xs font-semibold text-[#68756C]">Accumulated Depreciation</p>
+          <p className="text-xl font-bold text-[#E5484D] mt-1">{formatCurrency(totalAccDep)}</p>
+        </div>
+        <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl shadow-xs">
+          <p className="text-xs font-semibold text-[#68756C]">Net Book Value (WDV)</p>
+          <p className="text-xl font-bold text-[#177B55] mt-1">{formatCurrency(totalNetBookValue)}</p>
+        </div>
+        <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl shadow-xs">
+          <p className="text-xs font-semibold text-[#68756C]">Capital Assets Count</p>
+          <p className="text-xl font-bold text-[#17211B] mt-1">{assets.length}</p>
         </div>
       </div>
+
+      {/* Tab: Asset Register */}
+      {currentTab === 'register' && (
+        <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-[#D9E3DC] bg-[#FAFBF9] flex justify-between items-center">
+            <div>
+              <h3 className="font-bold text-[#17211B] text-sm">Fixed Asset Register</h3>
+              <p className="text-xs text-[#68756C]">
+                Capitalized equipment, laptops, and furniture adhering to ICAI Schedule II / AS-10.
+              </p>
+            </div>
+            <Link
+              href="/expenses/new"
+              className="px-3.5 py-2 bg-[#177B55] text-white rounded-xl text-xs font-bold hover:bg-[#0B5F46] transition"
+            >
+              + Capitalize Asset
+            </Link>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-[#D9E3DC] bg-[#FAFBF9] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
+                  <th className="py-3 px-4">Voucher / Asset</th>
+                  <th className="py-3 px-4">Description / Notes</th>
+                  <th className="py-3 px-4">Vendor</th>
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4 text-right">Gross Cost</th>
+                  <th className="py-3 px-4 text-center">Rate</th>
+                  <th className="py-3 px-4 text-right">Acc. Dep.</th>
+                  <th className="py-3 px-4 text-right">Net Book Value</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E9EEE9]">
+                {assets.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-[#68756C]">
+                      <div className="text-2xl mb-1">🏢</div>
+                      <p className="font-semibold text-sm text-[#17211B]">No Capitalized Assets Recorded Yet</p>
+                      <p className="text-xs mt-1">
+                        When recording asset purchases (e.g. laptops, servers), toggle &ldquo;Capitalize as Asset&rdquo; in the Expense form.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  assets.map((asset: any) => {
+                    const accDep = (asset.depreciations || []).reduce(
+                      (sum: number, d: any) => sum + (d.depreciationAmount || 0),
+                      0
+                    );
+                    const nbv = (asset.grossAmount || 0) - accDep;
+
+                    return (
+                      <tr key={asset.id} className="hover:bg-[#F9FAF8] transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-bold text-[#17211B]">
+                          {asset.expenseNumber}
+                        </td>
+                        <td className="py-3.5 px-4 text-[#17211B]">
+                          {asset.notes || asset.category?.name || 'Capital Asset'}
+                        </td>
+                        <td className="py-3.5 px-4 text-[#4B5563]">
+                          {asset.vendor?.name || 'Direct / Bank'}
+                        </td>
+                        <td className="py-3.5 px-4 text-[#68756C]">
+                          {asset.expenseDate ? new Date(asset.expenseDate).toLocaleDateString('en-IN') : '—'}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-semibold text-[#17211B]">
+                          {formatCurrency(asset.grossAmount || 0)}
+                        </td>
+                        <td className="py-3.5 px-4 text-center font-mono">
+                          {asset.depreciationRate ? `${asset.depreciationRate}%` : '—'}
+                        </td>
+                        <td className="py-3.5 px-4 text-right text-[#E5484D] font-mono">
+                          {formatCurrency(accDep)}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-bold text-[#177B55]">
+                          {formatCurrency(nbv)}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Depreciation Schedule */}
+      {currentTab === 'depreciation' && (
+        <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-[#D9E3DC] bg-[#FAFBF9]">
+            <h3 className="font-bold text-[#17211B] text-sm">Depreciation Schedule</h3>
+            <p className="text-xs text-[#68756C]">
+              Depreciation written off across financial years under WDV / SLM methods.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-[#D9E3DC] bg-[#FAFBF9] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
+                  <th className="py-3 px-4">Financial Year</th>
+                  <th className="py-3 px-4">Asset / Voucher</th>
+                  <th className="py-3 px-4">Method</th>
+                  <th className="py-3 px-4 text-center">Rate</th>
+                  <th className="py-3 px-4 text-right">Written-Off Amount</th>
+                  <th className="py-3 px-4">Effective Date</th>
+                  <th className="py-3 px-4">Remarks</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E9EEE9]">
+                {depreciations.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-[#68756C]">
+                      No depreciation entries recorded yet.
+                    </td>
+                  </tr>
+                ) : (
+                  depreciations.map((dep: any) => (
+                    <tr key={dep.id} className="hover:bg-[#F9FAF8] transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-[#17211B]">{dep.financialYear}</td>
+                      <td className="py-3.5 px-4 font-mono">{dep.expense?.expenseNumber || '—'}</td>
+                      <td className="py-3.5 px-4">{dep.method}</td>
+                      <td className="py-3.5 px-4 text-center">{dep.rate}%</td>
+                      <td className="py-3.5 px-4 text-right font-bold text-[#E5484D]">
+                        {formatCurrency(dep.depreciationAmount || 0)}
+                      </td>
+                      <td className="py-3.5 px-4 text-[#68756C]">
+                        {dep.effectiveDate ? new Date(dep.effectiveDate).toLocaleDateString('en-IN') : '—'}
+                      </td>
+                      <td className="py-3.5 px-4 text-[#68756C]">{dep.remarks || '—'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Disposals */}
+      {currentTab === 'disposals' && (
+        <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-[#D9E3DC] bg-[#FAFBF9]">
+            <h3 className="font-bold text-[#17211B] text-sm">Asset Disposals & Write-Offs</h3>
+            <p className="text-xs text-[#68756C]">
+              History of retired, scrapped, or sold fixed assets and realized capital gain/loss.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-[#D9E3DC] bg-[#FAFBF9] text-[11px] uppercase text-[#738078] font-bold tracking-wider">
+                  <th className="py-3 px-4">Disposal Date</th>
+                  <th className="py-3 px-4">Asset</th>
+                  <th className="py-3 px-4 text-right">Gross Cost</th>
+                  <th className="py-3 px-4 text-right">Acc. Dep.</th>
+                  <th className="py-3 px-4 text-right">Net Book Value</th>
+                  <th className="py-3 px-4 text-right">Sale Proceeds</th>
+                  <th className="py-3 px-4 text-right">Gain / Loss</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E9EEE9]">
+                {disposals.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-[#68756C]">
+                      No asset disposals or write-offs on record.
+                    </td>
+                  </tr>
+                ) : (
+                  disposals.map((disp: any) => (
+                    <tr key={disp.id} className="hover:bg-[#F9FAF8] transition-colors">
+                      <td className="py-3.5 px-4 text-[#68756C]">
+                        {disp.disposalDate ? new Date(disp.disposalDate).toLocaleDateString('en-IN') : '—'}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono">{disp.expense?.expenseNumber || '—'}</td>
+                      <td className="py-3.5 px-4 text-right">{formatCurrency(disp.grossCost || 0)}</td>
+                      <td className="py-3.5 px-4 text-right text-[#E5484D]">
+                        {formatCurrency(disp.accumulatedDepreciation || 0)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">{formatCurrency(disp.netBookValue || 0)}</td>
+                      <td className="py-3.5 px-4 text-right font-bold text-[#17211B]">
+                        {formatCurrency(disp.saleProceeds || 0)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-bold">
+                        <span className={disp.gainOrLoss >= 0 ? 'text-[#177B55]' : 'text-[#E5484D]'}>
+                          {formatCurrency(disp.gainOrLoss || 0)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

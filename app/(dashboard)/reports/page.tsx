@@ -260,7 +260,44 @@ export default async function ReportsPage({
         break;
       }
       case 'assets': {
-        reportData = { message: 'Fixed assets register' };
+        const [assetExpenses, assetDepreciations, assetDisposals, fixedAssetCategories] = await Promise.all([
+          prisma.expense.findMany({
+            where: { isAsset: true },
+            include: {
+              vendor: { select: { id: true, name: true } },
+              category: { select: { id: true, name: true } },
+              depreciations: true,
+              disposal: true,
+            },
+            orderBy: { expenseDate: 'desc' },
+          }),
+          prisma.assetDepreciation.findMany({
+            include: {
+              expense: {
+                select: { id: true, expenseNumber: true, notes: true, grossAmount: true, netAmount: true },
+              },
+            },
+            orderBy: { effectiveDate: 'desc' },
+          }),
+          prisma.assetDisposal.findMany({
+            include: {
+              expense: {
+                select: { id: true, expenseNumber: true, notes: true, grossAmount: true },
+              },
+            },
+            orderBy: { disposalDate: 'desc' },
+          }),
+          prisma.expenseCategory.findMany({
+            where: { financialType: 'ASSET' },
+            select: { id: true, name: true, code: true, statementGroup: true },
+          }),
+        ]);
+        reportData = {
+          assets: assetExpenses,
+          depreciations: assetDepreciations,
+          disposals: assetDisposals,
+          categories: fixedAssetCategories,
+        };
         break;
       }
       case 'employees': {

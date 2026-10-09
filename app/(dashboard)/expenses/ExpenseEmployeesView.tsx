@@ -2,10 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { AddMasterRecordModal } from '../masters/AddMasterRecordModal';
 
 export function ExpenseEmployeesView({ employees = [] }: { employees: any[] }) {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('ALL');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const departments = Array.from(
     new Set(employees.map((e) => e.department).filter(Boolean))
@@ -57,9 +61,15 @@ export function ExpenseEmployeesView({ employees = [] }: { employees: any[] }) {
           <span className="text-[#68756C] font-semibold">
             {filtered.length} employee{filtered.length !== 1 ? 's' : ''}
           </span>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="ml-2 inline-flex items-center gap-1 px-3 py-1.5 bg-[#177B55] hover:bg-[#0B5F46] text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
+          >
+            <span>+</span> Add Employee
+          </button>
           <Link
             href="/masters?tab=employees"
-            className="ml-2 inline-flex items-center text-xs font-semibold text-[#177B55] hover:underline"
+            className="ml-1 inline-flex items-center text-xs font-semibold text-[#177B55] hover:underline"
           >
             Manage in Masters →
           </Link>
@@ -125,6 +135,17 @@ export function ExpenseEmployeesView({ employees = [] }: { employees: any[] }) {
           </tbody>
         </table>
       </div>
+
+      {isAddModalOpen && (
+        <AddMasterRecordModal
+          defaultTab="employee"
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={() => {
+            setIsAddModalOpen(false);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

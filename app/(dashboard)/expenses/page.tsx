@@ -52,6 +52,14 @@ export default async function ExpensesPage({
               <span>+</span> Add Vendor
             </Link>
           )}
+          {activeTab === 'employees' && (
+            <Link
+              href="/masters?tab=employees&action=new"
+              className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent rounded-xl text-xs font-bold text-white bg-[#177B55] hover:bg-[#0B5F46] shadow-xs transition-colors gap-1.5 shrink-0"
+            >
+              <span>+</span> Add Employee
+            </Link>
+          )}
         </div>
       </div>
 

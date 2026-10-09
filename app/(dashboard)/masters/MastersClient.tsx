@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { AddMasterRecordModal } from "./AddMasterRecordModal";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { formatCurrency } from "@/lib/utils/currency";
 import { toggleCategoryStatusAction, toggleEmployeeStatusAction } from "./actions";
 import { BankAccountsMasterTab } from "../settings/BankAccountsMasterTab";
@@ -30,6 +30,8 @@ export function MastersClient({
   initialTab?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const actionParam = searchParams?.get("action");
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<"customers" | "vendors" | "employees" | "products" | "categories" | "bank_accounts">(
     initialTab === "employees" || initialTab === "vendors" || initialTab === "products" || initialTab === "categories" || initialTab === "bank_accounts"
@@ -40,7 +42,7 @@ export function MastersClient({
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ACTIVE");
   const [financialTypeFilter, setFinancialTypeFilter] = useState<string>("ALL");
 
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(actionParam === "new");
   const [editingRecord, setEditingRecord] = useState<{ type: string; data: any } | null>(null);
 
   // Filter helper

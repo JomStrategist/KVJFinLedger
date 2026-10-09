@@ -79,11 +79,20 @@ export class VendorService {
 
     return await prisma.vendor.create({
       data: {
-        ...data,
         name: data.name.trim(),
-        country: data.country || "India",
+        businessName: data.businessName || null,
         vendorType: data.vendorType || "B2B",
         gstRegistrationStatus: data.gstRegistrationStatus || (data.gstin ? "REGISTERED" : "UNREGISTERED"),
+        gstin: data.gstin?.trim() || null,
+        pan: data.pan?.trim() || null,
+        email: data.email?.trim() || null,
+        phone: data.phone?.trim() || null,
+        contactPerson: data.contactPerson || null,
+        address: data.address || null,
+        city: data.city || null,
+        state: data.state || null,
+        stateCode: data.stateCode || null,
+        country: data.country || "India",
         isActive: data.isActive ?? true,
       }
     });
