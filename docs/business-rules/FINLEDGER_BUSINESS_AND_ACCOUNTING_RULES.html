@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinLedger — Frozen Business & Accounting Rules | KVJ Analytics</title>
+  <style>
+    :root {
+      --primary: #0b5f46;
+      --primary-light: #ecfdf5;
+      --primary-dark: #064e3b;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --badge-bg: #e0f2fe;
+      --badge-text: #0369a1;
+      --badge-test-bg: #fef3c7;
+      --badge-test-text: #92400e;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--text-main);
+      background-color: var(--bg-page);
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: linear-gradient(135deg, #0b5f46 0%, #064e3b 100%);
+      color: white;
+      padding: 40px 24px;
+      text-align: center;
+      border-bottom: 4px solid #059669;
+    }
+    header h1 {
+      margin: 0 0 10px 0;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    header p {
+      margin: 4px 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .container {
+      max-width: 1140px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    .card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      padding: 32px;
+      margin-bottom: 32px;
+    }
+    h2 {
+      color: var(--primary);
+      font-size: 22px;
+      font-weight: 700;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 12px;
+      margin-top: 0;
+      margin-bottom: 24px;
+    }
+    h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 20px 0 8px 0;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .rule-box {
+      background: #fafaf9;
+      border-left: 4px solid var(--primary);
+      padding: 16px 20px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 20px;
+    }
+    .rule-id {
+      display: inline-block;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid #a7f3d0;
+    }
+    .test-badge {
+      display: inline-block;
+      background: var(--badge-test-bg);
+      color: var(--badge-test-text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      border: 1px solid #fde68a;
+    }
+    .entry-box {
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      margin: 10px 0;
+      color: #334155;
+    }
+    .meta-line {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 20px 0;
+    }
+    th {
+      background: #f8fafc;
+      color: #475569;
+      text-align: left;
+      padding: 12px;
+      font-weight: 700;
+      border-bottom: 2px solid var(--border);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      color: #334155;
+      vertical-align: top;
+    }
+    tr:hover td {
+      background-color: #f8fafc;
+    }
+    footer {
+      text-align: center;
+      padding: 30px;
+      color: #94a3b8;
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>FINLEDGER — FROZEN BUSINESS & ACCOUNTING RULES</h1>
+  <p><strong>KVJ Analytics</strong> | Indian IT & Analytics Services Enterprise</p>
+  <p>Statutory Compliance: ICAI Accounting Standards, Companies Act 2013 Schedule III, Indian GST & Income Tax Act 1961</p>
+  <p>Financial Year: 1 April – 31 March | Reporting Currency: INR (₹) | Document Standard: Production Quality Standard</p>
+</header>
+
+<div class="container">
+
+  <!-- Overview -->
+  <div class="card">
+    <h2>1. Executive Accounting Charter</h2>
+    <p>FinLedger serves as the core financial system of record for <strong>KVJ Analytics</strong>. This document specifies the immutable business, accounting, tax, workflow, and navigation rules governing the application. Every ledger voucher, financial statement, and transaction workflow must conform to these rules without deviation.</p>
+  </div>
+
+  <!-- A1: General -->
+  <div class="card">
+    <h2>Section A1: General Accounting Rules</h2>
+    
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-GEN-001</span> Pure Double-Entry Bookkeeping <span class="test-badge">TEST-GEN-001</span></h3>
+      <p>FinLedger strictly enforces double-entry accounting. For every financial event, total debits must exactly equal total credits (&Sigma; Dr = &Sigma; Cr). Unequal entries are mathematically blocked.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>services/accounting-engine.service.ts</code>, <code>app/(dashboard)/journals</code></div>
+    </div>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-GEN-002</span> Accounting Engine as Single Source of Truth <span class="test-badge">TEST-GEN-002</span></h3>
+      <p>The Accounting Engine (<code>AccountingEngine</code>) and the General Ledger are the sole authoritative sources for all accounting balances, statuses, and reports. Module-level summary caches cannot override the GL.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>services/accounting-engine.service.ts</code>, <code>app/(dashboard)/ledgers</code></div>
+    </div>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-GEN-003</span> Absolute Balance Equilibrium <span class="test-badge">TEST-GEN-003</span></h3>
+      <p>Every posted journal entry validates balance integrity prior to ledger persistence. Suspense balance or artificial adjustments are strictly prohibited.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>services/accounting-engine.service.ts</code>, <code>app/(dashboard)/reports/trial-balance</code></div>
+    </div>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-GEN-004</span> Five-Fold Account Classification <span class="test-badge">TEST-GEN-004</span></h3>
+      <p>Every ledger account belongs to one of five core classifications: Asset, Liability, Equity, Income, or Expense. GST and TDS are explicitly segregated into statutory balance sheet heads.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>services/chart-of-accounts.service.ts</code>, <code>app/(dashboard)/masters</code></div>
+    </div>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-GEN-005</span> Non-Duplication on Settlement <span class="test-badge">TEST-GEN-005</span></h3>
+      <p>Payments and receipts are balance sheet settlements; they never create secondary income or expense entries upon disbursement or receipt.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>services/tax-invoice.service.ts</code>, <code>services/expense.service.ts</code></div>
+    </div>
+  </div>
+
+  <!-- A2: Sales & Invoices -->
+  <div class="card">
+    <h2>Section A2: Sales & Customer Invoices</h2>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-SALES-001</span> Revenue Recognition <span class="test-badge">TEST-SALES-001</span></h3>
+      <p>Service value (taxable amount) is recognized as operating income upon confirmation of a Tax Invoice, irrespective of customer payment status.</p>
+      <div class="entry-box">
+        Debit: Accounts Receivable (Customer) ₹11,800<br>
+        Credit: Revenue from Operations (Income) ₹10,000<br>
+        Credit: Output GST Payable (Liability) ₹1,800
+      </div>
+      <div class="meta-line"><strong>Module:</strong> <code>services/tax-invoice.service.ts</code>, <code>app/(dashboard)/invoices</code></div>
+    </div>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-SALES-002</span> Separation of GST from Revenue <span class="test-badge">TEST-SALES-002</span></h3>
+      <p>GST collected on behalf of the Government is a statutory balance sheet liability and is strictly excluded from P&L revenue.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>services/accounting-engine.service.ts</code></div>
+    </div>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-SALES-009</span> Distinction: Proforma vs. Tax Invoice <span class="test-badge">TEST-SALES-009</span></h3>
+      <p>Proforma Invoices are commercial quotations with zero accounting or tax impact. Only confirmed Tax Invoices generate journal vouchers and tax liabilities.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>app/(dashboard)/proforma-invoices</code>, <code>services/proforma-invoice.service.ts</code></div>
+    </div>
+  </div>
+
+  <!-- A3: Receipts & TDS -->
+  <div class="card">
+    <h2>Section A3: Customer Receipts & Customer TDS</h2>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-RCPT-009</span> Customer TDS Recognized on Actual Deduction <span class="test-badge">TEST-RCPT-009</span></h3>
+      <p>Customer TDS is recognized as TDS Receivable (Current Asset) strictly when the customer actually deducts it upon settlement, never at invoice issuance.</p>
+      <div class="entry-box">
+        Debit: Bank Account ₹10,800<br>
+        Debit: TDS Receivable (Current Asset) ₹1,000<br>
+        Credit: Accounts Receivable (Customer) ₹11,800<br>
+        <em>(Operating Revenue remains unchanged at ₹10,000)</em>
+      </div>
+      <div class="meta-line"><strong>Module:</strong> <code>services/tax-invoice.service.ts</code>, <code>services/accounting-engine.service.ts</code></div>
+    </div>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-RCPT-004</span> Derived Invoice Payment Statuses <span class="test-badge">TEST-RCPT-004</span></h3>
+      <p>Invoice payment status is strictly derived: Not Paid (₹0 paid), Partially Paid (0 &lt; paid &lt; gross), and Paid (paid &ge; gross).</p>
+      <div class="meta-line"><strong>Module:</strong> <code>services/tax-invoice.service.ts</code></div>
+    </div>
+  </div>
+
+  <!-- A4 & A5: Expenses & Modes -->
+  <div class="card">
+    <h2>Sections A4 & A5: Expenses & Payment Modes</h2>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-MOD-001</span> Strict Two-Mode Enforcement <span class="test-badge">TEST-MOD-001</span></h3>
+      <p>Only two user-facing payment modes are permitted: <strong>KVJ Paid</strong> (company bank/cash account) and <strong>Employee Paid</strong> (paid personally by staff). No separate "Payable Later" mode exists.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>app/(dashboard)/expenses/new</code>, <code>services/expense.service.ts</code></div>
+    </div>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-MOD-004</span> Employee Paid Expense Workflow <span class="test-badge">TEST-MOD-004</span></h3>
+      <p>Employee Paid expenses recognize the business expense immediately and credit Employee Payable liability. Bank/Cash accounts are untouched until reimbursement.</p>
+      <div class="entry-box">
+        <strong>At Expense Incurrence:</strong><br>
+        Debit: Business Expense ₹5,000<br>
+        Credit: Employee Payable (Liability) ₹5,000<br><br>
+        <strong>At Reimbursement:</strong><br>
+        Debit: Employee Payable (Liability) ₹5,000<br>
+        Credit: Bank Account ₹5,000
+      </div>
+      <div class="meta-line"><strong>Module:</strong> <code>services/expense.service.ts</code>, <code>services/accounting-engine.service.ts</code></div>
+    </div>
+  </div>
+
+  <!-- A6: Employees & Salary -->
+  <div class="card">
+    <h2>Section A6: Employees & Salary</h2>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-EMP-001</span> Strict Segregation of Employees from Vendors <span class="test-badge">TEST-EMP-001</span></h3>
+      <p>Employees are distinct internal master records, completely separate from commercial vendors. They must never be classified as Trade Creditors (Sundry Creditors).</p>
+      <div class="meta-line"><strong>Module:</strong> <code>services/employee.service.ts</code>, <code>app/(dashboard)/masters</code></div>
+    </div>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-EMP-009</span> Mandatory Working "Add Employee" Option <span class="test-badge">TEST-EMP-009</span></h3>
+      <p>The application must provide a functional, accessible option to add, edit, and select employees across Masters and Expense workflows.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>app/(dashboard)/masters</code>, <code>app/(dashboard)/expenses</code></div>
+    </div>
+  </div>
+
+  <!-- A8: GST & ITC -->
+  <div class="card">
+    <h2>Section A8: GST & Input Tax Credit (ITC)</h2>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-GST-002</span> Intra-State vs. Inter-State Determination <span class="test-badge">TEST-GST-002</span></h3>
+      <p>Kerala (State Code 32) to Kerala transactions charge CGST + SGST. Inter-state transactions charge IGST. Export transactions to overseas clients (B2B_EXPORT) are zero-rated.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>lib/constants/indian-states.ts</code>, <code>services/tax-invoice.service.ts</code></div>
+    </div>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-GST-006</span> Eligible ITC Excluded from Cost <span class="test-badge">TEST-GST-006</span></h3>
+      <p>Eligible Input GST is debited to Input Tax Credit Asset; it is strictly excluded from P&L expense cost. Ineligible ITC is capitalized into expense cost.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>services/accounting-engine.service.ts</code></div>
+    </div>
+  </div>
+
+  <!-- A11 & A12: Reports & Navigation -->
+  <div class="card">
+    <h2>Sections A11 & A12: Reports & Frozen Navigation Model</h2>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-RPT-003</span> Trial Balance Equilibrium <span class="test-badge">TEST-RPT-003</span></h3>
+      <p>Total Debits must equal Total Credits exactly (&Delta; = 0.00) across any period.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>app/(dashboard)/reports/trial-balance</code></div>
+    </div>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-RPT-004</span> Schedule III Balance Sheet Equilibrium <span class="test-badge">TEST-RPT-004</span></h3>
+      <p>Assets = Liabilities + Equity exactly for every reporting period.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>app/(dashboard)/reports/balance-sheet</code></div>
+    </div>
+
+    <div class="rule-box">
+      <h3><span class="rule-id">RULE-NAV-001</span> Frozen 11-Item Sidebar Navigation <span class="test-badge">TEST-NAV-001</span></h3>
+      <p>The standard left sidebar contains exactly 11 modules: Dashboard, Ledgers, Journal, Invoice, Expense, Banking & Cash, Masters, Users, Reports, Opening/Closing, Settings.</p>
+      <div class="meta-line"><strong>Module:</strong> <code>components/Sidebar.tsx</code></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <p>&copy; 2026 KVJ Analytics. FinLedger Financial ERP System. Authoritative Document Standard.</p>
+</footer>
+
+</body>
+</html>
