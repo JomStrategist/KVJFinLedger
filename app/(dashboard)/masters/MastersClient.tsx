@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AddMasterRecordModal } from "./AddMasterRecordModal";
 import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/lib/utils/currency";
-import { toggleCategoryStatusAction } from "./actions";
+import { toggleCategoryStatusAction, toggleEmployeeStatusAction } from "./actions";
 import { BankAccountsMasterTab } from "../settings/BankAccountsMasterTab";
 
 export function MastersClient({
@@ -17,6 +17,7 @@ export function MastersClient({
   financialTypes = [],
   statementGroups = [],
   accountNatures = [],
+  initialTab,
 }: {
   customers: any[];
   vendors: any[];
@@ -26,10 +27,15 @@ export function MastersClient({
   financialTypes?: any[];
   statementGroups?: any[];
   accountNatures?: any[];
+  initialTab?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState<"customers" | "vendors" | "employees" | "products" | "categories" | "bank_accounts">("customers");
+  const [activeTab, setActiveTab] = useState<"customers" | "vendors" | "employees" | "products" | "categories" | "bank_accounts">(
+    initialTab === "employees" || initialTab === "vendors" || initialTab === "products" || initialTab === "categories" || initialTab === "bank_accounts"
+      ? initialTab
+      : "customers"
+  );
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ACTIVE");
   const [financialTypeFilter, setFinancialTypeFilter] = useState<string>("ALL");
@@ -57,7 +63,11 @@ export function MastersClient({
   );
 
   const filteredEmployees = employees.filter((e) =>
-    filterRecord(e.name || "", e.employeeCode || e.designation || "", e.isActive ?? true)
+    filterRecord(
+      e.name || "",
+      `${e.employeeCode || ""} ${e.designation || ""} ${e.department || ""} ${e.email || ""} ${e.phone || ""}`,
+      e.isActive ?? true
+    )
   );
 
   const filteredProducts = products.filter((p) =>
@@ -146,6 +156,8 @@ export function MastersClient({
               placeholder={
                 activeTab === "categories"
                   ? "Search category name, code, group, nature..."
+                  : activeTab === "employees"
+                  ? "Search employee name, code, designation, department..."
                   : "Search by name, GSTIN, HSN/SAC..."
               }
               value={search}
@@ -329,13 +341,14 @@ export function MastersClient({
                   <th className="py-3 px-3">CONTACT</th>
                   <th className="py-3 px-3">PAN</th>
                   <th className="py-3 px-3">STATUS</th>
+                  <th className="py-3 px-2 text-right">ACTION</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EBF1ED]">
                 {filteredEmployees.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-xs text-[#738078]">
-                      No employee records found.
+                    <td colSpan={6} className="py-12 text-center text-xs text-[#738078]">
+                      No employee records found. Click &quot;+ Add Record&quot; to create one.
                     </td>
                   </tr>
                 ) : (
@@ -360,6 +373,35 @@ export function MastersClient({
                         }`}>
                           {emp.isActive ? "Active" : "Inactive"}
                         </span>
+                      </td>
+                      <td className="py-3 px-2 text-right space-x-2 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingRecord({ type: "employee", data: emp });
+                            setIsAddModalOpen(true);
+                          }}
+                          className="inline-block bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs cursor-pointer"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => {
+                            startTransition(async () => {
+                              await toggleEmployeeStatusAction(emp.id, !emp.isActive);
+                              router.refresh();
+                            });
+                          }}
+                          className={`inline-block border rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-colors shadow-2xs cursor-pointer ${
+                            emp.isActive
+                              ? "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                              : "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                          }`}
+                        >
+                          {emp.isActive ? "Deactivate" : "Activate"}
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -563,6 +605,8 @@ export function MastersClient({
               ? "customer"
               : activeTab === "vendors"
               ? "vendor"
+              : activeTab === "employees"
+              ? "employee"
               : activeTab === "products"
               ? "product"
               : "category")

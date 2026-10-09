@@ -7,8 +7,13 @@ import { ChartOfAccountsService } from "@/services/chart-of-accounts.service";
 import { EmployeeService } from "@/services/employee.service";
 import { MastersClient } from "./MastersClient";
 
-export default async function MastersPage() {
+export default async function MastersPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ tab?: string }>;
+}) {
   await requireAuth();
+  const resolvedParams = (await searchParams) || {};
 
   const [customers, vendors, products, categories, financialTypes, statementGroups, accountNatures, employees] =
     await Promise.all([
@@ -33,6 +38,7 @@ export default async function MastersPage() {
         financialTypes={JSON.parse(JSON.stringify(financialTypes))}
         statementGroups={JSON.parse(JSON.stringify(statementGroups))}
         accountNatures={JSON.parse(JSON.stringify(accountNatures))}
+        initialTab={resolvedParams.tab}
       />
     </div>
   );

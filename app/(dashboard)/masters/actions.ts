@@ -6,6 +6,51 @@ import { VendorService } from "@/services/vendor.service";
 import { ProductService } from "@/services/product.service";
 import { ExpenseCategoryService } from "@/services/expense-category.service";
 import { ChartOfAccountsService } from "@/services/chart-of-accounts.service";
+import { EmployeeService } from "@/services/employee.service";
+
+export async function createEmployeeMasterAction(data: any) {
+  try {
+    const emp = await EmployeeService.createEmployee(data);
+    revalidatePath("/masters");
+    revalidatePath("/expenses");
+    return { success: true, data: emp };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to create employee." };
+  }
+}
+
+export async function updateEmployeeMasterAction(id: string, data: any) {
+  try {
+    const emp = await EmployeeService.updateEmployee(id, data);
+    revalidatePath("/masters");
+    revalidatePath("/expenses");
+    return { success: true, data: emp };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to update employee." };
+  }
+}
+
+export async function toggleEmployeeStatusAction(id: string, isActive: boolean) {
+  try {
+    const emp = await EmployeeService.updateEmployee(id, { isActive });
+    revalidatePath("/masters");
+    revalidatePath("/expenses");
+    return { success: true, data: emp };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to toggle employee status." };
+  }
+}
+
+export async function deleteEmployeeMasterAction(id: string) {
+  try {
+    await EmployeeService.deleteEmployee(id);
+    revalidatePath("/masters");
+    revalidatePath("/expenses");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to delete employee." };
+  }
+}
 
 export async function createCustomerMasterAction(data: any) {
   try {

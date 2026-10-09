@@ -6,6 +6,8 @@ import {
   updateCustomerMasterAction,
   createVendorMasterAction,
   updateVendorMasterAction,
+  createEmployeeMasterAction,
+  updateEmployeeMasterAction,
   createProductMasterAction,
   updateProductMasterAction,
   createCategoryMasterAction,
@@ -58,7 +60,7 @@ export function AddMasterRecordModal({
   onClose,
   onSuccess,
 }: {
-  defaultTab?: "customer" | "vendor" | "product" | "category" | string;
+  defaultTab?: "customer" | "vendor" | "employee" | "product" | "category" | string;
   initialData?: any;
   categories?: any[];
   financialTypes?: any[];
@@ -95,6 +97,17 @@ export function AddMasterRecordModal({
   const [vendorAddress, setVendorAddress] = useState(initialData?.address || "");
   const [vendorState, setVendorState] = useState(initialData?.state || "Kerala");
   const [vendorCountry, setVendorCountry] = useState(initialData?.country || "India");
+
+  // Employee State
+  const [employeeName, setEmployeeName] = useState(initialData?.name || "");
+  const [employeeCode, setEmployeeCode] = useState(initialData?.employeeCode || "");
+  const [employeeDepartment, setEmployeeDepartment] = useState(initialData?.department || "Operations");
+  const [employeeDesignation, setEmployeeDesignation] = useState(initialData?.designation || "Staff");
+  const [employeeEmail, setEmployeeEmail] = useState(initialData?.email || "");
+  const [employeePhone, setEmployeePhone] = useState(initialData?.phone || "");
+  const [employeePan, setEmployeePan] = useState(initialData?.pan || "");
+  const [employeeSalary, setEmployeeSalary] = useState(initialData?.salary ? String(initialData.salary) : "");
+  const [employeeIsActive, setEmployeeIsActive] = useState(initialData?.isActive ?? true);
 
   // Product State
   const [productName, setProductName] = useState(initialData?.name || "");
@@ -260,6 +273,27 @@ export function AddMasterRecordModal({
         res = isEdit
           ? await updateVendorMasterAction(initialData.id, payload)
           : await createVendorMasterAction(payload);
+      } else if (activeType === "employee") {
+        const payload = {
+          name: employeeName.trim(),
+          employeeCode: employeeCode.trim() || undefined,
+          department: employeeDepartment.trim() || undefined,
+          designation: employeeDesignation.trim() || undefined,
+          email: employeeEmail.trim() || undefined,
+          phone: employeePhone.trim() || undefined,
+          pan: employeePan.trim() ? employeePan.trim().toUpperCase() : undefined,
+          salary: employeeSalary ? parseFloat(employeeSalary) || 0 : 0,
+          isActive: employeeIsActive,
+        };
+
+        if (!payload.name) {
+          setError("Employee full name is required.");
+          return;
+        }
+
+        res = isEdit
+          ? await updateEmployeeMasterAction(initialData.id, payload)
+          : await createEmployeeMasterAction(payload);
       } else if (activeType === "product") {
         const payload = {
           name: productName,
@@ -315,7 +349,7 @@ export function AddMasterRecordModal({
               <h2 className="text-base font-bold text-slate-900">
                 {initialData ? "Edit Master Record" : "Add Master Record"}
               </h2>
-              <p className="text-[11px] text-slate-500 font-medium">Configure customer, party, service, or accounting heads</p>
+              <p className="text-[11px] text-slate-500 font-medium">Configure customer, party, employee, service, or accounting heads</p>
             </div>
           </div>
           <button
@@ -332,6 +366,7 @@ export function AddMasterRecordModal({
             {[
               { id: "customer", label: "Customer", icon: "👤" },
               { id: "vendor", label: "Party", icon: "🏢" },
+              { id: "employee", label: "Employee", icon: "💼" },
               { id: "product", label: "Product & Service", icon: "📦" },
               { id: "category", label: "Category", icon: "🏷️" },
             ].map((t) => (
@@ -674,6 +709,156 @@ export function AddMasterRecordModal({
                     onChange={(e) => setVendorPhone(e.target.value)}
                     className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                   />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeType === "employee" && (
+            <div className="space-y-4">
+              {/* Full Name & Employee Code */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Employee Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Rahul Sharma"
+                    value={employeeName}
+                    onChange={(e) => setEmployeeName(e.target.value)}
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Employee Code
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Auto-generated (e.g. EMP-001)"
+                    value={employeeCode}
+                    onChange={(e) => setEmployeeCode(e.target.value.toUpperCase())}
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-mono uppercase"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">Leave blank to auto-generate code</span>
+                </div>
+              </div>
+
+              {/* Department & Designation */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Department
+                  </label>
+                  <input
+                    type="text"
+                    list="department-suggestions"
+                    placeholder="e.g. Operations"
+                    value={employeeDepartment}
+                    onChange={(e) => setEmployeeDepartment(e.target.value)}
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                  />
+                  <datalist id="department-suggestions">
+                    <option value="Operations" />
+                    <option value="Sales & Marketing" />
+                    <option value="Finance & Accounts" />
+                    <option value="Engineering & IT" />
+                    <option value="Administration & HR" />
+                    <option value="Management" />
+                    <option value="Customer Support" />
+                  </datalist>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Designation
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Senior Accountant / Sales Exec"
+                    value={employeeDesignation}
+                    onChange={(e) => setEmployeeDesignation(e.target.value)}
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Email & Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="employee@company.com"
+                    value={employeeEmail}
+                    onChange={(e) => setEmployeeEmail(e.target.value)}
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Phone Number</label>
+                  <input
+                    type="tel"
+                    placeholder="+91 98765 43210"
+                    value={employeePhone}
+                    onChange={(e) => setEmployeePhone(e.target.value)}
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* PAN & Salary / Monthly CTC */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">PAN Number</label>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    placeholder="e.g. ABCDE1234F"
+                    value={employeePan}
+                    onChange={(e) => setEmployeePan(e.target.value.toUpperCase())}
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 uppercase font-mono font-bold tracking-wider"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Monthly Salary / Cost (₹)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="0.00"
+                    value={employeeSalary}
+                    onChange={(e) => setEmployeeSalary(e.target.value)}
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-mono font-semibold"
+                  />
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Status</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700">
+                    <input
+                      type="radio"
+                      name="employeeStatus"
+                      checked={employeeIsActive === true}
+                      onChange={() => setEmployeeIsActive(true)}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span>Active</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700">
+                    <input
+                      type="radio"
+                      name="employeeStatus"
+                      checked={employeeIsActive === false}
+                      onChange={() => setEmployeeIsActive(false)}
+                      className="text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span>Inactive</span>
+                  </label>
                 </div>
               </div>
             </div>
