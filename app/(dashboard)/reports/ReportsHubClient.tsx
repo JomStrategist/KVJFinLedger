@@ -213,16 +213,22 @@ function FinancialStatementsRenderer({
       profitAndLoss={data.profitAndLoss}
       balanceSheet={data.balanceSheet}
       cashFlow={data.cashFlow}
-      comparativePnl={data.comparativePnl || []}
-      comparativeBs={data.comparativeBs || []}
-      comparativeCf={data.comparativeCf || []}
-      financialRatios={{
-        currentPeriodLabel: '',
+      comparativePnl={data.comparativePnl}
+      comparativeBs={data.comparativeBs}
+      comparativeCf={data.comparativeCf}
+      financialRatios={data.financialRatios || {
+        currentPeriodLabel: selectedFY,
         previousPeriodLabel: '',
         hasPreviousData: false,
         ratios: [],
       }}
-      financialAnalysis={{} as any}
+      financialAnalysis={data.financialAnalysis || {
+        managementInsights: [],
+        monthlyTrends: [],
+        customerConcentration: [],
+        expenseBreakdown: [],
+        vendorConcentration: [],
+      }}
       customers={data.customers || []}
       vendors={data.vendors || []}
       categories={data.categories || []}

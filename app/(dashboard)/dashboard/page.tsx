@@ -258,7 +258,7 @@ export default async function DashboardPage({
             </div>
           </div>
           <Link
-            href="/reports?subtab=pnl"
+            href="/reports?category=statements&tab=pnl"
             className="text-[11px] font-bold text-emerald-800 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full flex items-center gap-1 hover:bg-emerald-500/20 transition-all shrink-0 whitespace-nowrap"
           >
             P&amp;L Report <span className="text-xs">→</span>

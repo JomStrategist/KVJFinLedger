@@ -310,8 +310,56 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
     document.body.removeChild(link);
   };
 
+  const safeTb = props.trialBalance || {
+    asOfDate: new Date().toISOString(),
+    totalDebit: 0,
+    totalCredit: 0,
+    difference: 0,
+    isBalanced: true,
+    items: [],
+  };
+  const safePnl = props.profitAndLoss || {
+    fromDate: new Date().toISOString(),
+    toDate: new Date().toISOString(),
+    totalRevenue: 0,
+    totalExpenses: 0,
+    operatingProfit: 0,
+    profitBeforeTax: 0,
+    taxExpense: 0,
+    netProfitAfterTax: 0,
+    revenueFromOperations: [],
+    otherIncome: [],
+    operatingExpenses: [],
+    employeeCosts: [],
+    depreciationAmortization: [],
+    financeCosts: [],
+    otherExpenses: [],
+  };
+  const safeBs = props.balanceSheet || {
+    asOfDate: new Date().toISOString(),
+    totalAssets: 0,
+    totalEquityAndLiabilities: 0,
+    difference: 0,
+    isBalanced: true,
+    equity: { capital: 0, reservesAndSurplus: 0, drawings: 0, totalShareholdersFunds: 0 },
+    currentLiabilities: { tradePayables: 0, employeePayables: 0, statutoryGstPayable: 0, statutoryTdsPayable: 0, otherCurrentLiabilities: 0, total: 0 },
+    nonCurrentAssets: { fixedAssetsGross: 0, accumulatedDepreciation: 0, fixedAssetsNet: 0, total: 0 },
+    currentAssets: { tradeReceivables: 0, cashAndBank: 0, tdsReceivable: 0, gstInputCredit: 0, otherCurrentAssets: 0, total: 0 },
+  };
+  const safeCf = props.cashFlow || {
+    fromDate: new Date().toISOString(),
+    toDate: new Date().toISOString(),
+    openingCashAndBank: 0,
+    closingCashAndBank: 0,
+    netCashFlow: 0,
+    operatingCashFlow: { customerReceipts: 0, vendorDisbursements: 0, employeeDisbursements: 0, gstPaid: 0, tdsPaid: 0, netOperating: 0 },
+    investingCashFlow: { capitalExpenditure: 0, netInvesting: 0 },
+    financingCashFlow: { capitalIntroduced: 0, drawingsWithdrawn: 0, netFinancing: 0 },
+  };
+
+  const safeTbItems = Array.isArray(safeTb.items) ? safeTb.items : [];
   // Filtered TB rows
-  const filteredTbItems = props.trialBalance.items.filter(it => {
+  const filteredTbItems = safeTbItems.filter(it => {
     if (tbGroupFilter !== "ALL" && it.accountGroup !== tbGroupFilter) return false;
     if (tbSearch.trim() && !it.accountName.toLowerCase().includes(tbSearch.toLowerCase()) && !it.accountGroup.toLowerCase().includes(tbSearch.toLowerCase())) {
       return false;
@@ -319,7 +367,121 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
     return true;
   });
 
-  const tbGroups = Array.from(new Set(props.trialBalance.items.map(i => i.accountGroup))).sort();
+  const tbGroups = Array.from(new Set(safeTbItems.map(i => i.accountGroup))).sort();
+
+  const safeCompPnl = React.useMemo(() => {
+    const raw = props.comparativePnl;
+    if (raw && typeof raw === "object" && !Array.isArray(raw) && Array.isArray(raw.revenueItems)) {
+      return {
+        ...raw,
+        expenseItems: Array.isArray(raw.expenseItems) ? raw.expenseItems : [],
+        totals: {
+          totalRevenue: raw.totals?.totalRevenue || { currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          totalExpenses: raw.totals?.totalExpenses || { currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          operatingProfit: raw.totals?.operatingProfit || { currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          profitBeforeTax: raw.totals?.profitBeforeTax || { currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          netProfitAfterTax: raw.totals?.netProfitAfterTax || { currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          operatingMargin: raw.totals?.operatingMargin || { current: 0, previous: 0, variance: 0 },
+          netMargin: raw.totals?.netMargin || { current: 0, previous: 0, variance: 0 },
+        }
+      };
+    }
+    return {
+      currentPeriodLabel: selectedFy,
+      previousPeriodLabel: "Previous FY",
+      hasPreviousData: false,
+      revenueItems: [],
+      expenseItems: [],
+      totals: {
+        totalRevenue: { id: "tot_rev", name: "Total Revenue", currentAmount: safePnl.totalRevenue || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+        totalExpenses: { id: "tot_exp", name: "Total Expenses", currentAmount: safePnl.totalExpenses || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+        operatingProfit: { id: "tot_ebit", name: "Operating Profit", currentAmount: safePnl.operatingProfit || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+        profitBeforeTax: { id: "tot_pbt", name: "Profit Before Tax", currentAmount: safePnl.profitBeforeTax || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+        netProfitAfterTax: { id: "tot_pat", name: "Net Profit After Tax", currentAmount: safePnl.netProfitAfterTax || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+        operatingMargin: { current: 0, previous: 0, variance: 0 },
+        netMargin: { current: 0, previous: 0, variance: 0 },
+      }
+    };
+  }, [props.comparativePnl, safePnl, selectedFy]);
+
+  const safeCompBs = React.useMemo(() => {
+    const raw = props.comparativeBs;
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      const items = Array.isArray(raw.items) ? raw.items : [];
+      return {
+        ...raw,
+        items,
+        totals: {
+          totalAssets: raw.totals?.totalAssets || { currentAmount: safeBs.totalAssets || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          totalLiabilities: raw.totals?.totalLiabilities || (raw.totals as any)?.totalCurrentLiabilities || { currentAmount: safeBs.currentLiabilities?.total || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          totalEquity: raw.totals?.totalEquity || (raw.totals as any)?.totalShareholdersFunds || { currentAmount: safeBs.equity?.totalShareholdersFunds || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          totalEquityAndLiabilities: raw.totals?.totalEquityAndLiabilities || { currentAmount: safeBs.totalEquityAndLiabilities || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          netWorkingCapital: raw.totals?.netWorkingCapital || (raw as any).workingCapital || { currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+        }
+      };
+    }
+    return {
+      currentPeriodLabel: selectedFy,
+      previousPeriodLabel: "Previous FY",
+      hasPreviousData: false,
+      items: [],
+      totals: {
+        totalAssets: { id: "tot_assets", name: "Total Assets", currentAmount: safeBs.totalAssets || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+        totalLiabilities: { id: "tot_liab", name: "Total Liabilities", currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+        totalEquity: { id: "tot_eq", name: "Total Equity", currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+        totalEquityAndLiabilities: { id: "tot_eq_liab", name: "Total Equity & Liabilities", currentAmount: safeBs.totalEquityAndLiabilities || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+        netWorkingCapital: { id: "tot_wc", name: "Net Working Capital", currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+      }
+    };
+  }, [props.comparativeBs, safeBs, selectedFy]);
+
+  const safeCompCf = React.useMemo(() => {
+    const raw = props.comparativeCf;
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      const items = Array.isArray(raw.items) ? raw.items : [];
+      const closing = raw.closingCash || items.find(i => i.id === "cf_closing") || {
+        currentAmount: safeCf.closingCashAndBank || 0,
+        previousAmount: 0,
+        varianceAmount: 0,
+        variancePercent: null,
+      };
+      const opening = raw.openingCash || items.find(i => i.id === "cf_opening") || {
+        currentAmount: safeCf.openingCashAndBank || 0,
+        previousAmount: 0,
+        varianceAmount: 0,
+        variancePercent: null,
+      };
+      return {
+        ...raw,
+        items,
+        closingCash: closing,
+        openingCash: opening,
+      };
+    }
+    return {
+      currentPeriodLabel: selectedFy,
+      previousPeriodLabel: "Previous FY",
+      hasPreviousData: false,
+      items: [],
+      closingCash: { id: "cf_closing", name: "Cash at End", currentAmount: safeCf.closingCashAndBank || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+      openingCash: { id: "cf_opening", name: "Cash at Inception", currentAmount: safeCf.openingCashAndBank || 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+    };
+  }, [props.comparativeCf, safeCf, selectedFy]);
+
+  const safeAnalysis = props.financialAnalysis || {
+    managementInsights: [],
+    monthlyTrends: [],
+    customerConcentration: [],
+    expenseBreakdown: [],
+    vendorConcentration: [],
+  };
+
+  const safeRatios = props.financialRatios || {
+    currentPeriodLabel: selectedFy,
+    previousPeriodLabel: "",
+    hasPreviousData: false,
+    ratios: [],
+  };
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4">
@@ -332,11 +494,11 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                 Financial Statements
               </h1>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                props.trialBalance.isBalanced
+                safeTb.isBalanced
                   ? "bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-300"
                   : "bg-rose-50 text-rose-800 border border-rose-300"
               }`}>
-                {props.trialBalance.isBalanced ? "✓ Double-Entry Balanced" : `⚠ Variance: ₹${props.trialBalance.difference}`}
+                {safeTb.isBalanced ? "✓ Double-Entry Balanced" : `⚠ Variance: ₹${safeTb.difference}`}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -458,8 +620,8 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                   {filteredTbItems.length} Accounts
                 </span>
                 <span className="text-slate-300">•</span>
-                <span className={`text-xs font-bold ${props.trialBalance.isBalanced ? "text-[#15803D]" : "text-rose-700"}`}>
-                  {props.trialBalance.isBalanced ? "✓ Balanced (₹0.00)" : `⚠ Variance: ₹${props.trialBalance.difference}`}
+                <span className={`text-xs font-bold ${safeTb.isBalanced ? "text-[#15803D]" : "text-rose-700"}`}>
+                  {safeTb.isBalanced ? "✓ Balanced (₹0.00)" : `⚠ Variance: ₹${safeTb.difference}`}
                 </span>
                 <button
                   onClick={() => exportCsv("trial_balance", ["Account Particulars", "Account Group", "Debit", "Credit"], filteredTbItems.map(i => [
@@ -539,13 +701,13 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                     </td>
                     <td className="py-3.5 px-4"></td>
                     <td className="py-3.5 px-4 text-right text-sm font-black">
-                      {Number(props.trialBalance.totalDebit).toLocaleString('en-IN', {
+                      {Number(safeTb.totalDebit).toLocaleString('en-IN', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                       })}
                     </td>
                     <td className="py-3.5 px-4 text-right text-sm font-black">
-                      {Number(props.trialBalance.totalCredit).toLocaleString('en-IN', {
+                      {Number(safeTb.totalCredit).toLocaleString('en-IN', {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                       })}
@@ -612,12 +774,12 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
 
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-[#15803D] border border-emerald-200">
-                  PAT: {formatCurrency(props.profitAndLoss.netProfitAfterTax)}
+                  PAT: {formatCurrency(safePnl.netProfitAfterTax)}
                 </span>
                 <button
                   onClick={() => exportCsv("pnl_statement", ["Particulars", "Group", "Current (₹)", "Previous (₹)", "Variance (₹)", "Common Size %"], [
-                    ...props.comparativePnl.revenueItems.map(r => [r.name, r.group || "Revenue", r.currentAmount, r.previousAmount, r.varianceAmount, `${r.currentCommonSizePercent}%`]),
-                    ...props.comparativePnl.expenseItems.map(e => [e.name, e.group || "Expense", e.currentAmount, e.previousAmount, e.varianceAmount, `${e.currentCommonSizePercent}%`]),
+                    ...safeCompPnl.revenueItems.map(r => [r.name, r.group || "Revenue", r.currentAmount, r.previousAmount, r.varianceAmount, `${r.currentCommonSizePercent}%`]),
+                    ...safeCompPnl.expenseItems.map(e => [e.name, e.group || "Expense", e.currentAmount, e.previousAmount, e.varianceAmount, `${e.currentCommonSizePercent}%`]),
                   ])}
                   className="px-3 py-1.5 text-xs font-semibold text-[#177B55] bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition shadow-xs flex items-center gap-1 cursor-pointer"
                   title="Export P&L to CSV"
@@ -632,9 +794,9 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     <th className="py-3.5 px-6">Particulars (Income / Expense)</th>
-                    <th className="py-3.5 px-4 text-right">{props.comparativePnl.currentPeriodLabel} (₹)</th>
+                    <th className="py-3.5 px-4 text-right">{safeCompPnl.currentPeriodLabel} (₹)</th>
                     {showVerticalAnalysis && <th className="py-3.5 px-4 text-right">Vertical %</th>}
-                    <th className="py-3.5 px-4 text-right">{props.comparativePnl.previousPeriodLabel} (₹)</th>
+                    <th className="py-3.5 px-4 text-right">{safeCompPnl.previousPeriodLabel} (₹)</th>
                     <th className="py-3.5 px-4 text-right">Variance (₹)</th>
                     <th className="py-3.5 px-4 text-right">YoY %</th>
                   </tr>
@@ -646,28 +808,36 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                       I. Revenue from Operations
                     </td>
                   </tr>
-                  {props.comparativePnl.revenueItems.map(item => (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-                      <td className="py-2.5 px-6 pl-10 font-sans text-slate-900 dark:text-white">
-                        <Link href={`/ledgers?search=${encodeURIComponent(item.name)}`} className="hover:text-teal-600 hover:underline">
-                          {item.name}
-                        </Link>
+                  {safeCompPnl.revenueItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={showVerticalAnalysis ? 6 : 5} className="py-4 px-6 text-center text-slate-400 font-sans text-xs">
+                        No revenue line items recorded for this period.
                       </td>
-                      <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(item.currentAmount)}</td>
-                      {showVerticalAnalysis && <td className="py-2.5 px-4 text-right text-xs text-teal-600">{item.currentCommonSizePercent}%</td>}
-                      <td className="py-2.5 px-4 text-right text-slate-500">{props.comparativePnl.hasPreviousData ? formatCurrency(item.previousAmount) : "No Prior Data"}</td>
-                      <td className="py-2.5 px-4 text-right">{props.comparativePnl.hasPreviousData ? formatCurrency(item.varianceAmount) : "—"}</td>
-                      <td className="py-2.5 px-4 text-right font-sans text-xs">{item.variancePercent !== null ? `${item.variancePercent}%` : "—"}</td>
                     </tr>
-                  ))}
+                  ) : (
+                    safeCompPnl.revenueItems.map(item => (
+                      <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                        <td className="py-2.5 px-6 pl-10 font-sans text-slate-900 dark:text-white">
+                          <Link href={`/ledgers?search=${encodeURIComponent(item.name)}`} className="hover:text-teal-600 hover:underline">
+                            {item.name}
+                          </Link>
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(item.currentAmount)}</td>
+                        {showVerticalAnalysis && <td className="py-2.5 px-4 text-right text-xs text-teal-600">{item.currentCommonSizePercent}%</td>}
+                        <td className="py-2.5 px-4 text-right text-slate-500">{safeCompPnl.hasPreviousData ? formatCurrency(item.previousAmount) : "No Prior Data"}</td>
+                        <td className="py-2.5 px-4 text-right">{safeCompPnl.hasPreviousData ? formatCurrency(item.varianceAmount) : "—"}</td>
+                        <td className="py-2.5 px-4 text-right font-sans text-xs">{item.variancePercent !== null ? `${item.variancePercent}%` : "—"}</td>
+                      </tr>
+                    ))
+                  )}
                   {/* Total Revenue */}
                   <tr className="bg-teal-50/50 dark:bg-teal-950/20 font-bold border-y border-teal-200 dark:border-teal-900 text-teal-900 dark:text-teal-200 font-sans">
                     <td className="py-3 px-6 uppercase text-xs tracking-wider">Total Revenue from Operations (A)</td>
-                    <td className="py-3 px-4 text-right font-mono text-base">{formatCurrency(props.comparativePnl.totals.totalRevenue.currentAmount)}</td>
+                    <td className="py-3 px-4 text-right font-mono text-base">{formatCurrency(safeCompPnl.totals.totalRevenue.currentAmount)}</td>
                     {showVerticalAnalysis && <td className="py-3 px-4 text-right text-xs">100.0%</td>}
-                    <td className="py-3 px-4 text-right font-mono text-slate-500">{props.comparativePnl.hasPreviousData ? formatCurrency(props.comparativePnl.totals.totalRevenue.previousAmount) : "No Prior Data"}</td>
-                    <td className="py-3 px-4 text-right font-mono">{props.comparativePnl.hasPreviousData ? formatCurrency(props.comparativePnl.totals.totalRevenue.varianceAmount) : "—"}</td>
-                    <td className="py-3 px-4 text-right text-xs">{props.comparativePnl.totals.totalRevenue.variancePercent !== null ? `${props.comparativePnl.totals.totalRevenue.variancePercent}%` : "—"}</td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-500">{safeCompPnl.hasPreviousData ? formatCurrency(safeCompPnl.totals.totalRevenue.previousAmount) : "No Prior Data"}</td>
+                    <td className="py-3 px-4 text-right font-mono">{safeCompPnl.hasPreviousData ? formatCurrency(safeCompPnl.totals.totalRevenue.varianceAmount) : "—"}</td>
+                    <td className="py-3 px-4 text-right text-xs">{safeCompPnl.totals.totalRevenue.variancePercent !== null ? `${safeCompPnl.totals.totalRevenue.variancePercent}%` : "—"}</td>
                   </tr>
 
                   {/* II. EXPENSES */}
@@ -676,38 +846,46 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                       II. Operating & Indirect Expenses
                     </td>
                   </tr>
-                  {props.comparativePnl.expenseItems.map(item => (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-                      <td className="py-2.5 px-6 pl-10 font-sans text-slate-900 dark:text-white">
-                        <Link href={`/ledgers?search=${encodeURIComponent(item.name)}`} className="hover:text-teal-600 hover:underline">
-                          {item.name}
-                        </Link>
+                  {safeCompPnl.expenseItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={showVerticalAnalysis ? 6 : 5} className="py-4 px-6 text-center text-slate-400 font-sans text-xs">
+                        No expense line items recorded for this period.
                       </td>
-                      <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(item.currentAmount)}</td>
-                      {showVerticalAnalysis && <td className="py-2.5 px-4 text-right text-xs text-slate-500">{item.currentCommonSizePercent}%</td>}
-                      <td className="py-2.5 px-4 text-right text-slate-500">{props.comparativePnl.hasPreviousData ? formatCurrency(item.previousAmount) : "No Prior Data"}</td>
-                      <td className="py-2.5 px-4 text-right">{props.comparativePnl.hasPreviousData ? formatCurrency(item.varianceAmount) : "—"}</td>
-                      <td className="py-2.5 px-4 text-right font-sans text-xs">{item.variancePercent !== null ? `${item.variancePercent}%` : "—"}</td>
                     </tr>
-                  ))}
+                  ) : (
+                    safeCompPnl.expenseItems.map(item => (
+                      <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                        <td className="py-2.5 px-6 pl-10 font-sans text-slate-900 dark:text-white">
+                          <Link href={`/ledgers?search=${encodeURIComponent(item.name)}`} className="hover:text-teal-600 hover:underline">
+                            {item.name}
+                          </Link>
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(item.currentAmount)}</td>
+                        {showVerticalAnalysis && <td className="py-2.5 px-4 text-right text-xs text-slate-500">{item.currentCommonSizePercent}%</td>}
+                        <td className="py-2.5 px-4 text-right text-slate-500">{safeCompPnl.hasPreviousData ? formatCurrency(item.previousAmount) : "No Prior Data"}</td>
+                        <td className="py-2.5 px-4 text-right">{safeCompPnl.hasPreviousData ? formatCurrency(item.varianceAmount) : "—"}</td>
+                        <td className="py-2.5 px-4 text-right font-sans text-xs">{item.variancePercent !== null ? `${item.variancePercent}%` : "—"}</td>
+                      </tr>
+                    ))
+                  )}
                   {/* Total Expenses */}
                   <tr className="bg-rose-50/40 dark:bg-rose-950/20 font-bold border-y border-rose-200 dark:border-rose-900 text-rose-900 dark:text-rose-200 font-sans">
                     <td className="py-3 px-6 uppercase text-xs tracking-wider">Total Operating Expenditure (B)</td>
-                    <td className="py-3 px-4 text-right font-mono text-base">{formatCurrency(props.comparativePnl.totals.totalExpenses.currentAmount)}</td>
-                    {showVerticalAnalysis && <td className="py-3 px-4 text-right text-xs">{props.comparativePnl.totals.totalExpenses.currentCommonSizePercent}%</td>}
-                    <td className="py-3 px-4 text-right font-mono text-slate-500">{props.comparativePnl.hasPreviousData ? formatCurrency(props.comparativePnl.totals.totalExpenses.previousAmount) : "No Prior Data"}</td>
-                    <td className="py-3 px-4 text-right font-mono">{props.comparativePnl.hasPreviousData ? formatCurrency(props.comparativePnl.totals.totalExpenses.varianceAmount) : "—"}</td>
-                    <td className="py-3 px-4 text-right text-xs">{props.comparativePnl.totals.totalExpenses.variancePercent !== null ? `${props.comparativePnl.totals.totalExpenses.variancePercent}%` : "—"}</td>
+                    <td className="py-3 px-4 text-right font-mono text-base">{formatCurrency(safeCompPnl.totals.totalExpenses.currentAmount)}</td>
+                    {showVerticalAnalysis && <td className="py-3 px-4 text-right text-xs">{safeCompPnl.totals.totalExpenses.currentCommonSizePercent}%</td>}
+                    <td className="py-3 px-4 text-right font-mono text-slate-500">{safeCompPnl.hasPreviousData ? formatCurrency(safeCompPnl.totals.totalExpenses.previousAmount) : "No Prior Data"}</td>
+                    <td className="py-3 px-4 text-right font-mono">{safeCompPnl.hasPreviousData ? formatCurrency(safeCompPnl.totals.totalExpenses.varianceAmount) : "—"}</td>
+                    <td className="py-3 px-4 text-right text-xs">{safeCompPnl.totals.totalExpenses.variancePercent !== null ? `${safeCompPnl.totals.totalExpenses.variancePercent}%` : "—"}</td>
                   </tr>
 
                   {/* Operating Profit */}
                   <tr className="bg-slate-50 font-bold text-slate-900 dark:text-white font-sans">
                     <td className="py-3 px-6 uppercase text-xs tracking-wider">Operating Profit / EBIT (A - B)</td>
-                    <td className="py-3 px-4 text-right font-mono text-base">{formatCurrency(props.comparativePnl.totals.operatingProfit.currentAmount)}</td>
-                    {showVerticalAnalysis && <td className="py-3 px-4 text-right text-xs">{props.comparativePnl.totals.operatingProfit.currentCommonSizePercent}%</td>}
-                    <td className="py-3 px-4 text-right font-mono text-slate-500">{props.comparativePnl.hasPreviousData ? formatCurrency(props.comparativePnl.totals.operatingProfit.previousAmount) : "No Prior Data"}</td>
-                    <td className="py-3 px-4 text-right font-mono">{props.comparativePnl.hasPreviousData ? formatCurrency(props.comparativePnl.totals.operatingProfit.varianceAmount) : "—"}</td>
-                    <td className="py-3 px-4 text-right text-xs">{props.comparativePnl.totals.operatingProfit.variancePercent !== null ? `${props.comparativePnl.totals.operatingProfit.variancePercent}%` : "—"}</td>
+                    <td className="py-3 px-4 text-right font-mono text-base">{formatCurrency(safeCompPnl.totals.operatingProfit.currentAmount)}</td>
+                    {showVerticalAnalysis && <td className="py-3 px-4 text-right text-xs">{safeCompPnl.totals.operatingProfit.currentCommonSizePercent}%</td>}
+                    <td className="py-3 px-4 text-right font-mono text-slate-500">{safeCompPnl.hasPreviousData ? formatCurrency(safeCompPnl.totals.operatingProfit.previousAmount) : "No Prior Data"}</td>
+                    <td className="py-3 px-4 text-right font-mono">{safeCompPnl.hasPreviousData ? formatCurrency(safeCompPnl.totals.operatingProfit.varianceAmount) : "—"}</td>
+                    <td className="py-3 px-4 text-right text-xs">{safeCompPnl.totals.operatingProfit.variancePercent !== null ? `${safeCompPnl.totals.operatingProfit.variancePercent}%` : "—"}</td>
                   </tr>
 
                   {/* Tax Provision */}
@@ -715,8 +893,8 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                     <td className="py-2.5 px-6 pl-10 text-slate-600 dark:text-slate-400">
                       Less: Tax Expense / Provision (Standard 25% Corporate Tax)
                     </td>
-                    <td className="py-2.5 px-4 text-right font-mono">{formatCurrency(props.profitAndLoss.taxExpense)}</td>
-                    {showVerticalAnalysis && <td className="py-2.5 px-4 text-right text-xs font-mono">{(props.comparativePnl.totals.totalRevenue.currentAmount > 0 ? (props.profitAndLoss.taxExpense / props.comparativePnl.totals.totalRevenue.currentAmount * 100).toFixed(1) : "0.0")}%</td>}
+                    <td className="py-2.5 px-4 text-right font-mono">{formatCurrency(safePnl.taxExpense)}</td>
+                    {showVerticalAnalysis && <td className="py-2.5 px-4 text-right text-xs font-mono">{(safeCompPnl.totals.totalRevenue.currentAmount > 0 ? (safePnl.taxExpense / safeCompPnl.totals.totalRevenue.currentAmount * 100).toFixed(1) : "0.0")}%</td>}
                     <td className="py-2.5 px-4 text-right font-mono text-slate-500">—</td>
                     <td className="py-2.5 px-4 text-right font-mono">—</td>
                     <td className="py-2.5 px-4 text-right text-xs">—</td>
@@ -728,12 +906,12 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                       Net Profit After Tax (Transferred to Reserves & Surplus)
                     </td>
                     <td className="py-4 px-4 text-right font-mono text-lg text-emerald-800 dark:text-emerald-300">
-                      {formatCurrency(props.comparativePnl.totals.netProfitAfterTax.currentAmount)}
+                      {formatCurrency(safeCompPnl.totals.netProfitAfterTax.currentAmount)}
                     </td>
-                    {showVerticalAnalysis && <td className="py-4 px-4 text-right text-xs font-mono">{props.comparativePnl.totals.netProfitAfterTax.currentCommonSizePercent}%</td>}
-                    <td className="py-4 px-4 text-right font-mono text-slate-500">{props.comparativePnl.hasPreviousData ? formatCurrency(props.comparativePnl.totals.netProfitAfterTax.previousAmount) : "No Prior Data"}</td>
-                    <td className="py-4 px-4 text-right font-mono">{props.comparativePnl.hasPreviousData ? formatCurrency(props.comparativePnl.totals.netProfitAfterTax.varianceAmount) : "—"}</td>
-                    <td className="py-4 px-4 text-right text-xs">{props.comparativePnl.totals.netProfitAfterTax.variancePercent !== null ? `${props.comparativePnl.totals.netProfitAfterTax.variancePercent}%` : "—"}</td>
+                    {showVerticalAnalysis && <td className="py-4 px-4 text-right text-xs font-mono">{safeCompPnl.totals.netProfitAfterTax.currentCommonSizePercent}%</td>}
+                    <td className="py-4 px-4 text-right font-mono text-slate-500">{safeCompPnl.hasPreviousData ? formatCurrency(safeCompPnl.totals.netProfitAfterTax.previousAmount) : "No Prior Data"}</td>
+                    <td className="py-4 px-4 text-right font-mono">{safeCompPnl.hasPreviousData ? formatCurrency(safeCompPnl.totals.netProfitAfterTax.varianceAmount) : "—"}</td>
+                    <td className="py-4 px-4 text-right text-xs">{safeCompPnl.totals.netProfitAfterTax.variancePercent !== null ? `${safeCompPnl.totals.netProfitAfterTax.variancePercent}%` : "—"}</td>
                   </tr>
                 </tbody>
               </table>
@@ -796,10 +974,10 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
 
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-[#15803D] border border-emerald-200">
-                  ✓ Equilibrium: {formatCurrency(props.balanceSheet.totalAssets)}
+                  ✓ Equilibrium: {formatCurrency(safeBs.totalAssets)}
                 </span>
                 <button
-                  onClick={() => exportCsv("balance_sheet", ["Particulars", "Group", "Current (₹)", "Previous (₹)", "Variance (₹)", "Common Size %"], props.comparativeBs.items.map(i => [
+                  onClick={() => exportCsv("balance_sheet", ["Particulars", "Group", "Current (₹)", "Previous (₹)", "Variance (₹)", "Common Size %"], safeCompBs.items.map(i => [
                     i.name,
                     i.group || "Balance Sheet",
                     i.currentAmount,
@@ -820,39 +998,47 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     <th className="py-3.5 px-6">Equity and Liabilities</th>
-                    <th className="py-3.5 px-4 text-right">{props.comparativeBs.currentPeriodLabel} (₹)</th>
+                    <th className="py-3.5 px-4 text-right">{safeCompBs.currentPeriodLabel} (₹)</th>
                     {showVerticalAnalysis && <th className="py-3.5 px-4 text-right">Common Size %</th>}
-                    <th className="py-3.5 px-4 text-right">{props.comparativeBs.previousPeriodLabel} (₹)</th>
+                    <th className="py-3.5 px-4 text-right">{safeCompBs.previousPeriodLabel} (₹)</th>
                     <th className="py-3.5 px-4 text-right">Variance (₹)</th>
                     <th className="py-3.5 px-4 text-right">YoY %</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono text-slate-700 dark:text-slate-300">
                   {/* 1. EQUITY & LIABILITIES ITEMS */}
-                  {props.comparativeBs.items.filter(i => i.group?.includes("Equity") || i.group?.includes("Liabilities")).map(item => (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-                      <td className="py-2.5 px-6 pl-10 font-sans text-slate-900 dark:text-white">
-                        <Link href={`/ledgers?search=${encodeURIComponent(item.name)}`} className="hover:text-teal-600 hover:underline">
-                          {item.name}
-                        </Link>
+                  {safeCompBs.items.filter(i => i.group?.includes("Equity") || i.group?.includes("Liabilities")).length === 0 ? (
+                    <tr>
+                      <td colSpan={showVerticalAnalysis ? 6 : 5} className="py-4 px-6 text-center text-slate-400 font-sans text-xs">
+                        No equity or liabilities line items recorded for this period.
                       </td>
-                      <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(item.currentAmount)}</td>
-                      {showVerticalAnalysis && <td className="py-2.5 px-4 text-right text-xs text-teal-600">{item.currentCommonSizePercent}%</td>}
-                      <td className="py-2.5 px-4 text-right text-slate-500">{props.comparativeBs.hasPreviousData ? formatCurrency(item.previousAmount) : "No Prior Data"}</td>
-                      <td className="py-2.5 px-4 text-right">{props.comparativeBs.hasPreviousData ? formatCurrency(item.varianceAmount) : "—"}</td>
-                      <td className="py-2.5 px-4 text-right font-sans text-xs">{item.variancePercent !== null ? `${item.variancePercent}%` : "—"}</td>
                     </tr>
-                  ))}
+                  ) : (
+                    safeCompBs.items.filter(i => i.group?.includes("Equity") || i.group?.includes("Liabilities")).map(item => (
+                      <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                        <td className="py-2.5 px-6 pl-10 font-sans text-slate-900 dark:text-white">
+                          <Link href={`/ledgers?search=${encodeURIComponent(item.name)}`} className="hover:text-teal-600 hover:underline">
+                            {item.name}
+                          </Link>
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(item.currentAmount)}</td>
+                        {showVerticalAnalysis && <td className="py-2.5 px-4 text-right text-xs text-teal-600">{item.currentCommonSizePercent}%</td>}
+                        <td className="py-2.5 px-4 text-right text-slate-500">{safeCompBs.hasPreviousData ? formatCurrency(item.previousAmount) : "No Prior Data"}</td>
+                        <td className="py-2.5 px-4 text-right">{safeCompBs.hasPreviousData ? formatCurrency(item.varianceAmount) : "—"}</td>
+                        <td className="py-2.5 px-4 text-right font-sans text-xs">{item.variancePercent !== null ? `${item.variancePercent}%` : "—"}</td>
+                      </tr>
+                    ))
+                  )}
                   {/* Total Equity & Liabilities */}
                   <tr className="bg-slate-100 dark:bg-slate-800 font-bold border-y-2 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-sans">
                     <td className="py-3.5 px-6 uppercase text-xs tracking-wider">TOTAL EQUITY AND LIABILITIES</td>
                     <td className="py-3.5 px-4 text-right font-mono text-base text-teal-700 dark:text-teal-300">
-                      {formatCurrency(props.comparativeBs.totals.totalEquityAndLiabilities.currentAmount)}
+                      {formatCurrency(safeCompBs.totals.totalEquityAndLiabilities.currentAmount)}
                     </td>
                     {showVerticalAnalysis && <td className="py-3.5 px-4 text-right text-xs font-mono">100.0%</td>}
-                    <td className="py-3.5 px-4 text-right font-mono text-slate-500">{props.comparativeBs.hasPreviousData ? formatCurrency(props.comparativeBs.totals.totalEquityAndLiabilities.previousAmount) : "No Prior Data"}</td>
-                    <td className="py-3.5 px-4 text-right font-mono">{props.comparativeBs.hasPreviousData ? formatCurrency(props.comparativeBs.totals.totalEquityAndLiabilities.varianceAmount) : "—"}</td>
-                    <td className="py-3.5 px-4 text-right text-xs">{props.comparativeBs.totals.totalEquityAndLiabilities.variancePercent !== null ? `${props.comparativeBs.totals.totalEquityAndLiabilities.variancePercent}%` : "—"}</td>
+                    <td className="py-3.5 px-4 text-right font-mono text-slate-500">{safeCompBs.hasPreviousData ? formatCurrency(safeCompBs.totals.totalEquityAndLiabilities.previousAmount) : "No Prior Data"}</td>
+                    <td className="py-3.5 px-4 text-right font-mono">{safeCompBs.hasPreviousData ? formatCurrency(safeCompBs.totals.totalEquityAndLiabilities.varianceAmount) : "—"}</td>
+                    <td className="py-3.5 px-4 text-right text-xs">{safeCompBs.totals.totalEquityAndLiabilities.variancePercent !== null ? `${safeCompBs.totals.totalEquityAndLiabilities.variancePercent}%` : "—"}</td>
                   </tr>
 
                   {/* 2. ASSETS */}
@@ -861,30 +1047,38 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                       ASSETS (Non-Current & Current Assets)
                     </td>
                   </tr>
-                  {props.comparativeBs.items.filter(i => i.group?.includes("Assets")).map(item => (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-                      <td className="py-2.5 px-6 pl-10 font-sans text-slate-900 dark:text-white">
-                        <Link href={`/ledgers?search=${encodeURIComponent(item.name)}`} className="hover:text-teal-600 hover:underline">
-                          {item.name}
-                        </Link>
+                  {safeCompBs.items.filter(i => i.group?.includes("Assets")).length === 0 ? (
+                    <tr>
+                      <td colSpan={showVerticalAnalysis ? 6 : 5} className="py-4 px-6 text-center text-slate-400 font-sans text-xs">
+                        No asset line items recorded for this period.
                       </td>
-                      <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(item.currentAmount)}</td>
-                      {showVerticalAnalysis && <td className="py-2.5 px-4 text-right text-xs text-teal-600">{item.currentCommonSizePercent}%</td>}
-                      <td className="py-2.5 px-4 text-right text-slate-500">{props.comparativeBs.hasPreviousData ? formatCurrency(item.previousAmount) : "No Prior Data"}</td>
-                      <td className="py-2.5 px-4 text-right">{props.comparativeBs.hasPreviousData ? formatCurrency(item.varianceAmount) : "—"}</td>
-                      <td className="py-2.5 px-4 text-right font-sans text-xs">{item.variancePercent !== null ? `${item.variancePercent}%` : "—"}</td>
                     </tr>
-                  ))}
+                  ) : (
+                    safeCompBs.items.filter(i => i.group?.includes("Assets")).map(item => (
+                      <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                        <td className="py-2.5 px-6 pl-10 font-sans text-slate-900 dark:text-white">
+                          <Link href={`/ledgers?search=${encodeURIComponent(item.name)}`} className="hover:text-teal-600 hover:underline">
+                            {item.name}
+                          </Link>
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(item.currentAmount)}</td>
+                        {showVerticalAnalysis && <td className="py-2.5 px-4 text-right text-xs text-teal-600">{item.currentCommonSizePercent}%</td>}
+                        <td className="py-2.5 px-4 text-right text-slate-500">{safeCompBs.hasPreviousData ? formatCurrency(item.previousAmount) : "No Prior Data"}</td>
+                        <td className="py-2.5 px-4 text-right">{safeCompBs.hasPreviousData ? formatCurrency(item.varianceAmount) : "—"}</td>
+                        <td className="py-2.5 px-4 text-right font-sans text-xs">{item.variancePercent !== null ? `${item.variancePercent}%` : "—"}</td>
+                      </tr>
+                    ))
+                  )}
                   {/* Total Assets */}
                   <tr className="bg-slate-100 dark:bg-slate-800 font-bold border-t-2 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-sans">
                     <td className="py-3.5 px-6 uppercase text-xs tracking-wider">TOTAL ASSETS</td>
                     <td className="py-3.5 px-4 text-right font-mono text-base text-teal-700 dark:text-teal-300">
-                      {formatCurrency(props.comparativeBs.totals.totalAssets.currentAmount)}
+                      {formatCurrency(safeCompBs.totals.totalAssets.currentAmount)}
                     </td>
                     {showVerticalAnalysis && <td className="py-3.5 px-4 text-right text-xs font-mono">100.0%</td>}
-                    <td className="py-3.5 px-4 text-right font-mono text-slate-500">{props.comparativeBs.hasPreviousData ? formatCurrency(props.comparativeBs.totals.totalAssets.previousAmount) : "No Prior Data"}</td>
-                    <td className="py-3.5 px-4 text-right font-mono">{props.comparativeBs.hasPreviousData ? formatCurrency(props.comparativeBs.totals.totalAssets.varianceAmount) : "—"}</td>
-                    <td className="py-3.5 px-4 text-right text-xs">{props.comparativeBs.totals.totalAssets.variancePercent !== null ? `${props.comparativeBs.totals.totalAssets.variancePercent}%` : "—"}</td>
+                    <td className="py-3.5 px-4 text-right font-mono text-slate-500">{safeCompBs.hasPreviousData ? formatCurrency(safeCompBs.totals.totalAssets.previousAmount) : "No Prior Data"}</td>
+                    <td className="py-3.5 px-4 text-right font-mono">{safeCompBs.hasPreviousData ? formatCurrency(safeCompBs.totals.totalAssets.varianceAmount) : "—"}</td>
+                    <td className="py-3.5 px-4 text-right text-xs">{safeCompBs.totals.totalAssets.variancePercent !== null ? `${safeCompBs.totals.totalAssets.variancePercent}%` : "—"}</td>
                   </tr>
                 </tbody>
               </table>
@@ -935,10 +1129,10 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
 
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-[#15803D] border border-emerald-200">
-                  Closing Cash: {formatCurrency(props.cashFlow.closingCashAndBank)}
+                  Closing Cash: {formatCurrency(safeCf.closingCashAndBank)}
                 </span>
                 <button
-                  onClick={() => exportCsv("cash_flow_statement", ["Activity Item", "Group", "Current (₹)", "Previous (₹)", "Variance (₹)"], props.comparativeCf.items.map(i => [
+                  onClick={() => exportCsv("cash_flow_statement", ["Activity Item", "Group", "Current (₹)", "Previous (₹)", "Variance (₹)"], safeCompCf.items.map(i => [
                     i.name,
                     i.group || "Cash Flow",
                     i.currentAmount,
@@ -958,43 +1152,51 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     <th className="py-3.5 px-6">Cash Flow Activity</th>
-                    <th className="py-3.5 px-4 text-right">{props.comparativeCf.currentPeriodLabel} (₹)</th>
-                    <th className="py-3.5 px-4 text-right">{props.comparativeCf.previousPeriodLabel} (₹)</th>
+                    <th className="py-3.5 px-4 text-right">{safeCompCf.currentPeriodLabel} (₹)</th>
+                    <th className="py-3.5 px-4 text-right">{safeCompCf.previousPeriodLabel} (₹)</th>
                     <th className="py-3.5 px-4 text-right">Variance (₹)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono text-slate-700 dark:text-slate-300">
-                  {props.comparativeCf.items.map(item => {
-                    const isGroupTotal = item.id.startsWith("cf_net_");
-                    return (
-                      <tr
-                        key={item.id}
-                        className={`transition ${
-                          isGroupTotal
-                            ? "bg-slate-50 dark:bg-slate-800/50 font-bold text-slate-900 dark:text-white"
-                            : "hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
-                        }`}
-                      >
-                        <td className={`py-3 px-6 font-sans ${isGroupTotal ? "font-bold text-teal-800 dark:text-teal-300" : "pl-10 text-slate-800 dark:text-slate-200"}`}>
-                          {item.name}
-                        </td>
-                        <td className={`py-3 px-4 text-right font-medium ${item.currentAmount < 0 ? "text-rose-600 dark:text-rose-400" : ""}`}>
-                          {formatCurrency(item.currentAmount)}
-                        </td>
-                        <td className="py-3 px-4 text-right text-slate-500">
-                          {props.comparativeCf.hasPreviousData ? formatCurrency(item.previousAmount) : "No Prior Data"}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {props.comparativeCf.hasPreviousData ? formatCurrency(item.varianceAmount) : "—"}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {safeCompCf.items.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-4 px-6 text-center text-slate-400 font-sans text-xs">
+                        No cash flow line items recorded for this period.
+                      </td>
+                    </tr>
+                  ) : (
+                    safeCompCf.items.map(item => {
+                      const isGroupTotal = item.id.startsWith("cf_net_");
+                      return (
+                        <tr
+                          key={item.id}
+                          className={`transition ${
+                            isGroupTotal
+                              ? "bg-slate-50 dark:bg-slate-800/50 font-bold text-slate-900 dark:text-white"
+                              : "hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
+                          }`}
+                        >
+                          <td className={`py-3 px-6 font-sans ${isGroupTotal ? "font-bold text-teal-800 dark:text-teal-300" : "pl-10 text-slate-800 dark:text-slate-200"}`}>
+                            {item.name}
+                          </td>
+                          <td className={`py-3 px-4 text-right font-medium ${item.currentAmount < 0 ? "text-rose-600 dark:text-rose-400" : ""}`}>
+                            {formatCurrency(item.currentAmount)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-slate-500">
+                            {safeCompCf.hasPreviousData ? formatCurrency(item.previousAmount) : "No Prior Data"}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {safeCompCf.hasPreviousData ? formatCurrency(item.varianceAmount) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                   {/* Opening and Closing Cash */}
                   <tr className="bg-slate-100 dark:bg-slate-800 font-sans font-medium text-slate-700 dark:text-slate-300">
                     <td className="py-3 px-6">Cash & Cash Equivalents at Inception / Opening Date</td>
-                    <td className="py-3 px-4 text-right font-mono">{formatCurrency(props.comparativeCf.openingCash.currentAmount)}</td>
-                    <td className="py-3 px-4 text-right font-mono text-slate-500">{props.comparativeCf.hasPreviousData ? formatCurrency(props.comparativeCf.openingCash.previousAmount) : "No Prior Data"}</td>
+                    <td className="py-3 px-4 text-right font-mono">{formatCurrency(safeCompCf.openingCash.currentAmount)}</td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-500">{safeCompCf.hasPreviousData ? formatCurrency(safeCompCf.openingCash.previousAmount) : "No Prior Data"}</td>
                     <td className="py-3 px-4 text-right font-mono">—</td>
                   </tr>
                   <tr className="bg-teal-100 dark:bg-teal-950/40 font-bold border-t-2 border-teal-400 dark:border-teal-700 text-teal-950 dark:text-teal-100 font-sans">
@@ -1002,10 +1204,10 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                       Cash & Cash Equivalents at Period End (Matches Balance Sheet Cash & Bank)
                     </td>
                     <td className="py-4 px-4 text-right font-mono text-lg text-teal-800 dark:text-teal-300">
-                      {formatCurrency(props.comparativeCf.closingCash.currentAmount)}
+                      {formatCurrency(safeCompCf.closingCash.currentAmount)}
                     </td>
-                    <td className="py-4 px-4 text-right font-mono text-slate-500">{props.comparativeCf.hasPreviousData ? formatCurrency(props.comparativeCf.closingCash.previousAmount) : "No Prior Data"}</td>
-                    <td className="py-4 px-4 text-right font-mono">{props.comparativeCf.hasPreviousData ? formatCurrency(props.comparativeCf.closingCash.varianceAmount) : "—"}</td>
+                    <td className="py-4 px-4 text-right font-mono text-slate-500">{safeCompCf.hasPreviousData ? formatCurrency(safeCompCf.closingCash.previousAmount) : "No Prior Data"}</td>
+                    <td className="py-4 px-4 text-right font-mono">{safeCompCf.hasPreviousData ? formatCurrency(safeCompCf.closingCash.varianceAmount) : "—"}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1054,7 +1256,7 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
 
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-slate-500">
-                Comparing {props.comparativePnl.currentPeriodLabel} vs {props.comparativePnl.previousPeriodLabel}
+                Comparing {safeCompPnl.currentPeriodLabel} vs {safeCompPnl.previousPeriodLabel}
               </span>
             </div>
           </div>
@@ -1063,27 +1265,27 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Revenue Growth</span>
               <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                {formatCurrency(props.comparativePnl.totals.totalRevenue.currentAmount)}
+                {formatCurrency(safeCompPnl.totals.totalRevenue.currentAmount)}
               </p>
               <p className="text-xs text-teal-600 dark:text-teal-400 mt-1">
-                {props.comparativePnl.totals.totalRevenue.variancePercent !== null ? `${props.comparativePnl.totals.totalRevenue.variancePercent}% YoY` : "Baseline Inception Year"}
+                {safeCompPnl.totals.totalRevenue.variancePercent !== null ? `${safeCompPnl.totals.totalRevenue.variancePercent}% YoY` : "Baseline Inception Year"}
               </p>
             </div>
 
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Operating Margin Spread</span>
               <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                {props.comparativePnl.totals.operatingMargin.current}%
+                {safeCompPnl.totals.operatingMargin.current}%
               </p>
               <p className="text-xs text-slate-500 mt-1">
-                Operating EBIT: {formatCurrency(props.comparativePnl.totals.operatingProfit.currentAmount)}
+                Operating EBIT: {formatCurrency(safeCompPnl.totals.operatingProfit.currentAmount)}
               </p>
             </div>
 
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Net Working Capital</span>
               <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                {formatCurrency(props.comparativeBs.totals.netWorkingCapital.currentAmount)}
+                {formatCurrency(safeCompBs.totals.netWorkingCapital.currentAmount)}
               </p>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
                 Current Assets exceed Current Liab
@@ -1093,7 +1295,7 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Net Free Cash Position</span>
               <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                {formatCurrency(props.cashFlow.closingCashAndBank)}
+                {formatCurrency(safeCf.closingCashAndBank)}
               </p>
               <p className="text-xs text-teal-600 dark:text-teal-400 mt-1">
                 Bank & liquid equivalents on deposit
@@ -1117,7 +1319,7 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                 <span className="text-xs text-slate-500 font-medium">Financial Health & Diagnostic Ratios</span>
               </div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-0.5">
-                Financial Intelligence & Key Ratios ({props.financialRatios.currentPeriodLabel})
+                Financial Intelligence & Key Ratios ({safeRatios.currentPeriodLabel})
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Key Indian financial ratios evaluated against standard commercial ICAI & banking benchmarks.
@@ -1134,7 +1336,7 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
               </h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-              {props.financialAnalysis.managementInsights.map((insight, idx) => (
+              {(safeAnalysis.managementInsights || []).map((insight, idx) => (
                 <div key={idx} className="bg-white/10 backdrop-blur-sm p-3.5 rounded-xl border border-white/10 text-sm text-slate-100 flex items-start gap-2.5">
                   <span className="text-teal-400 font-bold mt-0.5">•</span>
                   <span>{insight}</span>
@@ -1145,7 +1347,7 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
 
           {/* Ratios Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {props.financialRatios.ratios.map((ratio, idx) => (
+            {(safeRatios.ratios || []).map((ratio, idx) => (
               <div
                 key={idx}
                 className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-3"
@@ -1210,7 +1412,7 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                  {props.financialAnalysis.monthlyTrends.map((m, idx) => (
+                  {(safeAnalysis.monthlyTrends || []).map((m, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td className="py-2.5 px-4 font-sans font-medium text-slate-900 dark:text-white">{m.month}</td>
                       <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(m.revenue)}</td>
@@ -1231,7 +1433,7 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                 Customer Revenue Concentration (Pareto Distribution)
               </h3>
               <div className="space-y-3">
-                {props.financialAnalysis.customerConcentration.map(c => (
+                {(safeAnalysis.customerConcentration || []).map(c => (
                   <div key={c.customerId} className="space-y-1">
                     <div className="flex justify-between text-sm">
                       <span className="font-medium text-slate-900 dark:text-white">{c.customerName}</span>
@@ -1250,7 +1452,7 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                 Operating Expense Category Distribution
               </h3>
               <div className="space-y-3">
-                {props.financialAnalysis.expenseBreakdown.map(e => (
+                {(safeAnalysis.expenseBreakdown || []).map(e => (
                   <div key={e.categoryId} className="space-y-1">
                     <div className="flex justify-between text-sm">
                       <span className="font-medium text-slate-900 dark:text-white">{e.categoryName}</span>

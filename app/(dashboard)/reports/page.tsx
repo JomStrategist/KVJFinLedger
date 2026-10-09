@@ -20,6 +20,7 @@ export default async function ReportsPage({
     fromDate?: string;
     toDate?: string;
     tab?: string;
+    subtab?: string;
     period?: string;
     comparisonType?: string;
     customerId?: string;
@@ -28,18 +29,37 @@ export default async function ReportsPage({
   }>;
 }) {
   await requireAuth();
-  const params = (await searchParams) || {};
+  const rawParams = (await searchParams) || {};
+  let category = rawParams.category;
+  let activeTab = rawParams.tab || rawParams.subtab;
 
-  const category = params.category || 'overview';
-  const financialYear = params.financialYear || 'FY 2026–27';
-  const activeTab = params.tab;
+  // Handle direct or legacy subtab routing (e.g. /reports?subtab=pnl)
+  if (!category && rawParams.subtab) {
+    if (['pnl', 'trial-balance', 'tb', 'bs', 'balance-sheet', 'cashflow', 'cash-flow', 'comparative', 'analysis'].includes(rawParams.subtab)) {
+      category = 'statements';
+      if (rawParams.subtab === 'tb') activeTab = 'trial-balance';
+      else if (rawParams.subtab === 'bs') activeTab = 'balance-sheet';
+      else if (rawParams.subtab === 'cashflow') activeTab = 'cash-flow';
+    } else if (['sales', 'expenses', 'gst', 'tds', 'banking', 'assets', 'employees', 'analysis', 'audit'].includes(rawParams.subtab)) {
+      category = rawParams.subtab;
+      activeTab = undefined;
+    } else {
+      category = 'overview';
+    }
+  }
+
+  if (!category) {
+    category = 'overview';
+  }
+
+  const financialYear = rawParams.financialYear || 'FY 2026–27';
   const filters: any = {
     financialYear,
-    fromDate: params.fromDate ? new Date(params.fromDate) : undefined,
-    toDate: params.toDate ? new Date(params.toDate) : undefined,
-    customerId: params.customerId,
-    vendorId: params.vendorId,
-    categoryId: params.categoryId,
+    fromDate: rawParams.fromDate ? new Date(rawParams.fromDate) : undefined,
+    toDate: rawParams.toDate ? new Date(rawParams.toDate) : undefined,
+    customerId: rawParams.customerId,
+    vendorId: rawParams.vendorId,
+    categoryId: rawParams.categoryId,
   };
 
   // Authoritative Accounting Equilibrium check
@@ -60,7 +80,7 @@ export default async function ReportsPage({
     console.warn('Accounting equilibrium check warning:', err);
   }
 
-  // Load ONLY the data required for the selected category
+  // Load data required for the selected category
   let reportData: any = null;
 
   try {
@@ -71,11 +91,6 @@ export default async function ReportsPage({
       }
       case 'statements': {
         const stmtTab = activeTab || 'trial-balance';
-        const shouldLoadTB = stmtTab === 'trial-balance';
-        const shouldLoadPnl = stmtTab === 'pnl' || stmtTab === 'balance-sheet';
-        const shouldLoadBs = stmtTab === 'balance-sheet' || stmtTab === 'trial-balance';
-        const shouldLoadCf = stmtTab === 'cash-flow';
-        const shouldLoadComparative = stmtTab === 'comparative';
 
         const [
           trialBalance,
@@ -85,24 +100,28 @@ export default async function ReportsPage({
           comparativePnl,
           comparativeBs,
           comparativeCf,
+          financialRatios,
+          financialAnalysis,
           customers,
           vendors,
           categories,
         ] = await Promise.all([
-          shouldLoadTB ? AccountingEngine.getTrialBalance(filters) : Promise.resolve(null),
-          shouldLoadPnl ? AccountingEngine.getProfitAndLoss(filters) : Promise.resolve(null),
-          shouldLoadBs ? AccountingEngine.getBalanceSheet(filters) : Promise.resolve(null),
-          shouldLoadCf ? AccountingEngine.getCashFlow(filters) : Promise.resolve(null),
-          shouldLoadComparative ? AccountingEngine.getComparativeProfitAndLoss(filters) : Promise.resolve([]),
-          shouldLoadComparative ? AccountingEngine.getComparativeBalanceSheet(filters) : Promise.resolve([]),
-          shouldLoadComparative ? AccountingEngine.getComparativeCashFlow(filters) : Promise.resolve([]),
+          AccountingEngine.getTrialBalance(filters).catch(() => null),
+          AccountingEngine.getProfitAndLoss(filters).catch(() => null),
+          AccountingEngine.getBalanceSheet(filters).catch(() => null),
+          AccountingEngine.getCashFlow(filters).catch(() => null),
+          AccountingEngine.getComparativeProfitAndLoss(filters).catch(() => null),
+          AccountingEngine.getComparativeBalanceSheet(filters).catch(() => null),
+          AccountingEngine.getComparativeCashFlow(filters).catch(() => null),
+          AccountingEngine.getFinancialRatios(filters).catch(() => ({ currentPeriodLabel: financialYear, previousPeriodLabel: '', hasPreviousData: false, ratios: [] })),
+          AccountingEngine.getComprehensiveFinancialAnalysis(filters).catch(() => null),
           prisma.customer.findMany({ select: { id: true, legalName: true }, orderBy: { legalName: 'asc' } }).catch(() => []),
           prisma.vendor.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }).catch(() => []),
           prisma.expenseCategory.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }).catch(() => []),
         ]);
 
         const defaultTB = {
-          asOfDate: new Date(),
+          asOfDate: new Date().toISOString(),
           totalDebit: 0,
           totalCredit: 0,
           difference: 0,
@@ -110,8 +129,8 @@ export default async function ReportsPage({
           items: [],
         };
         const defaultPnl = {
-          fromDate: new Date(),
-          toDate: new Date(),
+          fromDate: new Date().toISOString(),
+          toDate: new Date().toISOString(),
           revenueFromOperations: [],
           otherIncome: [],
           totalRevenue: 0,
@@ -127,7 +146,7 @@ export default async function ReportsPage({
           netProfitAfterTax: 0,
         };
         const defaultBs = {
-          asOfDate: new Date(),
+          asOfDate: new Date().toISOString(),
           equity: { capital: 0, reservesAndSurplus: 0, drawings: 0, totalShareholdersFunds: 0 },
           nonCurrentLiabilities: { items: [], total: 0 },
           currentLiabilities: { tradePayables: 0, employeePayables: 0, statutoryGstPayable: 0, statutoryTdsPayable: 0, otherCurrentLiabilities: 0, total: 0 },
@@ -139,8 +158,8 @@ export default async function ReportsPage({
           isBalanced: true,
         };
         const defaultCf = {
-          fromDate: new Date(),
-          toDate: new Date(),
+          fromDate: new Date().toISOString(),
+          toDate: new Date().toISOString(),
           operatingCashFlow: { customerReceipts: 0, vendorDisbursements: 0, employeeDisbursements: 0, gstPaid: 0, tdsPaid: 0, netOperating: 0 },
           investingCashFlow: { capitalExpenditure: 0, netInvesting: 0 },
           financingCashFlow: { capitalIntroduced: 0, drawingsWithdrawn: 0, netFinancing: 0 },
@@ -148,20 +167,68 @@ export default async function ReportsPage({
           netCashFlow: 0,
           closingCashAndBank: 0,
         };
+        const defaultCompPnl = {
+          currentPeriodLabel: financialYear,
+          previousPeriodLabel: 'Previous FY',
+          hasPreviousData: false,
+          revenueItems: [],
+          expenseItems: [],
+          totals: {
+            totalRevenue: { id: 'tot_rev', name: 'Total Revenue', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            totalExpenses: { id: 'tot_exp', name: 'Total Expenses', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            operatingProfit: { id: 'tot_ebit', name: 'Operating Profit', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            profitBeforeTax: { id: 'tot_pbt', name: 'Profit Before Tax', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            netProfitAfterTax: { id: 'tot_pat', name: 'Net Profit After Tax', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            operatingMargin: { current: 0, previous: 0, variance: 0 },
+            netMargin: { current: 0, previous: 0, variance: 0 },
+          },
+        };
+        const defaultCompBs = {
+          currentPeriodLabel: financialYear,
+          previousPeriodLabel: 'Previous FY',
+          hasPreviousData: false,
+          items: [],
+          sections: { shareholdersFunds: [], currentLiabilities: [], nonCurrentAssets: [], currentAssets: [] },
+          totals: {
+            totalShareholdersFunds: { id: 'tot_funds', name: 'Shareholders Funds', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            totalEquity: { id: 'tot_funds', name: 'Total Equity', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            totalCurrentLiabilities: { id: 'tot_curr_liab', name: 'Total Current Liabilities', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            totalLiabilities: { id: 'tot_curr_liab', name: 'Total Liabilities', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            totalEquityAndLiabilities: { id: 'tot_eq_liab', name: 'Total Equity & Liabilities', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            netFixedAssets: { id: 'tot_fixed', name: 'Net Fixed Assets', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            totalCurrentAssets: { id: 'tot_curr_assets', name: 'Total Current Assets', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            totalAssets: { id: 'tot_assets', name: 'Total Assets', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+            netWorkingCapital: { id: 'tot_wc', name: 'Net Working Capital', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          },
+          workingCapital: { id: 'tot_wc', name: 'Net Working Capital', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          isBalanced: true,
+          difference: 0,
+        };
+        const defaultCompCf = {
+          currentPeriodLabel: financialYear,
+          previousPeriodLabel: 'Previous FY',
+          hasPreviousData: false,
+          items: [],
+          openingCash: { id: 'cf_opening', name: 'Cash at Inception', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          closingCash: { id: 'cf_closing', name: 'Cash at End', currentAmount: 0, previousAmount: 0, varianceAmount: 0, variancePercent: null, currentCommonSizePercent: 0, previousCommonSizePercent: 0 },
+          closingCashMatchesBalanceSheet: true,
+        };
 
-        reportData = {
+        reportData = JSON.parse(JSON.stringify({
           activeTab: stmtTab,
           trialBalance: trialBalance || defaultTB,
           profitAndLoss: profitAndLoss || defaultPnl,
           balanceSheet: balanceSheet || defaultBs,
           cashFlow: cashFlow || defaultCf,
-          comparativePnl: comparativePnl || [],
-          comparativeBs: comparativeBs || [],
-          comparativeCf: comparativeCf || [],
+          comparativePnl: comparativePnl || defaultCompPnl,
+          comparativeBs: comparativeBs || defaultCompBs,
+          comparativeCf: comparativeCf || defaultCompCf,
+          financialRatios: financialRatios || { currentPeriodLabel: financialYear, previousPeriodLabel: '', hasPreviousData: false, ratios: [] },
+          financialAnalysis: financialAnalysis || { managementInsights: [], monthlyTrends: [], customerConcentration: [], expenseBreakdown: [], vendorConcentration: [] },
           customers: customers || [],
           vendors: vendors || [],
           categories: categories || [],
-        };
+        }));
         break;
       }
       case 'sales': {
@@ -232,8 +299,8 @@ export default async function ReportsPage({
       <ReportsHubClient
         currentCategory={category}
         financialYear={financialYear}
-        fromDate={params.fromDate}
-        toDate={params.toDate}
+        fromDate={rawParams.fromDate}
+        toDate={rawParams.toDate}
         tab={activeTab}
         reportData={reportData}
         accountingEquilibrium={{

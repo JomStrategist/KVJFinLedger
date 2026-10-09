@@ -2904,6 +2904,12 @@ export class AccountingEngine {
       currentPeriodLabel: curFy,
       previousPeriodLabel: hasPreviousData ? compFy : `${compFy} (No Data)`,
       hasPreviousData,
+      items: [
+        ...equityItems,
+        ...liabilityItems,
+        ...nonCurrentAssetItems,
+        ...currentAssetItems,
+      ],
       sections: {
         shareholdersFunds: equityItems,
         currentLiabilities: liabilityItems,
@@ -2912,11 +2918,14 @@ export class AccountingEngine {
       },
       totals: {
         totalShareholdersFunds: totalFunds,
+        totalEquity: totalFunds,
         totalCurrentLiabilities: totalCurrLiab,
+        totalLiabilities: totalCurrLiab,
         totalEquityAndLiabilities: totalEqLiab,
         netFixedAssets: netFixed,
         totalCurrentAssets: totalCurrAssets,
         totalAssets,
+        netWorkingCapital: workingCapital,
       },
       workingCapital,
       isBalanced: curBs.isBalanced,
@@ -2946,6 +2955,9 @@ export class AccountingEngine {
     const prevVouchers = await this.generateAllVouchers(compParams || { financialYear: compFy });
     const hasPreviousData = prevVouchers.length > 0 && (prevCf.operatingCashFlow.customerReceipts > 0 || prevCf.financingCashFlow.capitalIntroduced > 0);
 
+    const openingItem = this.computeComparativeItem("cf_opening", "Cash & Cash Equivalents at Inception of Period", curCf.openingCashAndBank, prevCf.openingCashAndBank, hasPreviousData, 0, 0, "Cash Movement Summary");
+    const closingItem = this.computeComparativeItem("cf_closing", "Cash & Cash Equivalents at End of Period", curCf.closingCashAndBank, prevCf.closingCashAndBank, hasPreviousData, 0, 0, "Cash Movement Summary");
+
     const items = [
       this.computeComparativeItem("cf_cust", "Customer Receipts", curCf.operatingCashFlow.customerReceipts, prevCf.operatingCashFlow.customerReceipts, hasPreviousData, 0, 0, "Operating Activities"),
       this.computeComparativeItem("cf_vend", "Vendor Disbursements", -curCf.operatingCashFlow.vendorDisbursements, -prevCf.operatingCashFlow.vendorDisbursements, hasPreviousData, 0, 0, "Operating Activities"),
@@ -2959,8 +2971,8 @@ export class AccountingEngine {
       this.computeComparativeItem("cf_drawings", "Owner Drawings / Dividends", -curCf.financingCashFlow.drawingsWithdrawn, -prevCf.financingCashFlow.drawingsWithdrawn, hasPreviousData, 0, 0, "Financing Activities"),
       this.computeComparativeItem("cf_net_fin", "Net Cash from Financing Activities", curCf.financingCashFlow.netFinancing, prevCf.financingCashFlow.netFinancing, hasPreviousData, 0, 0, "Financing Activities"),
       this.computeComparativeItem("cf_net_movement", "Net Increase / (Decrease) in Cash & Cash Equivalents", curCf.netCashFlow, prevCf.netCashFlow, hasPreviousData, 0, 0, "Cash Movement Summary"),
-      this.computeComparativeItem("cf_opening", "Cash & Cash Equivalents at Inception of Period", curCf.openingCashAndBank, prevCf.openingCashAndBank, hasPreviousData, 0, 0, "Cash Movement Summary"),
-      this.computeComparativeItem("cf_closing", "Cash & Cash Equivalents at End of Period", curCf.closingCashAndBank, prevCf.closingCashAndBank, hasPreviousData, 0, 0, "Cash Movement Summary"),
+      openingItem,
+      closingItem,
     ];
 
     return {
@@ -2968,6 +2980,8 @@ export class AccountingEngine {
       previousPeriodLabel: hasPreviousData ? compFy : `${compFy} (No Data)`,
       hasPreviousData,
       items,
+      openingCash: openingItem,
+      closingCash: closingItem,
       closingCashMatchesBalanceSheet: true
     };
   }
