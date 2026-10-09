@@ -50,20 +50,46 @@ model User {
 }
 
 model Employee {
-  id           String    @id @default(auto()) @map("_id") @db.ObjectId
-  employeeCode String?   @unique
-  name         String
-  email        String?
-  phone        String?
-  department   String?
-  designation  String?
-  pan          String?
-  salary       Float?    @default(0)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  expenses     Expense[]
+  id            String            @id @default(auto()) @map("_id") @db.ObjectId
+  employeeCode  String?           @unique
+  name          String
+  email         String?
+  phone         String?
+  department    String?
+  designation   String?
+  pan           String?
+  salary        Float?            @default(0)
+  isActive      Boolean           @default(true)
+  bankAccountNo String?
+  bankIfsc      String?
+  bankName      String?
+  uan           String?
+  pfNumber      String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  expenses      Expense[]
+  advances      EmployeeAdvance[]
 }
+
+model EmployeeAdvance {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  advanceNumber  String?   @unique
+  employeeId     String    @db.ObjectId
+  employee       Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  advanceDate    DateTime  @default(now())
+  amount         Float
+  purpose        String?
+  repaidAmount   Float     @default(0)
+  balanceAmount  Float     @default(0)
+  status         String    @default("ACTIVE") // ACTIVE, REPAID, DEDUCTED
+  deductionMonth String?
+  paymentMode    String?   @default("BANK")
+  reference      String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
 
 model CompanySettings {
   id                    String   @id @default(auto()) @map("_id") @db.ObjectId

@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FinancialStatementsClient } from '../financial-statements/FinancialStatementsClient';
 import { formatCurrency } from '@/lib/utils/currency';
+import { PayslipModal } from '../expenses/PayslipModal';
+import { getForm24QAction, getForm16Action } from '../expenses/payroll-actions';
 
 export interface ReportsHubProps {
   currentCategory: string;
@@ -1066,31 +1068,547 @@ function EmployeesSalaryView({
   setActiveTab: (t: string) => void;
 }) {
   const tabs = [
-    { id: 'register', label: 'Employee Register' },
-    { id: 'salary', label: 'Direct Salary Postings' },
-    { id: 'claims', label: 'Reimbursement Claims' },
+    { id: 'register', label: 'Employee Register & CTC' },
+    { id: 'salary', label: 'Payroll & Salary Disbursements' },
+    { id: 'form24q', label: 'Form 24Q Quarterly TDS Return' },
+    { id: 'form16', label: 'Form 16 Tax Certificate (Part B)' },
   ];
   const currentTab = tabs.some((t) => t.id === activeTab) ? activeTab : 'register';
+
+  // Payslip modal state
+  const [selectedPayslipExpenseId, setSelectedPayslipExpenseId] = useState<string | null>(null);
+
+  // Form 24Q state
+  const [selectedQuarter, setSelectedQuarter] = useState<string>('Q2');
+  const [form24QData, setForm24QData] = useState<any>(data.form24Q || null);
+  const [loading24Q, setLoading24Q] = useState(false);
+
+  // Form 16 state
+  const employees = data.employees || [];
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(employees[0]?.id || '');
+  const [form16Data, setForm16Data] = useState<any>(data.initialForm16 || null);
+  const [loading16, setLoading16] = useState(false);
+
+  const handleQuarterChange = async (q: string) => {
+    setSelectedQuarter(q);
+    setLoading24Q(true);
+    try {
+      const res = await getForm24QAction(q);
+      if (res.success) {
+        setForm24QData(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading24Q(false);
+    }
+  };
+
+  const handleEmployeeChange = async (empId: string) => {
+    setSelectedEmployeeId(empId);
+    setLoading16(true);
+    try {
+      const res = await getForm16Action(empId);
+      if (res.success) {
+        setForm16Data(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading16(false);
+    }
+  };
+
+  const exportForm24QCsv = () => {
+    if (!form24QData?.deductees) return;
+    const rows = [
+      ['Serial No', 'Employee Code', 'Employee Name', 'PAN', 'Payment Date', 'Gross Amount', 'Rate', 'TDS Deducted', 'Net Paid', 'Section'],
+      ...form24QData.deductees.map((d: any) => [
+        d.serialNo,
+        `"${d.employeeCode}"`,
+        `"${d.employeeName}"`,
+        `"${d.pan}"`,
+        d.paymentDate ? new Date(d.paymentDate).toLocaleDateString('en-IN') : '',
+        d.grossAmount,
+        `${d.tdsRate}%`,
+        d.tdsAmount,
+        d.netPaid,
+        '192',
+      ]),
+    ];
+    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map((e) => e.join(',')).join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Form24Q_${selectedQuarter}_Annexure.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const activeEmployees = employees.filter((e: any) => e.isActive);
+  const totalMonthlyCtc = activeEmployees.reduce((sum: number, e: any) => sum + (Number(e.salary) || 0), 0);
+  const salaryExpenses = data.salaryExpenses || [];
+  const totalGrossDisbursed = salaryExpenses.reduce((sum: number, exp: any) => sum + (Number(exp.grossAmount) || 0), 0);
+  const totalTdsWithheld = salaryExpenses.reduce((sum: number, exp: any) => sum + (Number(exp.tdsAmount) || 0), 0);
+  const totalNetDisbursed = salaryExpenses.reduce((sum: number, exp: any) => sum + (Number(exp.netAmount) || 0), 0);
 
   return (
     <div className="space-y-6">
       <CategoryRibbon tabs={tabs} activeTab={currentTab} onTabChange={setActiveTab} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-5 border border-[#D9E3DC] rounded-xl bg-[#FAFBF9]">
-          <h3 className="font-bold text-[#17211B] text-sm">Direct Salary Accounting</h3>
-          <p className="text-xs text-[#68756C] mt-2">
-            Salary disbursements post directly to Salary Expense (P&L Dr) and Bank (Cr) with optional TDS under Section 192.
-            Employees do not pass through Sundry Creditors.
-          </p>
+      {/* 1. Register & CTC Tab */}
+      {currentTab === 'register' && (
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Headcount</span>
+              <span className="text-xl font-bold text-slate-900 mt-1 block">{employees.length} Staff</span>
+            </div>
+            <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl shadow-2xs">
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Active Staff</span>
+              <span className="text-xl font-bold text-emerald-700 mt-1 block">{activeEmployees.length} Active</span>
+            </div>
+            <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Monthly CTC Commitment</span>
+              <span className="text-xl font-bold text-slate-900 mt-1 block">{formatCurrency(totalMonthlyCtc)}</span>
+            </div>
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl shadow-2xs">
+              <span className="text-[10px] font-bold text-[#177B55] uppercase tracking-wider block">Annual Payroll Run Rate</span>
+              <span className="text-xl font-black text-[#0B5F46] mt-1 block">{formatCurrency(totalMonthlyCtc * 12)}</span>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-[#D9E3DC] bg-[#FAFBF9] flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-800">Master Employee Register</span>
+              <Link href="/expenses?tab=employees" className="text-[#177B55] font-semibold hover:underline">
+                Manage Staff & Run Payroll →
+              </Link>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs min-w-[760px]">
+                <thead>
+                  <tr className="border-b border-[#D9E3DC] bg-[#FAFBF9] text-[11px] uppercase text-[#738078] font-bold">
+                    <th className="py-3 px-4">Employee</th>
+                    <th className="py-3 px-4">Code</th>
+                    <th className="py-3 px-4">Department / Designation</th>
+                    <th className="py-3 px-4">PAN / Bank Info</th>
+                    <th className="py-3 px-4 text-right">Monthly CTC (₹)</th>
+                    <th className="py-3 px-4 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E9EEE9]">
+                  {employees.map((emp: any) => (
+                    <tr key={emp.id} className="hover:bg-[#F9FAF8] transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-[#17211B]">{emp.name}</td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600">{emp.employeeCode || '—'}</td>
+                      <td className="py-3.5 px-4 text-slate-700">
+                        <div>{emp.department || '—'}</div>
+                        <div className="text-[11px] text-slate-500">{emp.designation || ''}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-600 font-mono text-[11px]">
+                        <div>{emp.pan ? `PAN: ${emp.pan}` : 'No PAN'}</div>
+                        <div className="text-[10px] text-slate-400 font-sans">{emp.bankName || 'Bank'} • {emp.bankIfsc || 'IFSC'}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-bold text-slate-900 font-mono">
+                        {formatCurrency(Number(emp.salary || 0))}
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          emp.isActive ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {emp.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <div className="p-5 border border-[#D9E3DC] rounded-xl bg-[#FAFBF9]">
-          <h3 className="font-bold text-[#17211B] text-sm">Employee-Paid Expense Claims</h3>
-          <p className="text-xs text-[#68756C] mt-2">
-            Business expenses incurred by employees create an Employee Payable liability without bank movement until reimbursement.
-          </p>
+      )}
+
+      {/* 2. Salary Disbursements Tab */}
+      {currentTab === 'salary' && (
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Gross Salaries Incurred</span>
+              <span className="text-xl font-bold text-slate-900 mt-1 block">{formatCurrency(totalGrossDisbursed)}</span>
+            </div>
+            <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl shadow-2xs">
+              <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">TDS Deducted (Sec 192)</span>
+              <span className="text-xl font-bold text-rose-700 mt-1 block">{formatCurrency(totalTdsWithheld)}</span>
+            </div>
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl shadow-2xs">
+              <span className="text-[10px] font-bold text-[#177B55] uppercase tracking-wider block">Net Bank Disbursements</span>
+              <span className="text-xl font-black text-[#0B5F46] mt-1 block">{formatCurrency(totalNetDisbursed)}</span>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-[#D9E3DC] bg-[#FAFBF9] flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-800">Historical Salary Payout Vouchers</span>
+              <Link href="/expenses?tab=employees" className="text-[#177B55] font-semibold hover:underline">
+                ⚡ Process New Batch Run →
+              </Link>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs min-w-[760px]">
+                <thead>
+                  <tr className="border-b border-[#D9E3DC] bg-[#FAFBF9] text-[11px] uppercase text-[#738078] font-bold">
+                    <th className="py-3 px-4">Voucher No</th>
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Employee</th>
+                    <th className="py-3 px-4 text-right">Gross Salary</th>
+                    <th className="py-3 px-4 text-right">TDS (192)</th>
+                    <th className="py-3 px-4 text-right">Net Disbursed</th>
+                    <th className="py-3 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E9EEE9]">
+                  {salaryExpenses.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-500">
+                        No salary disbursement vouchers recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    salaryExpenses.map((exp: any) => (
+                      <tr key={exp.id} className="hover:bg-[#F9FAF8] transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{exp.expenseNumber}</td>
+                        <td className="py-3.5 px-4 text-slate-600">
+                          {exp.expenseDate ? new Date(exp.expenseDate).toLocaleDateString('en-IN') : '—'}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900">{exp.employee?.name || 'Employee'}</div>
+                          <div className="text-[10px] text-slate-500 font-mono">{exp.employee?.employeeCode}</div>
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-semibold text-slate-800">
+                          {formatCurrency(Number(exp.grossAmount || 0))}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono text-rose-600 font-semibold">
+                          {formatCurrency(Number(exp.tdsAmount || 0))}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-[#0B5F46]">
+                          {formatCurrency(Number(exp.netAmount || 0))}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPayslipExpenseId(exp.id)}
+                            className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-[#0B5F46] border border-emerald-200 transition-colors shadow-2xs cursor-pointer"
+                          >
+                            📄 Payslip
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* 3. Form 24Q Quarterly Return Tab */}
+      {currentTab === 'form24q' && (
+        <div className="space-y-5">
+          {/* Quarter Filter Toolbar */}
+          <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-700">Financial Quarter:</span>
+              <div className="flex gap-1.5">
+                {['Q1', 'Q2', 'Q3', 'Q4'].map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => handleQuarterChange(q)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      selectedQuarter === q
+                        ? 'bg-[#177B55] text-white shadow-2xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {q} ({q === 'Q1' ? 'Apr–Jun' : q === 'Q2' ? 'Jul–Sep' : q === 'Q3' ? 'Oct–Dec' : 'Jan–Mar'})
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={exportForm24QCsv}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5"
+              >
+                <span>📥</span> Export Annexure (CSV)
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#177B55] hover:bg-[#0B5F46] text-white transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5"
+              >
+                <span>🖨️</span> Print Return
+              </button>
+            </div>
+          </div>
+
+          {/* Form 24Q Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Deductees</span>
+              <span className="text-xl font-bold text-slate-900 mt-1 block">
+                {form24QData?.totalDeductees || 0} Staff
+              </span>
+            </div>
+            <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Gross Salary Disbursed</span>
+              <span className="text-xl font-bold text-slate-900 mt-1 block">
+                {formatCurrency(form24QData?.totalGrossPaid || 0)}
+              </span>
+            </div>
+            <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl shadow-2xs">
+              <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">TDS Deducted u/s 192</span>
+              <span className="text-xl font-bold text-rose-700 mt-1 block">
+                {formatCurrency(form24QData?.totalTdsDeducted || 0)}
+              </span>
+            </div>
+            <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl shadow-2xs">
+              <span className="text-[10px] font-bold text-[#177B55] uppercase tracking-wider block">Challan Reference (ITNS 281)</span>
+              <span className="text-xs font-mono font-bold text-[#0B5F46] mt-1.5 block">
+                {form24QData?.challanRef || 'CHALLAN-ITNS281'}
+              </span>
+            </div>
+          </div>
+
+          {/* Deductee Wise Annexure Table */}
+          <div className="bg-white rounded-2xl border border-[#D9E3DC] shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-[#D9E3DC] bg-[#FAFBF9] flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-800">
+                Form 24Q Annexure — Salary Deductees Details ({selectedQuarter})
+              </span>
+              <span className="text-slate-500 font-mono text-[11px]">BSR Code: {form24QData?.bsrCode || '0210045'}</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs min-w-[760px]">
+                <thead>
+                  <tr className="border-b border-[#D9E3DC] bg-[#FAFBF9] text-[11px] uppercase text-[#738078] font-bold">
+                    <th className="py-3 px-4">Sl</th>
+                    <th className="py-3 px-4">Employee</th>
+                    <th className="py-3 px-4">PAN</th>
+                    <th className="py-3 px-4">Date of Payment</th>
+                    <th className="py-3 px-4 text-right">Gross Paid (₹)</th>
+                    <th className="py-3 px-4 text-right">Rate</th>
+                    <th className="py-3 px-4 text-right">TDS Deducted (₹)</th>
+                    <th className="py-3 px-4 text-right">Net Paid (₹)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E9EEE9]">
+                  {(!form24QData?.deductees || form24QData.deductees.length === 0) ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-500">
+                        No salary deductions recorded for quarter {selectedQuarter}.
+                      </td>
+                    </tr>
+                  ) : (
+                    form24QData.deductees.map((d: any) => (
+                      <tr key={d.serialNo} className="hover:bg-[#F9FAF8] transition-colors">
+                        <td className="py-3.5 px-4 font-mono text-slate-500">{d.serialNo}</td>
+                        <td className="py-3.5 px-4 font-bold text-slate-900">
+                          <div>{d.employeeName}</div>
+                          <div className="text-[10px] text-slate-500 font-mono">{d.employeeCode}</div>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-800">{d.pan}</td>
+                        <td className="py-3.5 px-4 text-slate-600">
+                          {d.paymentDate ? new Date(d.paymentDate).toLocaleDateString('en-IN') : '—'}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-semibold text-slate-900">
+                          {formatCurrency(d.grossAmount)}
+                        </td>
+                        <td className="py-3.5 px-4 text-right text-slate-500 font-mono">{Number(d.tdsRate || 0).toFixed(1)}%</td>
+                        <td className="py-3.5 px-4 text-right font-mono font-bold text-rose-600">
+                          {formatCurrency(d.tdsAmount)}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-[#0B5F46]">
+                          {formatCurrency(d.netPaid)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Form 16 Tax Certificate (Part B) Tab */}
+      {currentTab === 'form16' && (
+        <div className="space-y-5">
+          {/* Employee Selector Bar */}
+          <div className="p-4 bg-white border border-[#D9E3DC] rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex items-center gap-3 w-full max-w-md">
+              <label className="text-xs font-bold text-slate-700 shrink-0">Select Employee:</label>
+              <select
+                value={selectedEmployeeId}
+                onChange={(e) => handleEmployeeChange(e.target.value)}
+                className="w-full h-10 border border-[#D9E3DC] rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#177B55] font-semibold text-slate-900"
+              >
+                {employees.map((e: any) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name} ({e.employeeCode || 'EMP'}) — PAN: {e.pan || 'N/A'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-[#177B55] hover:bg-[#0B5F46] text-white transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5 self-end sm:self-auto"
+            >
+              <span>🖨️</span> Print Form 16 Certificate
+            </button>
+          </div>
+
+          {/* Form 16 Certificate Layout */}
+          {form16Data && (
+            <div className="bg-white border border-[#D9E3DC] rounded-2xl p-6 sm:p-8 space-y-6 shadow-xs text-xs font-sans">
+              {/* Form 16 Header */}
+              <div className="text-center border-b border-slate-200 pb-5 space-y-1">
+                <h2 className="text-base font-black text-slate-900 tracking-tight">FORM NO. 16 (PART B)</h2>
+                <p className="text-[11px] text-slate-500">
+                  [See rule 31(1)(a)] • Certificate under section 203 of the Income-tax Act, 1961
+                </p>
+                <p className="text-xs font-bold text-slate-800">
+                  Certificate of Tax Deducted at Source from Income Chargeable under the head &apos;Salaries&apos;
+                </p>
+                <p className="text-[11px] text-slate-500 font-mono">
+                  Assessment Year: {form16Data.assessmentYear} • Financial Year: {form16Data.financialYear}
+                </p>
+              </div>
+
+              {/* Employer & Employee Identity Blocks */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl text-[11px]">
+                <div className="space-y-1">
+                  <span className="font-bold text-slate-900 block text-xs">Employer (Deductor)</span>
+                  <p className="font-bold text-slate-800">{form16Data.employer?.name}</p>
+                  <p className="text-slate-600">{form16Data.employer?.address}</p>
+                  <p className="font-mono text-slate-700">PAN: {form16Data.employer?.pan} • TAN: {form16Data.employer?.tan}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="font-bold text-slate-900 block text-xs">Employee (Deductee)</span>
+                  <p className="font-bold text-slate-800">{form16Data.employee?.name}</p>
+                  <p className="text-slate-600">Designation: {form16Data.employee?.designation || 'Staff'}</p>
+                  <p className="font-mono text-slate-700">PAN: {form16Data.employee?.pan} • Code: {form16Data.employee?.employeeCode}</p>
+                </div>
+              </div>
+
+              {/* Computation Table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="p-3 bg-[#FAFBF9] border-b border-slate-200 font-bold text-slate-800">
+                  Part B — Details of Salary Paid and any other income and tax deducted
+                </div>
+                <div className="divide-y divide-slate-100 text-xs">
+                  <div className="p-3 flex justify-between items-center hover:bg-slate-50/50">
+                    <span className="text-slate-700">1. Gross Salary u/s 17(1)</span>
+                    <span className="font-mono font-bold text-slate-900">
+                      {formatCurrency(form16Data.salarySummary?.grossSalarySec17_1 || 0)}
+                    </span>
+                  </div>
+                  <div className="p-3 flex justify-between items-center hover:bg-slate-50/50">
+                    <span className="text-slate-700">2. Less: Standard Deduction u/s 16(ia)</span>
+                    <span className="font-mono font-semibold text-rose-600">
+                      - {formatCurrency(form16Data.salarySummary?.standardDeductionSec16_ia || 0)}
+                    </span>
+                  </div>
+                  <div className="p-3 flex justify-between items-center bg-slate-50/70 font-bold">
+                    <span className="text-slate-800">3. Total Income Chargeable under the head &apos;Salaries&apos;</span>
+                    <span className="font-mono text-slate-900">
+                      {formatCurrency(form16Data.salarySummary?.incomeChargeableUnderSalaries || 0)}
+                    </span>
+                  </div>
+                  <div className="p-3 flex justify-between items-center hover:bg-slate-50/50">
+                    <span className="text-slate-700">4. Tax on Total Income</span>
+                    <span className="font-mono font-semibold text-slate-900">
+                      {formatCurrency(form16Data.salarySummary?.totalTaxDeductedSec192 || 0)}
+                    </span>
+                  </div>
+                  <div className="p-3 flex justify-between items-center hover:bg-slate-50/50">
+                    <span className="text-slate-700">5. Less: Rebate u/s 87A</span>
+                    <span className="font-mono font-semibold text-emerald-700">
+                      - {formatCurrency(form16Data.salarySummary?.rebateSec87A || 0)}
+                    </span>
+                  </div>
+                  <div className="p-3.5 flex justify-between items-center bg-emerald-50/80 font-black text-sm">
+                    <span className="text-[#177B55]">6. Total Tax Deducted at Source u/s 192</span>
+                    <span className="font-mono text-[#0B5F46]">
+                      {formatCurrency(form16Data.salarySummary?.totalTaxDeductedSec192 || 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quarterly Deposit Breakdown */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="p-3 bg-[#FAFBF9] border-b border-slate-200 font-bold text-slate-800">
+                  Quarterly Tax Deducted and Deposited in Central Government Account
+                </div>
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/60 text-[11px] font-bold text-slate-600">
+                      <th className="py-2.5 px-4">Quarter</th>
+                      <th className="py-2.5 px-4">Period</th>
+                      <th className="py-2.5 px-4 text-right">Gross Paid (₹)</th>
+                      <th className="py-2.5 px-4 text-right">Tax Deducted (₹)</th>
+                      <th className="py-2.5 px-4 text-right">Tax Deposited (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {['Q1', 'Q2', 'Q3', 'Q4'].map((q) => {
+                      const qData = form16Data.quarterlyBreakdown?.[q] || { gross: 0, tds: 0 };
+                      const label = q === 'Q1' ? 'Apr–Jun' : q === 'Q2' ? 'Jul–Sep' : q === 'Q3' ? 'Oct–Dec' : 'Jan–Mar';
+                      return (
+                        <tr key={q} className="hover:bg-slate-50/50">
+                          <td className="py-2.5 px-4 font-bold text-slate-800">{q}</td>
+                          <td className="py-2.5 px-4 text-slate-600">{label}</td>
+                          <td className="py-2.5 px-4 text-right font-mono">{formatCurrency(qData.gross)}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-semibold text-rose-600">{formatCurrency(qData.tds)}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-semibold text-emerald-700">{formatCurrency(qData.tds)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Signatory Box */}
+              <div className="pt-8 border-t border-slate-200 flex justify-between items-end text-[11px] text-slate-500">
+                <div>
+                  <p>Place: Kochi, Kerala</p>
+                  <p>Date: {new Date().toLocaleDateString('en-IN')}</p>
+                </div>
+                <div className="text-right space-y-10">
+                  <div className="h-8 border-b border-slate-400 w-48 ml-auto"></div>
+                  <p className="font-bold text-slate-800">For {form16Data.employer?.name}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Payslip Modal */}
+      {selectedPayslipExpenseId && (
+        <PayslipModal
+          expenseId={selectedPayslipExpenseId}
+          onClose={() => setSelectedPayslipExpenseId(null)}
+        />
+      )}
     </div>
   );
 }

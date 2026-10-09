@@ -87,6 +87,7 @@ export async function recordSalaryPayoutAction(data: {
   periodMonth: string;
   grossAmount: number;
   tdsAmount?: number;
+  advanceDeduction?: number;
   paymentMode?: string;
   reference?: string;
   notes?: string;
@@ -121,12 +122,13 @@ export async function recordSalaryPayoutAction(data: {
 
     const gross = Number(data.grossAmount);
     const tds = Number(data.tdsAmount || 0);
-    const net = Math.max(0, gross - tds);
+    const advDeduction = Number(data.advanceDeduction || 0);
+    const net = Math.max(0, gross - tds - advDeduction);
 
     const expense = await ExpenseService.createExpense({
       expenseDate: new Date(data.paymentDate),
       description: `Salary Payout - ${employee.name} (${data.periodMonth})`,
-      notes: data.notes || `Monthly Salary Payout - ${employee.name} [${employee.employeeCode || "EMP"}] (${data.periodMonth})${data.reference ? ` Ref: ${data.reference}` : ""}`,
+      notes: data.notes || `Monthly Salary Payout - ${employee.name} [${employee.employeeCode || "EMP"}] (${data.periodMonth})${advDeduction > 0 ? ` (Less Adv: ₹${advDeduction})` : ""}${data.reference ? ` Ref: ${data.reference}` : ""}`,
       categoryId: salaryCategory.id,
       paidBy: "COMPANY",
       employeeId: employee.id,
@@ -140,10 +142,11 @@ export async function recordSalaryPayoutAction(data: {
       totalInputGST: 0,
       tdsRate: gross > 0 ? (tds / gross) * 100 : 0,
       tdsAmount: tds,
-      tdsSection: "192",
+      tdsSection: tds > 0 ? "192" : undefined,
       grossAmount: gross,
       netAmount: net,
       paidAmount: net,
+      advanceAmount: advDeduction,
       isAsset: false,
       items: [
         {
@@ -167,6 +170,12 @@ export async function recordSalaryPayoutAction(data: {
         },
       ],
     });
+
+    // Deduct advance balance if requested
+    if (advDeduction > 0) {
+      const { EmployeeAdvanceService } = await import("@/services/employee-advance.service");
+      await EmployeeAdvanceService.deductAdvanceInPayroll(employee.id, advDeduction);
+    }
 
     revalidateAllExpenseRoutes();
     revalidatePath("/masters");

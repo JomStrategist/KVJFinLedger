@@ -301,10 +301,40 @@ export default async function ReportsPage({
         break;
       }
       case 'employees': {
-        const employees = await prisma.employee.findMany({
-          select: { id: true, employeeCode: true, name: true, designation: true, isActive: true },
-        });
-        reportData = { employees };
+        const { PayrollService } = await import('@/services/payroll.service');
+        const { EmployeeAdvanceService } = await import('@/services/employee-advance.service');
+
+        const [employees, salaryExpenses, advances, form24Q] = await Promise.all([
+          prisma.employee.findMany({
+            orderBy: { name: 'asc' },
+            include: {
+              advances: { where: { status: 'ACTIVE' } },
+              _count: { select: { expenses: true } },
+            },
+          }),
+          prisma.expense.findMany({
+            where: { employeeId: { not: null } },
+            include: { employee: true, category: true },
+            orderBy: { expenseDate: 'desc' },
+          }),
+          EmployeeAdvanceService.getAdvances(),
+          PayrollService.getForm24QSummary('Q2', financialYear),
+        ]);
+
+        let initialForm16 = null;
+        if (employees.length > 0) {
+          try {
+            initialForm16 = await PayrollService.getForm16Data(employees[0].id, financialYear);
+          } catch {}
+        }
+
+        reportData = {
+          employees,
+          salaryExpenses,
+          advances,
+          form24Q,
+          initialForm16,
+        };
         break;
       }
       case 'analysis': {

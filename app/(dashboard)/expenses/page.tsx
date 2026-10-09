@@ -3,6 +3,7 @@ import { ExpenseService } from '@/services/expense.service';
 import { ExpenseCategoryService } from '@/services/expense-category.service';
 import { VendorService } from '@/services/vendor.service';
 import { EmployeeService } from '@/services/employee.service';
+import { EmployeeAdvanceService } from '@/services/employee-advance.service';
 import { ExpensesClientList } from './ExpensesClientList';
 import { ExpenseVendorsView } from './ExpenseVendorsView';
 import { ExpenseEmployeesView } from './ExpenseEmployeesView';
@@ -18,11 +19,12 @@ export default async function ExpensesPage({
   const params = await searchParams;
   const activeTab = params.tab || 'expenses';
 
-  const [expenses, categories, vendors, employees] = await Promise.all([
+  const [expenses, categories, vendors, employees, advances] = await Promise.all([
     ExpenseService.getExpenses(),
     ExpenseCategoryService.getExpenseCategories(),
     VendorService.getVendors(),
     EmployeeService.getEmployees(),
+    EmployeeAdvanceService.getAdvances(),
   ]);
 
   return (
@@ -92,6 +94,7 @@ export default async function ExpensesPage({
       {activeTab === 'employees' && (
         <ExpenseEmployeesView
           employees={JSON.parse(JSON.stringify(employees))}
+          advances={JSON.parse(JSON.stringify(advances))}
           autoOpenAddEmployee={params.action === 'new'}
         />
       )}

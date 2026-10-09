@@ -26,10 +26,17 @@ export function SalaryPaymentModal({
   const prevMonthYear = `${monthNames[prevMonthIndex]} ${prevMonthIndex === 11 ? now.getFullYear() - 1 : now.getFullYear()}`;
 
   const defaultSalary = Number(employee.salary || 0);
+  const outstandingAdv = (employee.advances || []).reduce(
+    (sum: number, a: any) => sum + (a.status === "ACTIVE" ? Number(a.balanceAmount || a.amount) : 0),
+    0
+  );
 
   const [paymentDate, setPaymentDate] = useState(now.toISOString().split("T")[0]);
   const [periodMonth, setPeriodMonth] = useState(currentMonthYear);
   const [grossAmount, setGrossAmount] = useState<number | string>(defaultSalary > 0 ? defaultSalary : "");
+  const [advanceDeduction, setAdvanceDeduction] = useState<number | string>(
+    outstandingAdv > 0 ? Math.min(outstandingAdv, Math.round(defaultSalary * 0.2)) : ""
+  );
   const [isTdsDeducted, setIsTdsDeducted] = useState(false);
   const [tdsAmount, setTdsAmount] = useState<number | string>("");
   const [paymentMode, setPaymentMode] = useState("BANK");
@@ -38,7 +45,8 @@ export function SalaryPaymentModal({
 
   const numGross = Number(grossAmount) || 0;
   const numTds = isTdsDeducted ? Number(tdsAmount) || 0 : 0;
-  const netDisbursement = Math.max(0, numGross - numTds);
+  const numAdv = Number(advanceDeduction) || 0;
+  const netDisbursement = Math.max(0, numGross - numTds - numAdv);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,8 +57,8 @@ export function SalaryPaymentModal({
       return;
     }
 
-    if (numTds >= numGross) {
-      setError("TDS deduction cannot be greater than or equal to the gross salary.");
+    if (numTds + numAdv >= numGross) {
+      setError("Deductions (TDS + Advances) cannot exceed the gross salary.");
       return;
     }
 
@@ -61,6 +69,7 @@ export function SalaryPaymentModal({
         periodMonth,
         grossAmount: numGross,
         tdsAmount: numTds,
+        advanceDeduction: numAdv,
         paymentMode,
         reference: reference.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -225,6 +234,36 @@ export function SalaryPaymentModal({
                 </div>
               )}
             </div>
+
+            {/* Advance Recovery (if employee has outstanding advances) */}
+            {outstandingAdv > 0 && (
+              <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-amber-900">
+                    Recover Salary Advance
+                  </span>
+                  <span className="text-[11px] font-mono font-bold text-amber-800">
+                    Outstanding: ₹{outstandingAdv.toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    max={outstandingAdv}
+                    placeholder="e.g. 5000"
+                    value={advanceDeduction}
+                    onChange={(e) => setAdvanceDeduction(e.target.value)}
+                    className="w-full h-9 pl-7 pr-3 border border-amber-300 rounded-lg text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                  />
+                </div>
+                <p className="text-[10px] text-amber-700">
+                  Deducted amount directly reduces take-home pay and clears the Employee Advance asset balance.
+                </p>
+              </div>
+            )}
 
             {/* Net Disbursement Box */}
             <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3.5 flex items-center justify-between">
