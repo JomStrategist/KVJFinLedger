@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ExpenseModal } from "./ExpenseModal";
 import { useRouter } from "next/navigation";
 import { markExpenseTdsPaidAction } from "../reports/tds-actions";
@@ -30,6 +30,12 @@ export function ExpensesClientList({
   showHeader?: boolean;
 }) {
   const router = useRouter();
+  const [expensesList, setExpensesList] = useState<any[]>(initialExpenses);
+
+  useEffect(() => {
+    setExpensesList(initialExpenses);
+  }, [initialExpenses]);
+
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [vendorFilter, setVendorFilter] = useState("ALL");
@@ -67,6 +73,9 @@ export function ExpensesClientList({
     if (!challan) return;
     const res = await markExpenseTdsPaidAction(expId, challan);
     if (res.success) {
+      setExpensesList((prev) =>
+        prev.map((e) => (e.id === expId ? { ...e, isTdsPaid: true, tdsChallanNumber: challan } : e))
+      );
       router.refresh();
     } else {
       alert(res.error || "Failed to mark TDS paid");
@@ -80,6 +89,7 @@ export function ExpensesClientList({
     try {
       const res = await deleteExpenseAction(id);
       if (res.success) {
+        setExpensesList((prev) => prev.filter((e) => e.id !== id));
         setDeleteConfirmId(null);
         router.refresh();
       } else {
@@ -92,7 +102,7 @@ export function ExpensesClientList({
     }
   };
 
-  const filteredExpenses = initialExpenses.filter((exp) => {
+  const filteredExpenses = expensesList.filter((exp) => {
     const searchLower = search.toLowerCase().trim();
     const matchesSearch =
       !searchLower ||
@@ -536,8 +546,24 @@ export function ExpensesClientList({
           vendors={vendors}
           categories={categories}
           employees={employees}
-          onClose={() => setIsModalOpen(false)}
-          onSuccess={() => router.refresh()}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedExpense(null);
+          }}
+          onSuccess={(savedExp) => {
+            if (savedExp) {
+              setExpensesList((prev) => {
+                const exists = prev.some((e) => e.id === savedExp.id);
+                if (exists) {
+                  return prev.map((e) => (e.id === savedExp.id ? { ...e, ...savedExp } : e));
+                }
+                return [savedExp, ...prev];
+              });
+            }
+            setIsModalOpen(false);
+            setSelectedExpense(null);
+            router.refresh();
+          }}
         />
       )}
     </div>

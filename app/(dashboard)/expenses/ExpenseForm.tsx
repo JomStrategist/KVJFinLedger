@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { TaxEngine } from "@/lib/tax";
 import { BUSINESS_LOCATION } from "@/lib/config/business";
@@ -15,7 +15,7 @@ export function ExpenseForm({
   vendors: initialVendors,
   categories: initialCategories,
   products = [],
-  employees = []
+  employees: initialEmployees = []
 }: { 
   initialData?: any;
   vendors: any[];
@@ -29,6 +29,11 @@ export function ExpenseForm({
 
   const [vendors, setVendors] = useState(initialVendors);
   const [categories, setCategories] = useState(initialCategories);
+  const [employees, setEmployees] = useState(initialEmployees);
+
+  useEffect(() => { setVendors(initialVendors); }, [initialVendors]);
+  useEffect(() => { setCategories(initialCategories); }, [initialCategories]);
+  useEffect(() => { setEmployees(initialEmployees); }, [initialEmployees]);
 
   // Paid By, Employee, Payment Status
   const [paidBy, setPaidBy] = useState<"COMPANY" | "EMPLOYEE">(
@@ -101,7 +106,7 @@ export function ExpenseForm({
     setItems(newItems);
   };
 
-  const [modalConfig, setModalConfig] = useState<{ type: string; itemIndex: number } | null>(null);
+  const [modalConfig, setModalConfig] = useState<{ type: string; itemIndex?: number } | null>(null);
 
   const handleItemVendorChange = (index: number, value: string) => {
     if (value === "ADD_NEW") {
@@ -122,10 +127,17 @@ export function ExpenseForm({
   const handleModalSuccess = (newRecord?: any) => {
     if (modalConfig?.type === "vendor" && newRecord) {
       setVendors((prev) => [...prev, newRecord]);
-      handleItemChange(modalConfig.itemIndex, "vendorId", newRecord.id);
+      if (modalConfig.itemIndex !== undefined) {
+        handleItemChange(modalConfig.itemIndex, "vendorId", newRecord.id);
+      }
     } else if (modalConfig?.type === "category" && newRecord) {
       setCategories((prev) => [...prev, newRecord]);
-      handleItemChange(modalConfig.itemIndex, "categoryId", newRecord.id);
+      if (modalConfig.itemIndex !== undefined) {
+        handleItemChange(modalConfig.itemIndex, "categoryId", newRecord.id);
+      }
+    } else if (modalConfig?.type === "employee" && newRecord) {
+      setEmployees((prev) => [newRecord, ...prev]);
+      setEmployeeId(newRecord.id);
     }
     setModalConfig(null);
   };
@@ -214,7 +226,7 @@ export function ExpenseForm({
       vendorId: items[0]?.vendorId || null,
       categoryId: items[0]?.categoryId || null,
       paidBy,
-      employeeId: paidBy === "EMPLOYEE" ? employeeId : null,
+      employeeId: employeeId || null,
       paymentStatus,
       paidAmount: paymentStatus === "PAID" 
         ? Number(calc.netAmount || 0) 
@@ -562,10 +574,17 @@ export function ExpenseForm({
               <select
                 value={employeeId}
                 required={paidBy === "EMPLOYEE"}
-                onChange={(e) => setEmployeeId(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value === "ADD_NEW_EMPLOYEE") {
+                    setModalConfig({ type: "employee" });
+                  } else {
+                    setEmployeeId(e.target.value);
+                  }
+                }}
                 className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-theme-primary focus:border-transparent bg-theme-surface text-theme-text cursor-pointer"
               >
                 <option value="">Select Employee...</option>
+                <option value="ADD_NEW_EMPLOYEE" className="font-bold text-theme-primary">+ Add Employee...</option>
                 {employees.map((emp: any) => (
                   <option key={emp.id} value={emp.id}>
                     {emp.name || emp.email}

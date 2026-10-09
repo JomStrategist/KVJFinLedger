@@ -13,7 +13,7 @@ export async function createEmployeeMasterAction(data: any) {
     const emp = await EmployeeService.createEmployee(data);
     revalidatePath("/masters");
     revalidatePath("/expenses");
-    return { success: true, data: emp };
+    return { success: true, data: JSON.parse(JSON.stringify(emp)) };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to create employee." };
   }
@@ -24,7 +24,7 @@ export async function updateEmployeeMasterAction(id: string, data: any) {
     const emp = await EmployeeService.updateEmployee(id, data);
     revalidatePath("/masters");
     revalidatePath("/expenses");
-    return { success: true, data: emp };
+    return { success: true, data: JSON.parse(JSON.stringify(emp)) };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to update employee." };
   }
@@ -35,7 +35,7 @@ export async function toggleEmployeeStatusAction(id: string, isActive: boolean) 
     const emp = await EmployeeService.updateEmployee(id, { isActive });
     revalidatePath("/masters");
     revalidatePath("/expenses");
-    return { success: true, data: emp };
+    return { success: true, data: JSON.parse(JSON.stringify(emp)) };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to toggle employee status." };
   }

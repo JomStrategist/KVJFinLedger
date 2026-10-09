@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { createExpenseAction, updateExpenseAction } from "./actions";
 import { AddMasterRecordModal } from "../masters/AddMasterRecordModal";
 
@@ -29,20 +29,27 @@ export function ExpenseModal({
   categories: any[];
   employees: any[];
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (savedRecord?: any) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   const isEdit = Boolean(expense?.id);
 
-  // Vendor & Category list state & Add modal state
+  // Vendor, Category & Employee list state & Add modal state
   const [vendorList, setVendorList] = useState(vendors);
   const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
 
   const [categoryList, setCategoryList] = useState<any[]>(categories);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [activeItemCategoryIndex, setActiveItemCategoryIndex] = useState<number | null>(null);
+
+  const [employeeList, setEmployeeList] = useState<any[]>(employees);
+  const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
+
+  useEffect(() => { setVendorList(vendors); }, [vendors]);
+  useEffect(() => { setCategoryList(categories); }, [categories]);
+  useEffect(() => { setEmployeeList(employees); }, [employees]);
 
   // Nature of Payment: Expense vs Purchase (Direct COGS)
   const [paymentNature, setPaymentNature] = useState<"EXPENSE" | "PURCHASE">(
@@ -57,10 +64,11 @@ export function ExpenseModal({
   );
   
   // Vendor (Optional for salaries, petty cash, bank charges)
-  const [vendorId, setVendorId] = useState(expense?.vendorId || "");
+  const initialVendorOrEmp = expense?.vendorId || (expense?.employeeId && expense?.paidBy === "COMPANY" ? `EMP_${expense.employeeId}` : "");
+  const [vendorId, setVendorId] = useState(initialVendorOrEmp);
   
   // Unified "Paid By" value: "COMPANY" or "EMP_<id>"
-  const initialPaidBy = expense?.employeeId ? `EMP_${expense.employeeId}` : "COMPANY";
+  const initialPaidBy = expense?.employeeId && expense?.paidBy === "EMPLOYEE" ? `EMP_${expense.employeeId}` : "COMPANY";
   const [paidBySelection, setPaidBySelection] = useState<string>(initialPaidBy);
 
   // Payment Status & Partial Payment
@@ -209,11 +217,17 @@ export function ExpenseModal({
     const inputIGST = isInterstate ? totalGst : 0;
 
     const isEmployeePaid = paidBySelection.startsWith("EMP_");
-    const selectedEmployeeId = isEmployeePaid ? paidBySelection.replace("EMP_", "") : null;
+    const isEmployeeRecipient = vendorId.startsWith("EMP_");
+    const selectedEmployeeId = isEmployeePaid
+      ? paidBySelection.replace("EMP_", "")
+      : isEmployeeRecipient
+      ? vendorId.replace("EMP_", "")
+      : null;
+    const finalVendorId = isEmployeeRecipient ? null : vendorId || null;
 
     const payload = {
       expenseDate: new Date(date),
-      vendorId: vendorId || null,
+      vendorId: finalVendorId,
       paidBy: isEmployeePaid ? "EMPLOYEE" : "COMPANY",
       employeeId: selectedEmployeeId,
       paymentNature,
@@ -272,7 +286,7 @@ export function ExpenseModal({
       }
 
       if (res.success) {
-        onSuccess();
+        onSuccess(res.data);
         onClose();
       } else {
         setError(res.error);
@@ -382,6 +396,32 @@ export function ExpenseModal({
                       const val = e.target.value;
                       if (val === "ADD_NEW") {
                         setIsAddVendorOpen(true);
+                      } else if (val === "ADD_NEW_EMPLOYEE") {
+                        setIsAddEmployeeOpen(true);
+                      } else if (val.startsWith("EMP_")) {
+                        setVendorId(val);
+                        const empId = val.replace("EMP_", "");
+                        const empObj = employeeList.find((emp) => emp.id === empId);
+                        const salaryCat = categoryList.find((c) =>
+                          c.name?.toLowerCase().includes("salary") || c.name?.toLowerCase().includes("wage")
+                        );
+                        if (salaryCat && items.length > 0) {
+                          setItems((prev) =>
+                            prev.map((it, idx) =>
+                              idx === 0
+                                ? {
+                                    ...it,
+                                    item: `Monthly Salary - ${empObj?.name || "Staff"}`,
+                                    categoryId: salaryCat.id,
+                                    categoryName: salaryCat.name,
+                                    gstRate: 0,
+                                    rate: Number(empObj?.salary || 0) > 0 ? Number(empObj?.salary) : it.rate,
+                                    amount: Number(empObj?.salary || 0) > 0 ? Number(empObj?.salary) : it.amount,
+                                  }
+                                : it
+                            )
+                          );
+                        }
                       } else {
                         setVendorId(val);
                         const vObj = vendorList.find((v) => v.id === val);
@@ -393,13 +433,23 @@ export function ExpenseModal({
                     }}
                     className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium text-slate-800"
                   >
-                    <option value="">— Internal / Self (Salary, Petty Cash, Fees) —</option>
-                    <option value="ADD_NEW" className="font-bold text-emerald-700">+ Add Party...</option>
-                    {vendorList.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
+                    <option value="">— Internal / Petty Cash / General —</option>
+                    <optgroup label="Employees (Salaries & Remuneration)">
+                      <option value="ADD_NEW_EMPLOYEE" className="font-bold text-emerald-700">+ Add Employee...</option>
+                      {employeeList.map((emp) => (
+                        <option key={emp.id} value={`EMP_${emp.id}`}>
+                          👤 {emp.name} ({emp.employeeCode || "Staff"}) — Salary
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Vendors & Commercial Suppliers">
+                      <option value="ADD_NEW" className="font-bold text-emerald-700">+ Add Party...</option>
+                      {vendorList.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name}
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
 
@@ -410,21 +460,26 @@ export function ExpenseModal({
                   </label>
                   <select
                     value={paidBySelection}
-                    onChange={(e) => setPaidBySelection(e.target.value)}
+                    onChange={(e) => {
+                      if (e.target.value === "ADD_NEW_EMPLOYEE_REIMBURSE") {
+                        setIsAddEmployeeOpen(true);
+                      } else {
+                        setPaidBySelection(e.target.value);
+                      }
+                    }}
                     className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-semibold text-slate-800"
                   >
                     <optgroup label="Company Accounts">
                       <option value="COMPANY">🏢 Company Bank Account / Cash</option>
                     </optgroup>
-                    {employees.length > 0 && (
-                      <optgroup label="Employee Reimbursements (Paid by Staff)">
-                        {employees.map((emp) => (
-                          <option key={emp.id} value={`EMP_${emp.id}`}>
-                            👤 {emp.name} (Employee Reimbursement)
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
+                    <optgroup label="Employee Reimbursements (Paid by Staff)">
+                      <option value="ADD_NEW_EMPLOYEE_REIMBURSE" className="font-bold text-emerald-700">+ Add Employee...</option>
+                      {employeeList.map((emp) => (
+                        <option key={emp.id} value={`EMP_${emp.id}`}>
+                          👤 {emp.name} (Employee Reimbursement)
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
               </div>
@@ -741,6 +796,42 @@ export function ExpenseModal({
             }
             setIsAddCategoryOpen(false);
             setActiveItemCategoryIndex(null);
+          }}
+        />
+      )}
+
+      {isAddEmployeeOpen && (
+        <AddMasterRecordModal
+          defaultTab="employee"
+          onClose={() => setIsAddEmployeeOpen(false)}
+          onSuccess={(newEmp) => {
+            if (newEmp) {
+              setEmployeeList((prev) => [newEmp, ...prev]);
+              setVendorId(`EMP_${newEmp.id}`);
+              const salaryCat = categoryList.find(
+                (c) =>
+                  c.name?.toLowerCase().includes("salary") ||
+                  c.name?.toLowerCase().includes("wage")
+              );
+              if (salaryCat && items.length > 0) {
+                setItems((prev) =>
+                  prev.map((it, idx) =>
+                    idx === 0
+                      ? {
+                          ...it,
+                          item: `Monthly Salary - ${newEmp.name || "Staff"}`,
+                          categoryId: salaryCat.id,
+                          categoryName: salaryCat.name,
+                          gstRate: 0,
+                          rate: Number(newEmp.salary || 0) > 0 ? Number(newEmp.salary) : it.rate,
+                          amount: Number(newEmp.salary || 0) > 0 ? Number(newEmp.salary) : it.amount,
+                        }
+                      : it
+                  )
+                );
+              }
+            }
+            setIsAddEmployeeOpen(false);
           }}
         />
       )}

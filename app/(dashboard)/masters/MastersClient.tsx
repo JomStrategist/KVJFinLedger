@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import { AddMasterRecordModal } from "./AddMasterRecordModal";
 import { useRouter, useSearchParams } from "next/navigation";
 import { formatCurrency } from "@/lib/utils/currency";
-import { toggleCategoryStatusAction, toggleEmployeeStatusAction } from "./actions";
+import { toggleCategoryStatusAction, toggleEmployeeStatusAction, deleteEmployeeMasterAction } from "./actions";
 import { BankAccountsMasterTab } from "../settings/BankAccountsMasterTab";
+import { SalaryPaymentModal } from "../expenses/SalaryPaymentModal";
 
 export function MastersClient({
   customers = [],
@@ -45,6 +46,40 @@ export function MastersClient({
   const [isAddModalOpen, setIsAddModalOpen] = useState(actionParam === "new");
   const [editingRecord, setEditingRecord] = useState<{ type: string; data: any } | null>(null);
 
+  const [customersList, setCustomersList] = useState<any[]>(customers);
+  const [vendorsList, setVendorsList] = useState<any[]>(vendors);
+  const [employeesList, setEmployeesList] = useState<any[]>(employees);
+  const [productsList, setProductsList] = useState<any[]>(products);
+  const [categoriesList, setCategoriesList] = useState<any[]>(categories);
+
+  const [salaryEmployee, setSalaryEmployee] = useState<any | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+  useEffect(() => { setCustomersList(customers); }, [customers]);
+  useEffect(() => { setVendorsList(vendors); }, [vendors]);
+  useEffect(() => { setEmployeesList(employees); }, [employees]);
+  useEffect(() => { setProductsList(products); }, [products]);
+  useEffect(() => { setCategoriesList(categories); }, [categories]);
+
+  const handleDeleteEmployee = async (id: string) => {
+    setIsDeleting(id);
+    try {
+      const res = await deleteEmployeeMasterAction(id);
+      if (res.success) {
+        setEmployeesList((prev) => prev.filter((e) => e.id !== id));
+        setDeleteConfirmId(null);
+        router.refresh();
+      } else {
+        alert(res.error || "Failed to delete employee.");
+      }
+    } catch (err: any) {
+      alert(err.message || "An unexpected error occurred while deleting.");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
   // Filter helper
   const filterRecord = (name: string, extra: string, isActive: boolean = true) => {
     const s = search.toLowerCase().trim();
@@ -56,15 +91,15 @@ export function MastersClient({
     return matchSearch && matchStatus;
   };
 
-  const filteredCustomers = customers.filter((c) =>
+  const filteredCustomers = customersList.filter((c) =>
     filterRecord(c.tradeName || c.legalName || "", c.gstin || "", c.isActive ?? true)
   );
 
-  const filteredVendors = vendors.filter((v) =>
+  const filteredVendors = vendorsList.filter((v) =>
     filterRecord(v.name || "", v.gstin || "", v.isActive ?? true)
   );
 
-  const filteredEmployees = employees.filter((e) =>
+  const filteredEmployees = employeesList.filter((e) =>
     filterRecord(
       e.name || "",
       `${e.employeeCode || ""} ${e.designation || ""} ${e.department || ""} ${e.email || ""} ${e.phone || ""}`,
@@ -72,11 +107,11 @@ export function MastersClient({
     )
   );
 
-  const filteredProducts = products.filter((p) =>
+  const filteredProducts = productsList.filter((p) =>
     filterRecord(p.name || "", p.hsnSacCode || "", p.isActive ?? true)
   );
 
-  const filteredCategories = categories.filter((c) => {
+  const filteredCategories = categoriesList.filter((c) => {
     const s = search.toLowerCase().trim();
     const matchSearch =
       !s ||
@@ -376,14 +411,22 @@ export function MastersClient({
                           {emp.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
-                      <td className="py-3 px-2 text-right space-x-2 whitespace-nowrap">
+                      <td className="py-3 px-2 text-right space-x-1.5 whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setSalaryEmployee(emp)}
+                          className="inline-block bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-[#0B5F46] transition-colors shadow-2xs cursor-pointer"
+                          title="Mark salary payout for this employee"
+                        >
+                          ₹ Pay Salary
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
                             setEditingRecord({ type: "employee", data: emp });
                             setIsAddModalOpen(true);
                           }}
-                          className="inline-block bg-white border border-[#D9E3DC] rounded-lg px-3 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs cursor-pointer"
+                          className="inline-block bg-white border border-[#D9E3DC] rounded-lg px-2.5 py-1.5 text-xs font-bold text-[#0B5F46] hover:bg-[#F4F7F3] transition-colors shadow-2xs cursor-pointer"
                         >
                           Edit
                         </button>
@@ -393,6 +436,9 @@ export function MastersClient({
                           onClick={() => {
                             startTransition(async () => {
                               await toggleEmployeeStatusAction(emp.id, !emp.isActive);
+                              setEmployeesList((prev) =>
+                                prev.map((e) => (e.id === emp.id ? { ...e, isActive: !e.isActive } : e))
+                              );
                               router.refresh();
                             });
                           }}
@@ -404,6 +450,33 @@ export function MastersClient({
                         >
                           {emp.isActive ? "Deactivate" : "Activate"}
                         </button>
+                        {deleteConfirmId === emp.id ? (
+                          <span className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              disabled={isDeleting === emp.id}
+                              onClick={() => handleDeleteEmployee(emp.id)}
+                              className="px-2 py-1.5 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                            >
+                              {isDeleting === emp.id ? "..." : "Confirm"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmId(null)}
+                              className="px-1.5 py-1.5 rounded-lg text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 transition-colors cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmId(emp.id)}
+                            className="inline-block bg-white hover:bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-red-600 transition-colors shadow-2xs cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -573,6 +646,11 @@ export function MastersClient({
                             onClick={() => {
                               startTransition(async () => {
                                 await toggleCategoryStatusAction(cat.id, !(cat.isActive !== false));
+                                setCategoriesList((prev) =>
+                                  prev.map((c) =>
+                                    c.id === cat.id ? { ...c, isActive: !(cat.isActive !== false) } : c
+                                  )
+                                );
                                 router.refresh();
                               });
                             }}
@@ -614,15 +692,100 @@ export function MastersClient({
               : "category")
           }
           initialData={editingRecord?.data}
-          categories={categories}
+          categories={categoriesList}
           financialTypes={financialTypes}
           statementGroups={statementGroups}
           accountNatures={accountNatures}
           onClose={() => {
             setIsAddModalOpen(false);
             setEditingRecord(null);
+            if (actionParam === "new") {
+              router.replace(`/masters?tab=${activeTab}`);
+            }
           }}
-          onSuccess={() => router.refresh()}
+          onSuccess={(data, type) => {
+            if (data) {
+              const recordType =
+                type ||
+                editingRecord?.type ||
+                (data?.employeeCode || data?.department !== undefined
+                  ? "employee"
+                  : data?.gstin !== undefined || data?.legalName !== undefined
+                  ? activeTab === "vendors"
+                    ? "vendor"
+                    : "customer"
+                  : data?.sellingPrice !== undefined
+                  ? "product"
+                  : data?.statementGroup !== undefined
+                  ? "category"
+                  : "customer");
+
+              if (recordType === "employee") {
+                setEmployeesList((prev) => {
+                  const exists = prev.some((e) => e.id === data.id);
+                  if (exists) {
+                    return prev.map((e) => (e.id === data.id ? { ...e, ...data } : e));
+                  }
+                  return [data, ...prev];
+                });
+                setActiveTab("employees");
+              } else if (recordType === "customer") {
+                setCustomersList((prev) => {
+                  const exists = prev.some((c) => c.id === data.id);
+                  if (exists) {
+                    return prev.map((c) => (c.id === data.id ? { ...c, ...data } : c));
+                  }
+                  return [data, ...prev];
+                });
+                setActiveTab("customers");
+              } else if (recordType === "vendor") {
+                setVendorsList((prev) => {
+                  const exists = prev.some((v) => v.id === data.id);
+                  if (exists) {
+                    return prev.map((v) => (v.id === data.id ? { ...v, ...data } : v));
+                  }
+                  return [data, ...prev];
+                });
+                setActiveTab("vendors");
+              } else if (recordType === "product") {
+                setProductsList((prev) => {
+                  const exists = prev.some((p) => p.id === data.id);
+                  if (exists) {
+                    return prev.map((p) => (p.id === data.id ? { ...p, ...data } : p));
+                  }
+                  return [data, ...prev];
+                });
+                setActiveTab("products");
+              } else if (recordType === "category") {
+                setCategoriesList((prev) => {
+                  const exists = prev.some((c) => c.id === data.id);
+                  if (exists) {
+                    return prev.map((c) => (c.id === data.id ? { ...c, ...data } : c));
+                  }
+                  return [data, ...prev];
+                });
+                setActiveTab("categories");
+              }
+            }
+            setIsAddModalOpen(false);
+            setEditingRecord(null);
+            if (actionParam === "new") {
+              router.replace(`/masters?tab=${activeTab}`);
+            }
+            router.refresh();
+          }}
+        />
+      )}
+
+      {/* Salary Payment Modal */}
+      {salaryEmployee && (
+        <SalaryPaymentModal
+          employee={salaryEmployee}
+          onClose={() => setSalaryEmployee(null)}
+          onSuccess={() => {
+            setSalaryEmployee(null);
+            router.refresh();
+          }}
         />
       )}
     </div>

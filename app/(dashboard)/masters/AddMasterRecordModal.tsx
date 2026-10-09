@@ -67,7 +67,7 @@ export function AddMasterRecordModal({
   statementGroups?: any[];
   accountNatures?: any[];
   onClose: () => void;
-  onSuccess: (createdRecord?: any) => void;
+  onSuccess: (createdRecord?: any, type?: string) => void;
 }) {
   const [activeType, setActiveType] = useState<string>(defaultTab);
   const [isPending, startTransition] = useTransition();
@@ -328,7 +328,7 @@ export function AddMasterRecordModal({
       }
 
       if (res?.success) {
-        onSuccess(res.data);
+        onSuccess(res.data, activeType);
         onClose();
       } else {
         setError(res?.error || "Failed to save master record.");

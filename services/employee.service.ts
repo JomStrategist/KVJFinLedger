@@ -66,6 +66,11 @@ export class EmployeeService {
         pan: data.pan ? data.pan.toUpperCase() : null,
         salary: Number(data.salary || 0),
         isActive: data.isActive !== undefined ? data.isActive : true,
+      },
+      include: {
+        _count: {
+          select: { expenses: true }
+        }
       }
     });
 
@@ -86,6 +91,11 @@ export class EmployeeService {
         ...(data.pan !== undefined && { pan: data.pan ? data.pan.toUpperCase() : null }),
         ...(data.salary !== undefined && { salary: Number(data.salary) }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+      },
+      include: {
+        _count: {
+          select: { expenses: true }
+        }
       }
     });
 
