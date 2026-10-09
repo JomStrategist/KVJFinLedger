@@ -44,6 +44,7 @@ export interface JournalVoucher {
     | "INVOICE_PAYMENT" 
     | "EXPENSE" 
     | "EXPENSE_REIMBURSEMENT"
+    | "EXPENSE_PAYMENT"
     | "BANK_TRANSFER" 
     | "OPENING_BALANCE" 
     | "ASSET_DEPRECIATION"
@@ -859,9 +860,11 @@ export class AccountingEngine {
           normalBalance: "CREDIT",
           debit: 0,
           credit: tds,
-          particulars: `TDS deducted from ${vendorName} on expense ${exp.expenseNumber}`
+          particulars: `TDS deducted from ${exp.employeeId ? employeeName : vendorName} on expense ${exp.expenseNumber}`
         });
       }
+
+      const secondaryVouchers: JournalVoucher[] = [];
 
       // Credit Bank / Vendor / Employee
       if (exp.paidBy === "EMPLOYEE") {
@@ -882,7 +885,7 @@ export class AccountingEngine {
 
         // If reimbursed to employee (full or partial), create reimbursement voucher
         const reimbursed = exp.paymentStatus === "PAID" 
-          ? netAmount 
+          ? (netAmount + advanceAmount) 
           : exp.paymentStatus === "PARTIALLY_PAID" 
           ? Number(exp.paidAmount || 0) 
           : 0;
@@ -918,7 +921,7 @@ export class AccountingEngine {
 
           const { balancedLines: balReimb, totalDebit: rDr, totalCredit: rCr, isBalanced: rBal } = this.balanceVoucher(reimbLines, `REIMB-${exp.expenseNumber}`);
 
-          vouchers.push({
+          secondaryVouchers.push({
             id: `voucher_reimb_${exp.id}`,
             voucherNumber: `REIMB-${exp.expenseNumber}`,
             voucherType: "Payment",
@@ -934,8 +937,79 @@ export class AccountingEngine {
             lines: balReimb
           });
         }
+      } else if (exp.employeeId) {
+        // Company Paid, but assigned to Employee (e.g. Salary, Wages, Bonus, Direct Payout)
+        // 1. Accrue employee payable liability in primary voucher
+        lines.push({
+          accountId: employeeId,
+          accountName: `${employeeName} (Employee Payable)`,
+          accountGroup: "Employee Payables",
+          financialType: "LIABILITY",
+          financialStatement: "BALANCE_SHEET",
+          normalBalance: "CREDIT",
+          debit: 0,
+          credit: netAmount,
+          particulars: `Salary / Remuneration payable to ${employeeName}`,
+          entityId: exp.employeeId || undefined,
+          entityType: "EMPLOYEE"
+        });
+
+        // 2. If paid or partially paid, create payment/disbursement voucher settling from Bank
+        const paid = exp.paymentStatus === "PAID"
+          ? (netAmount + advanceAmount)
+          : exp.paymentStatus === "PARTIALLY_PAID"
+          ? Number(exp.paidAmount || 0)
+          : 0;
+
+        if (paid > 0) {
+          const salPayLines: JournalVoucherLine[] = [
+            {
+              accountId: employeeId,
+              accountName: `${employeeName} (Employee Payable)`,
+              accountGroup: "Employee Payables",
+              financialType: "LIABILITY",
+              financialStatement: "BALANCE_SHEET",
+              normalBalance: "CREDIT",
+              debit: paid,
+              credit: 0,
+              particulars: `Salary / payment disbursed to ${employeeName}`,
+              entityId: exp.employeeId || undefined,
+              entityType: "EMPLOYEE"
+            },
+            {
+              accountId: defaultBankId,
+              accountName: defaultBankName,
+              accountGroup: "Bank Accounts",
+              financialType: "ASSET",
+              financialStatement: "BALANCE_SHEET",
+              normalBalance: "DEBIT",
+              debit: 0,
+              credit: paid,
+              particulars: `Bank payment for salary of ${employeeName}`,
+              entityType: "BANK"
+            }
+          ];
+
+          const { balancedLines: balSal, totalDebit: sDr, totalCredit: sCr, isBalanced: sBal } = this.balanceVoucher(salPayLines, `PAY-${exp.expenseNumber}`);
+
+          secondaryVouchers.push({
+            id: `voucher_salpay_${exp.id}`,
+            voucherNumber: `PAY-${exp.expenseNumber}`,
+            voucherType: "Payment",
+            date: new Date(exp.expenseDate),
+            reference: exp.expenseNumber,
+            narration: `Salary / payment disbursement to ${employeeName} for ${exp.expenseNumber}`,
+            sourceType: "EXPENSE_PAYMENT",
+            sourceId: exp.id,
+            sourceUrl: `/expenses/${exp.id}`,
+            totalDebit: sDr,
+            totalCredit: sCr,
+            isBalanced: sBal,
+            lines: balSal
+          });
+        }
       } else {
-        // Company Paid
+        // Standard Company-Paid Expense (Vendor or Cash)
         if (exp.paymentStatus === "PAID") {
           lines.push({
             accountId: defaultBankId,
@@ -1017,6 +1091,11 @@ export class AccountingEngine {
         isBalanced,
         lines: balancedLines
       });
+
+      // Push secondary payment/reimbursement vouchers immediately after the primary accrual voucher
+      if (secondaryVouchers.length > 0) {
+        vouchers.push(...secondaryVouchers);
+      }
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -2487,8 +2566,8 @@ export class AccountingEngine {
           } else if (isInPeriod) {
             if (v.sourceType === "INVOICE_PAYMENT") {
               customerReceipts += line.debit;
-            } else if (v.sourceType === "EXPENSE" || v.sourceType === "EXPENSE_REIMBURSEMENT") {
-              if (v.sourceType === "EXPENSE_REIMBURSEMENT") {
+            } else if (v.sourceType === "EXPENSE" || v.sourceType === "EXPENSE_REIMBURSEMENT" || v.sourceType === "EXPENSE_PAYMENT") {
+              if (v.sourceType === "EXPENSE_REIMBURSEMENT" || v.sourceType === "EXPENSE_PAYMENT") {
                 employeeDisbursements += line.credit;
               } else {
                 vendorDisbursements += line.credit;

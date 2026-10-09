@@ -91,11 +91,8 @@ export function ExpenseForm({
   const handlePaidByChange = (newPaidBy: "COMPANY" | "EMPLOYEE") => {
     setPaidBy(newPaidBy);
     if (newPaidBy === "COMPANY") {
-      setEmployeeId("");
-      // When company pays, default status can be PAID
       if (!initialData) setPaymentStatus("PAID");
     } else {
-      // When employee pays, default status can be UNPAID (pending reimbursement)
       if (!initialData) setPaymentStatus("UNPAID");
     }
   };
@@ -559,44 +556,50 @@ export function ExpenseForm({
           </p>
         </div>
 
-        {/* Employee Card - Only rendered when Paid By === 'EMPLOYEE' */}
-        {paidBy === "EMPLOYEE" && (
-          <div className="bg-theme-surface rounded-xl shadow-xs border border-theme-border p-5 flex flex-col justify-between animate-in fade-in duration-200">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-bold text-theme-text uppercase tracking-wider">
-                  EMPLOYEE NAME
-                </label>
+        {/* Employee Card */}
+        <div className="bg-theme-surface rounded-xl shadow-xs border border-theme-border p-5 flex flex-col justify-between animate-in fade-in duration-200">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-bold text-theme-text uppercase tracking-wider">
+                {paidBy === "EMPLOYEE" ? "EMPLOYEE NAME" : "EMPLOYEE / BENEFICIARY (OPTIONAL)"}
+              </label>
+              {paidBy === "EMPLOYEE" ? (
                 <span className="text-[10px] uppercase font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
                   Required
                 </span>
-              </div>
-              <select
-                value={employeeId}
-                required={paidBy === "EMPLOYEE"}
-                onChange={(e) => {
-                  if (e.target.value === "ADD_NEW_EMPLOYEE") {
-                    setModalConfig({ type: "employee" });
-                  } else {
-                    setEmployeeId(e.target.value);
-                  }
-                }}
-                className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-theme-primary focus:border-transparent bg-theme-surface text-theme-text cursor-pointer"
-              >
-                <option value="">Select Employee...</option>
-                <option value="ADD_NEW_EMPLOYEE" className="font-bold text-theme-primary">+ Add Employee...</option>
-                {employees.map((emp: any) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.name || emp.email}
-                  </option>
-                ))}
-              </select>
+              ) : (
+                <span className="text-[10px] uppercase font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                  Payroll / Payout
+                </span>
+              )}
             </div>
-            <p className="text-xs text-theme-text-muted mt-3">
-              Employee ledger to credit for out-of-pocket disbursement.
-            </p>
+            <select
+              value={employeeId}
+              required={paidBy === "EMPLOYEE"}
+              onChange={(e) => {
+                if (e.target.value === "ADD_NEW_EMPLOYEE") {
+                  setModalConfig({ type: "employee" });
+                } else {
+                  setEmployeeId(e.target.value);
+                }
+              }}
+              className="w-full border border-theme-border rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-theme-primary focus:border-transparent bg-theme-surface text-theme-text cursor-pointer"
+            >
+              <option value="">{paidBy === "EMPLOYEE" ? "Select Employee..." : "None / External Vendor"}</option>
+              <option value="ADD_NEW_EMPLOYEE" className="font-bold text-theme-primary">+ Add Employee...</option>
+              {employees.map((emp: any) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name || emp.email}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+          <p className="text-xs text-theme-text-muted mt-3">
+            {paidBy === "EMPLOYEE"
+              ? "Employee ledger to credit for out-of-pocket disbursement."
+              : "Optionally assign to employee ledger for salary, payroll, or staff payouts."}
+          </p>
+        </div>
 
         {/* Payment Status Card */}
         <div className="bg-theme-surface rounded-xl shadow-xs border border-theme-border p-5 flex flex-col justify-between">

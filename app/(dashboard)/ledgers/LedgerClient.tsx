@@ -14,7 +14,7 @@ interface Props {
 }
 
 type ViewMode = "TABLE" | "STATEMENT";
-type CategoryFilter = "ALL" | "DEBTORS" | "CREDITORS" | "BANK_CASH" | "TAXES" | "CAPITAL" | "INCOME" | "EXPENSE";
+type CategoryFilter = "ALL" | "DEBTORS" | "CREDITORS" | "EMPLOYEES" | "BANK_CASH" | "TAXES" | "CAPITAL" | "INCOME" | "EXPENSE";
 type SortField = "name" | "code" | "group" | "balance" | "drCr";
 
 export default function LedgerClient({
@@ -101,6 +101,13 @@ export default function LedgerClient({
   // Group badge styling
   const renderGroupBadge = (group: string) => {
     const g = (group || "").toLowerCase();
+    if (g.includes("employee") || g.includes("salary") || g.includes("wage") || g.includes("payroll")) {
+      return (
+        <span className="bg-teal-50 text-teal-700 border border-teal-200 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">
+          Employee Payables
+        </span>
+      );
+    }
     if (g.includes("debtor") || g.includes("customer") || g.includes("receivable")) {
       return (
         <span className="bg-blue-50 text-blue-600 border border-blue-100 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">
@@ -108,7 +115,7 @@ export default function LedgerClient({
         </span>
       );
     }
-    if (g.includes("creditor") || g.includes("vendor") || g.includes("payable")) {
+    if (g.includes("creditor") || g.includes("vendor") || g.includes("trade payable")) {
       return (
         <span className="bg-rose-50 text-rose-600 border border-rose-100 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap">
           Sundry Creditors
@@ -316,6 +323,7 @@ export default function LedgerClient({
       if (selectedCategory === "BANK_CASH" && !(acc.type === "BANK" || acc.type === "CASH")) return false;
       if (selectedCategory === "DEBTORS" && acc.type !== "CUSTOMER") return false;
       if (selectedCategory === "CREDITORS" && acc.type !== "VENDOR") return false;
+      if (selectedCategory === "EMPLOYEES" && acc.type !== "EMPLOYEE") return false;
       if (selectedCategory === "TAXES" && !(acc.type === "STATUTORY_GST" || acc.type === "STATUTORY_TDS")) return false;
       if (selectedCategory === "CAPITAL" && !(acc.type === "CAPITAL" || acc.type === "FIXED_ASSET")) return false;
       if (selectedCategory === "INCOME" && acc.type !== "INCOME_CATEGORY") return false;
@@ -660,6 +668,7 @@ export default function LedgerClient({
                 { id: "ALL", label: "All Accounts" },
                 { id: "DEBTORS", label: "Sundry Debtors" },
                 { id: "CREDITORS", label: "Sundry Creditors" },
+                { id: "EMPLOYEES", label: "Employee Payables" },
                 { id: "BANK_CASH", label: "Cash & Bank" },
                 { id: "TAXES", label: "Duties & Taxes" },
                 { id: "CAPITAL", label: "Capital & Assets" },

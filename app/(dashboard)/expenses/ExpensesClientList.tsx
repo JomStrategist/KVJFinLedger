@@ -108,6 +108,7 @@ export function ExpensesClientList({
       !searchLower ||
       exp.notes?.toLowerCase().includes(searchLower) ||
       exp.vendor?.name?.toLowerCase().includes(searchLower) ||
+      exp.employee?.name?.toLowerCase().includes(searchLower) ||
       exp.expenseNumber?.toLowerCase().includes(searchLower) ||
       exp.category?.name?.toLowerCase().includes(searchLower);
 
@@ -342,7 +343,10 @@ export function ExpensesClientList({
                     year: "numeric",
                   });
 
-                  const vendorName = expense.vendor?.name || "Internal";
+                  const vendorName =
+                    expense.vendor?.name ||
+                    (expense.employee?.name ? `${expense.employee.name} (Employee)` : null) ||
+                    "Internal";
                   const firstItem = expense.items?.[0];
                   // Clean item name: use product name or first description only — avoid note duplication
                   const rawItemName =

@@ -38,9 +38,10 @@ export class ExpenseService {
 
     if (search) {
       where.OR = [
-        { expenseNumber: { contains: search } },
-        { description: { contains: search } },
-        { vendor: { name: { contains: search } } },
+        { expenseNumber: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+        { vendor: { name: { contains: search, mode: "insensitive" } } },
+        { employee: { name: { contains: search, mode: "insensitive" } } },
       ];
     }
 
