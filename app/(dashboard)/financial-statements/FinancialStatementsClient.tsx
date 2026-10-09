@@ -627,8 +627,8 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                   onClick={() => exportCsv("trial_balance", ["Account Particulars", "Account Group", "Debit", "Credit"], filteredTbItems.map(i => [
                     i.accountName,
                     i.accountGroup,
-                    i.closingDebit || 0,
-                    i.closingCredit || 0
+                    i.closingDebit ?? (i as any).netDebit ?? 0,
+                    i.closingCredit ?? (i as any).netCredit ?? 0
                   ]))}
                   className="px-3 py-1.5 text-xs font-semibold text-[#177B55] bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition shadow-xs flex items-center gap-1 cursor-pointer"
                   title="Export Trial Balance to CSV"
@@ -657,41 +657,45 @@ export function FinancialStatementsClient(props: FinancialStatementsClientProps)
                       </td>
                     </tr>
                   ) : (
-                    filteredTbItems.map((item) => (
-                      <tr
-                        key={item.accountId}
-                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition"
-                      >
-                        <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
-                          <Link
-                            href={`/ledgers?accountId=${encodeURIComponent(item.accountId)}`}
-                            className="hover:text-[#177B55] dark:hover:text-emerald-400 hover:underline"
-                            title="View General Ledger Statement"
-                          >
-                            {item.accountName}
-                          </Link>
-                        </td>
-                        <td className="py-3 px-4 text-xs text-slate-500 dark:text-slate-400">
-                          {item.accountGroup}
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono font-medium text-slate-900 dark:text-white">
-                          {item.closingDebit > 0
-                            ? Number(item.closingDebit).toLocaleString('en-IN', {
-                                minimumFractionDigits: item.closingDebit % 1 !== 0 ? 2 : 0,
-                                maximumFractionDigits: 2
-                              })
-                            : "—"}
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono font-medium text-slate-900 dark:text-white">
-                          {item.closingCredit > 0
-                            ? Number(item.closingCredit).toLocaleString('en-IN', {
-                                minimumFractionDigits: item.closingCredit % 1 !== 0 ? 2 : 0,
-                                maximumFractionDigits: 2
-                              })
-                            : "—"}
-                        </td>
-                      </tr>
-                    ))
+                    filteredTbItems.map((item) => {
+                      const debitVal = Number(item.closingDebit ?? (item as any).netDebit ?? 0);
+                      const creditVal = Number(item.closingCredit ?? (item as any).netCredit ?? 0);
+                      return (
+                        <tr
+                          key={item.accountId}
+                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition"
+                        >
+                          <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
+                            <Link
+                              href={`/ledgers?accountId=${encodeURIComponent(item.accountId)}`}
+                              className="hover:text-[#177B55] dark:hover:text-emerald-400 hover:underline"
+                              title="View General Ledger Statement"
+                            >
+                              {item.accountName}
+                            </Link>
+                          </td>
+                          <td className="py-3 px-4 text-xs text-slate-500 dark:text-slate-400">
+                            {item.accountGroup}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-medium text-slate-900 dark:text-white">
+                            {debitVal > 0
+                              ? debitVal.toLocaleString('en-IN', {
+                                  minimumFractionDigits: debitVal % 1 !== 0 ? 2 : 0,
+                                  maximumFractionDigits: 2
+                                })
+                              : "—"}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-medium text-slate-900 dark:text-white">
+                            {creditVal > 0
+                              ? creditVal.toLocaleString('en-IN', {
+                                  minimumFractionDigits: creditVal % 1 !== 0 ? 2 : 0,
+                                  maximumFractionDigits: 2
+                                })
+                              : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
                 <tfoot>

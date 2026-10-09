@@ -100,6 +100,8 @@ export interface TrialBalanceItem {
   totalCredit: number;
   netDebit: number;
   netCredit: number;
+  closingDebit: number;
+  closingCredit: number;
   balance: number;
   balanceType: "Dr" | "Cr";
 }
@@ -2128,6 +2130,8 @@ export class AccountingEngine {
         totalCredit: cr,
         netDebit,
         netCredit,
+        closingDebit: netDebit,
+        closingCredit: netCredit,
         balance: Math.max(netDebit, netCredit),
         balanceType: netDebit >= netCredit ? "Dr" : "Cr"
       });
