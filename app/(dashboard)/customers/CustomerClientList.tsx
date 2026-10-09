@@ -130,7 +130,9 @@ export function CustomerClientList({
                 <tr key={c.id} className="hover:bg-theme-surface-hover transition-colors">
                   <td className="px-6 py-4">
                     <div className="font-medium text-theme-text">{c.legalName}</div>
-                    {c.tradeName && <div className="text-xs text-theme-text-muted">{c.tradeName}</div>}
+                    {c.tradeName && c.tradeName.trim().toLowerCase() !== c.legalName.trim().toLowerCase() && (
+                      <div className="text-xs text-theme-text-muted">{c.tradeName}</div>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${c.customerType === 'B2B' ? 'bg-indigo-100 text-indigo-700' : c.customerType === 'B2B_EXPORT' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>

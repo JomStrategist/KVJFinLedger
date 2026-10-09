@@ -1730,9 +1730,12 @@ export class AccountingEngine {
 
     // 1. Customers (Sundry Debtors)
     for (const c of customers) {
+      const hasDifferentTradeName =
+        Boolean(c.tradeName && c.legalName && c.tradeName.trim().toLowerCase() !== c.legalName.trim().toLowerCase());
+
       accounts.push({
         id: `customer_${c.id}`,
-        name: c.tradeName ? `${c.legalName} (${c.tradeName})` : c.legalName,
+        name: hasDifferentTradeName ? `${c.legalName} (${c.tradeName})` : (c.tradeName || c.legalName),
         group: "Trade Receivables",
         type: "CUSTOMER",
         financialType: "ASSET",
@@ -1745,9 +1748,12 @@ export class AccountingEngine {
 
     // 2. Vendors (Sundry Creditors)
     for (const v of vendors) {
+      const hasDifferentBusinessName =
+        Boolean(v.businessName && v.name && v.businessName.trim().toLowerCase() !== v.name.trim().toLowerCase());
+
       accounts.push({
         id: `vendor_${v.id}`,
-        name: v.businessName ? `${v.name} (${v.businessName})` : v.name,
+        name: hasDifferentBusinessName ? `${v.name} (${v.businessName})` : (v.businessName || v.name),
         group: "Trade Payables",
         type: "VENDOR",
         financialType: "LIABILITY",
