@@ -37,6 +37,12 @@ export function deriveNormalBalance(financialType: string): string {
 }
 
 export class ExpenseCategoryService {
+  static canManageCategories(role?: string): boolean {
+    if (!role) return false;
+    const normalized = role.toUpperCase();
+    return normalized === "ADMIN" || normalized === "SUPER_ADMIN" || normalized === "CEO" || normalized === "OWNER";
+  }
+
   static async getExpenseCategories(params?: { search?: string; isActive?: boolean; financialType?: string }) {
     const { search, isActive, financialType } = params || {};
     const where: any = {};
@@ -423,9 +429,14 @@ export class ExpenseCategoryService {
     const subcategories = [
       // Under Employee Costs
       { parent: "employee costs", name: "Salaries & Wages", code: "EXP-EMP-SAL", isRecurring: true },
+      { parent: "employee costs", name: "Salary", code: "EXP-EMP-SLR", isRecurring: true },
       { parent: "employee costs", name: "Staff Bonus & Incentives", code: "EXP-EMP-BON" },
+      { parent: "employee costs", name: "Bonus and Incentives", code: "EXP-EMP-BNI" },
+      { parent: "employee costs", name: "Employee Benefits", code: "EXP-EMP-BNF" },
+      { parent: "employee costs", name: "Employer Contributions", code: "EXP-EMP-CNT", isRecurring: true },
       { parent: "employee costs", name: "Employer PF & ESI Contributions", code: "EXP-EMP-CON", isRecurring: true },
       { parent: "employee costs", name: "Staff Welfare & Reimbursements", code: "EXP-EMP-WLF" },
+      { parent: "employee costs", name: "Other Employee Expenses", code: "EXP-EMP-OTH" },
 
       // Under Rent and Occupancy
       { parent: "rent and occupancy", name: "Office Rent", code: "EXP-RNT-OFF", isRecurring: true },
@@ -433,29 +444,48 @@ export class ExpenseCategoryService {
 
       // Under Utilities
       { parent: "utilities", name: "Electricity Expenses", code: "EXP-UTL-ELE", isRecurring: true },
+      { parent: "utilities", name: "Electricity Bill", code: "EXP-UTL-ELB", isRecurring: true },
       { parent: "utilities", name: "Water Charges", code: "EXP-UTL-WTR", isRecurring: true },
+      { parent: "utilities", name: "Water Bill", code: "EXP-UTL-WTB", isRecurring: true },
 
       // Under Communication
       { parent: "communication", name: "Internet Expenses", code: "EXP-COMM-INT", isRecurring: true },
+      { parent: "communication", name: "Internet Bill", code: "EXP-COMM-INB", isRecurring: true },
       { parent: "communication", name: "Telephone & Mobile Bills", code: "EXP-COMM-TEL", isRecurring: true },
+      { parent: "communication", name: "Telephone and Mobile Bill", code: "EXP-COMM-TMB", isRecurring: true },
 
       // Under Software and Subscriptions
+      { parent: "software and subscriptions", name: "Software Subscriptions", code: "EXP-SW-SUB", isRecurring: true },
       { parent: "software and subscriptions", name: "SaaS & Cloud Licences", code: "EXP-SW-LIC", isRecurring: true },
       { parent: "software and subscriptions", name: "Hosting & Infrastructure", code: "EXP-SW-HST", isRecurring: true },
       { parent: "software and subscriptions", name: "Online Tools & Services", code: "EXP-SW-TLS", isRecurring: true },
+      { parent: "software and subscriptions", name: "Online Service Subscriptions", code: "EXP-SW-OSS", isRecurring: true },
+      { parent: "software and subscriptions", name: "Maintenance Contracts", code: "EXP-SW-MNC", isRecurring: true },
 
       // Under Office Administration
       { parent: "office administration", name: "Stationery & Printing", code: "EXP-OFF-STN" },
+      { parent: "office administration", name: "Stationery", code: "EXP-OFF-ST1" },
       { parent: "office administration", name: "Office Supplies & Pantry", code: "EXP-OFF-SUP" },
+      { parent: "office administration", name: "Office Supplies", code: "EXP-OFF-SP1" },
 
       // Under Travel and Accommodation
       { parent: "travel and accommodation", name: "Business Travel & Airfare", code: "EXP-TRV-AIR" },
       { parent: "travel and accommodation", name: "Hotel & Lodging", code: "EXP-TRV-HTL" },
       { parent: "travel and accommodation", name: "Local Conveyance & Taxi", code: "EXP-TRV-LOC" },
+      { parent: "travel and accommodation", name: "Travel", code: "EXP-TRV-TRV" },
+      { parent: "travel and accommodation", name: "Accommodation", code: "EXP-TRV-ACC" },
+      { parent: "travel and accommodation", name: "Transportation", code: "EXP-TRV-TRN" },
 
       // Under Professional Services
       { parent: "professional services", name: "Legal & Professional Fees", code: "EXP-PRF-LGL" },
+      { parent: "professional services", name: "Professional Fees", code: "EXP-PRF-PF1" },
       { parent: "professional services", name: "Consultancy Charges", code: "EXP-PRF-CNS" },
+
+      // Under Other Operating Expenses
+      { parent: "other operating expenses", name: "Marketing and Advertising", code: "EXP-OTH-MKT" },
+      { parent: "other operating expenses", name: "Training Expenses", code: "EXP-OTH-TRN" },
+      { parent: "other operating expenses", name: "Insurance", code: "EXP-OTH-INS", isRecurring: true },
+      { parent: "other operating expenses", name: "Repairs and Maintenance", code: "EXP-OTH-RPM" },
 
       // Under Voucher Purchases
       { parent: "voucher purchases", name: "Certification Vouchers", code: "EXP-VCH-CRT" },
@@ -463,11 +493,16 @@ export class ExpenseCategoryService {
 
       // Under Losses
       { parent: "losses", name: "Approved Business Loss", code: "EXP-LOS-BIZ", isLoss: true },
+      { parent: "losses", name: "Business Loss", code: "EXP-LOS-BZ1", isLoss: true },
       { parent: "losses", name: "Asset Disposal Loss", code: "EXP-LOS-AST", isLoss: true },
+      { parent: "losses", name: "Other Approved Losses", code: "EXP-LOS-OAL", isLoss: true },
 
       // Under Fixed Assets
       { parent: "fixed assets", name: "Computers & Laptops", code: "AST-FXA-CMP", isAsset: true },
+      { parent: "fixed assets", name: "Computers and Equipment", code: "AST-FXA-CE1", isAsset: true },
       { parent: "fixed assets", name: "Office Furniture", code: "AST-FXA-FUR", isAsset: true },
+      { parent: "fixed assets", name: "Furniture", code: "AST-FXA-FR1", isAsset: true },
+      { parent: "fixed assets", name: "Other Fixed Assets", code: "AST-FXA-OFA", isAsset: true },
     ];
 
     for (const sub of subcategories) {

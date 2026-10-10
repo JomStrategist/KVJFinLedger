@@ -6,8 +6,8 @@ import { TaxEngine } from "@/lib/tax";
 import { BUSINESS_LOCATION } from "@/lib/config/business";
 import { createExpenseAction, updateExpenseAction } from "./actions";
 import { createVendorAction } from "../vendors/actions";
-import { createExpenseCategoryAction } from "./category-actions";
 import { AddMasterRecordModal } from "../masters/AddMasterRecordModal";
+import { QuickCategoryModal } from "./QuickCategoryModal";
 import { formatCurrency } from "@/lib/utils/currency";
 
 export function ExpenseForm({ 
@@ -35,6 +35,19 @@ export function ExpenseForm({
   useEffect(() => { setCategories(initialCategories); }, [initialCategories]);
   useEffect(() => { setEmployees(initialEmployees); }, [initialEmployees]);
 
+  // Quick Category Modal State
+  const [isQuickCategoryModalOpen, setIsQuickCategoryModalOpen] = useState(false);
+  const [categoryToEdit, setCategoryToEdit] = useState<any | null>(null);
+
+  // Primary Category Head Selection
+  const initialCatId = initialData?.categoryId || initialData?.items?.[0]?.categoryId || categories[0]?.id || "";
+  const [primaryCategoryId, setPrimaryCategoryId] = useState<string>(initialCatId);
+
+  // Nature of Transaction
+  const [paymentNature, setPaymentNature] = useState<"EXPENSE" | "PURCHASE">(
+    initialData?.paymentNature || (initialData?.isPurchase ? "PURCHASE" : "EXPENSE")
+  );
+
   // Paid By, Employee, Payment Status
   const [paidBy, setPaidBy] = useState<"COMPANY" | "EMPLOYEE">(
     initialData?.paidBy || "COMPANY"
@@ -49,9 +62,31 @@ export function ExpenseForm({
     initialData?.paidAmount !== undefined && initialData?.paidAmount !== null && Number(initialData.paidAmount) > 0 ? String(initialData.paidAmount) : ""
   );
 
+  // Bill & Category-Aware Contextual Fields
+  const [billNumber, setBillNumber] = useState<string>(initialData?.billNumber || "");
+  const [salaryPeriod, setSalaryPeriod] = useState<string>(
+    initialData?.salaryPeriod || new Date().toLocaleString("en-IN", { month: "long", year: "numeric" })
+  );
+  const [consumerRef, setConsumerRef] = useState<string>(initialData?.consumerRef || "");
+  const [billingPeriod, setBillingPeriod] = useState<string>(initialData?.billingPeriod || "");
+  const [subscriptionPlan, setSubscriptionPlan] = useState<string>(initialData?.subscriptionPlan || "");
+  const [renewalDate, setRenewalDate] = useState<string>(
+    initialData?.renewalDate ? new Date(initialData.renewalDate).toISOString().split("T")[0] : ""
+  );
+  const [billingCycle, setBillingCycle] = useState<string>(initialData?.billingCycle || "MONTHLY");
+  const [supportingDocRef, setSupportingDocRef] = useState<string>(initialData?.supportingDocRef || "");
+  const [lossRationale, setLossRationale] = useState<string>(initialData?.lossRationale || "");
+
   // Additional Settings State
   const [isAdditionalSettingsOpen, setIsAdditionalSettingsOpen] = useState(false);
   const [itcEligibility, setItcEligibility] = useState<string>("ELIGIBLE");
+  const [expenseTreatment, setExpenseTreatment] = useState<"Operating Expense" | "Fixed Asset" | "Business Loss">(
+    initialData?.isAsset || initialData?.expenseTreatment === "Fixed Asset"
+      ? "Fixed Asset"
+      : initialData?.isLoss || initialData?.expenseTreatment === "Business Loss"
+      ? "Business Loss"
+      : "Operating Expense"
+  );
   const [isCapitalAsset, setIsCapitalAsset] = useState<boolean>(
     Boolean(initialData?.isAsset)
   );
@@ -60,6 +95,9 @@ export function ExpenseForm({
   );
   const [depreciationRate, setDepreciationRate] = useState<number>(
     Number(initialData?.depreciationRate) > 0 ? Number(initialData.depreciationRate) : 40
+  );
+  const [lossType, setLossType] = useState<string>(
+    initialData?.lossType || "Operational Loss"
   );
 
   // Notes
@@ -70,23 +108,157 @@ export function ExpenseForm({
     initialData?.items?.map((item: any) => ({
       productId: item.productId || "",
       vendorId: item.vendorId || "",
-      categoryId: item.categoryId || "",
+      categoryId: item.categoryId || initialCatId,
       date: item.date ? new Date(item.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       hsnSacCode: item.hsnSacCode || "",
-      quantity: Number(item.quantity),
-      unitPrice: Number(item.unitPrice),
-      gstRate: Number(item.gstRate),
+      quantity: Number(item.quantity) || 1,
+      unitPrice: Number(item.unitPrice) || 0,
+      gstRate: Number(item.gstRate) || 0,
       isCustomGst: ![0, 5, 12, 18, 28].includes(Number(item.gstRate)),
       tdsRate: item.tdsRate?.toString() || "",
       isCustomTds: item.tdsRate !== null && item.tdsRate !== undefined && ![0, 1, 2, 5, 10].includes(Number(item.tdsRate)),
       unit: item.unit || "NOS",
     })) || [{ 
-      productId: "", vendorId: "", categoryId: "", 
+      productId: "", vendorId: "", categoryId: initialCatId, 
       date: new Date().toISOString().split('T')[0], hsnSacCode: "", 
       quantity: 1, unitPrice: 0, gstRate: 0, isCustomGst: false, 
       tdsRate: "", isCustomTds: false, unit: "NOS" 
     }]
   );
+
+  const selectedCategoryObj = categories.find((c) => c.id === primaryCategoryId);
+  const categoryNameLower = (selectedCategoryObj?.name || "").toLowerCase();
+  const isSalaryCategory =
+    selectedCategoryObj?.accountingClassification === "EMPLOYEE_EXPENSE" ||
+    selectedCategoryObj?.statementGroup === "Employee Costs" ||
+    categoryNameLower.includes("salary") ||
+    categoryNameLower.includes("bonus") ||
+    categoryNameLower.includes("wage") ||
+    categoryNameLower.includes("payroll") ||
+    categoryNameLower.includes("incentive") ||
+    categoryNameLower.includes("employee");
+  const isInternetCategory =
+    categoryNameLower.includes("internet") ||
+    categoryNameLower.includes("broadband") ||
+    categoryNameLower.includes("telephone") ||
+    categoryNameLower.includes("mobile bill");
+  const isElectricityCategory =
+    categoryNameLower.includes("electric") ||
+    categoryNameLower.includes("power") ||
+    categoryNameLower.includes("water bill");
+  const isSubscriptionCategory =
+    categoryNameLower.includes("software") ||
+    categoryNameLower.includes("subscription") ||
+    categoryNameLower.includes("saas") ||
+    categoryNameLower.includes("license") ||
+    categoryNameLower.includes("online service");
+  const isLossCategory =
+    selectedCategoryObj?.isLossCategory ||
+    selectedCategoryObj?.accountingClassification === "BUSINESS_LOSS" ||
+    categoryNameLower.includes("loss");
+  const isFixedAssetCategory =
+    selectedCategoryObj?.isCapitalAsset ||
+    selectedCategoryObj?.accountingClassification === "FIXED_ASSET" ||
+    selectedCategoryObj?.financialType === "ASSET" ||
+    categoryNameLower.includes("furniture") ||
+    categoryNameLower.includes("computer") ||
+    categoryNameLower.includes("equipment") ||
+    categoryNameLower.includes("asset");
+
+  // Category Groups for organized dropdown
+  const employeeCategories = categories.filter(c => 
+    c.statementGroup === "Employee Costs" || c.name?.toLowerCase().includes("salary") || c.name?.toLowerCase().includes("bonus") || c.name?.toLowerCase().includes("employee")
+  );
+  const utilityCategories = categories.filter(c => 
+    c.statementGroup === "Administrative Expenses" && (c.name?.toLowerCase().includes("util") || c.name?.toLowerCase().includes("elect") || c.name?.toLowerCase().includes("water") || c.name?.toLowerCase().includes("rent"))
+  );
+  const commCategories = categories.filter(c => 
+    c.name?.toLowerCase().includes("internet") || c.name?.toLowerCase().includes("tele") || c.name?.toLowerCase().includes("comm")
+  );
+  const subscriptionCategories = categories.filter(c => 
+    c.name?.toLowerCase().includes("soft") || c.name?.toLowerCase().includes("subscr") || c.name?.toLowerCase().includes("licen") || c.name?.toLowerCase().includes("cloud") || c.name?.toLowerCase().includes("host")
+  );
+  const lossCategories = categories.filter(c => 
+    c.isLossCategory || c.accountingClassification === "BUSINESS_LOSS" || c.name?.toLowerCase().includes("loss")
+  );
+  const assetCategories = categories.filter(c => 
+    c.isCapitalAsset || c.accountingClassification === "FIXED_ASSET" || c.financialType === "ASSET" || c.name?.toLowerCase().includes("asset") || c.name?.toLowerCase().includes("furn") || c.name?.toLowerCase().includes("comp")
+  );
+  const otherCategories = categories.filter(c => 
+    !employeeCategories.includes(c) && 
+    !utilityCategories.includes(c) && 
+    !commCategories.includes(c) && 
+    !subscriptionCategories.includes(c) && 
+    !lossCategories.includes(c) && 
+    !assetCategories.includes(c)
+  );
+
+  const handlePrimaryCategoryChange = (catId: string) => {
+    if (catId === "ADD_NEW_CATEGORY") {
+      setCategoryToEdit(null);
+      setIsQuickCategoryModalOpen(true);
+      return;
+    }
+
+    setPrimaryCategoryId(catId);
+    const selectedCat = categories.find((c) => c.id === catId);
+    if (!selectedCat) return;
+
+    const isAsset = selectedCat.isCapitalAsset || selectedCat.accountingClassification === "FIXED_ASSET" || selectedCat.financialType === "ASSET";
+    const isLoss = selectedCat.isLossCategory || selectedCat.accountingClassification === "BUSINESS_LOSS";
+    const isEmp = selectedCat.accountingClassification === "EMPLOYEE_EXPENSE" || selectedCat.statementGroup === "Employee Costs" || selectedCat.name.toLowerCase().includes("salary") || selectedCat.name.toLowerCase().includes("wage");
+
+    if (isAsset) {
+      setExpenseTreatment("Fixed Asset");
+      setIsCapitalAsset(true);
+      if (selectedCat.name.toLowerCase().includes("furniture")) {
+        setAssetCategory("FURNITURE_FIXTURES");
+        setDepreciationRate(10);
+      } else {
+        setAssetCategory("COMPUTERS_IT");
+        setDepreciationRate(40);
+      }
+    } else if (isLoss) {
+      setExpenseTreatment("Business Loss");
+      setIsCapitalAsset(false);
+    } else {
+      setExpenseTreatment("Operating Expense");
+      setIsCapitalAsset(false);
+    }
+
+    // Default GST: 0 for salaries / non-taxable, or default rate
+    const defaultGst = selectedCat.isTaxApplicable === false || isEmp ? 0 : Number(selectedCat.defaultGstRate ?? 18);
+
+    // Sync primary item row
+    setItems((prev) => {
+      if (prev.length === 0) return prev;
+      return prev.map((item, idx) => {
+        if (idx === 0) {
+          return {
+            ...item,
+            categoryId: catId,
+            gstRate: defaultGst,
+            isCustomGst: ![0, 5, 12, 18, 28].includes(defaultGst),
+          };
+        }
+        return item;
+      });
+    });
+  };
+
+  const handleCategorySaved = (savedCat: any) => {
+    if (!savedCat) return;
+    setCategories((prev) => {
+      const idx = prev.findIndex((c) => c.id === savedCat.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = savedCat;
+        return copy;
+      }
+      return [savedCat, ...prev];
+    });
+    handlePrimaryCategoryChange(savedCat.id);
+  };
 
   const handlePaidByChange = (newPaidBy: "COMPANY" | "EMPLOYEE") => {
     setPaidBy(newPaidBy);
@@ -115,7 +287,8 @@ export function ExpenseForm({
 
   const handleItemCategoryChange = (index: number, value: string) => {
     if (value === "ADD_NEW") {
-      setModalConfig({ type: "category", itemIndex: index });
+      setCategoryToEdit(null);
+      setIsQuickCategoryModalOpen(true);
     } else {
       handleItemChange(index, "categoryId", value);
     }
@@ -126,11 +299,6 @@ export function ExpenseForm({
       setVendors((prev) => [...prev, newRecord]);
       if (modalConfig.itemIndex !== undefined) {
         handleItemChange(modalConfig.itemIndex, "vendorId", newRecord.id);
-      }
-    } else if (modalConfig?.type === "category" && newRecord) {
-      setCategories((prev) => [...prev, newRecord]);
-      if (modalConfig.itemIndex !== undefined) {
-        handleItemChange(modalConfig.itemIndex, "categoryId", newRecord.id);
       }
     } else if (modalConfig?.type === "employee" && newRecord) {
       setEmployees((prev) => [newRecord, ...prev]);
@@ -160,7 +328,7 @@ export function ExpenseForm({
   };
 
   const addItem = () => setItems([...items, { 
-    productId: "", vendorId: "", categoryId: "", 
+    productId: "", vendorId: "", categoryId: primaryCategoryId || categories[0]?.id || "", 
     date: new Date().toISOString().split('T')[0], hsnSacCode: "", 
     quantity: 1, unitPrice: 0, gstRate: 0, isCustomGst: false, 
     tdsRate: "", isCustomTds: false, unit: "NOS" 
@@ -178,7 +346,7 @@ export function ExpenseForm({
     const itemVendor = vendors.find(v => v.id === item.vendorId);
     return {
       taxableAmount: grossAmount,
-      gstRate: Number(item.gstRate) || 0,
+      gstRate: isSalaryCategory ? 0 : Number(item.gstRate) || 0,
       grossAmount,
       discountAmount: 0,
       customerState: itemVendor?.state || BUSINESS_LOCATION.state,
@@ -196,8 +364,8 @@ export function ExpenseForm({
     e.preventDefault();
     setError(null);
 
-    if (items.some(i => !i.categoryId)) {
-      setError("All items must have a category.");
+    if (items.some(i => !i.categoryId && !primaryCategoryId)) {
+      setError("Please select a category for this expense.");
       return;
     }
 
@@ -218,12 +386,30 @@ export function ExpenseForm({
       return;
     }
 
+    let computedNotes = notes.trim();
+    if (isSalaryCategory && employeeId) {
+      const emp = employees.find(e => e.id === employeeId);
+      computedNotes = `Salary Payment - ${emp?.name || "Staff"} (${salaryPeriod})${computedNotes ? ` | ${computedNotes}` : ""}`;
+    } else if (isInternetCategory) {
+      computedNotes = `Internet Bill${billingPeriod ? ` (${billingPeriod})` : ""}${billNumber ? ` | Inv #${billNumber}` : ""}${computedNotes ? ` | ${computedNotes}` : ""}`;
+    } else if (isElectricityCategory) {
+      computedNotes = `Electricity Bill${consumerRef ? ` (CA: ${consumerRef})` : ""}${billingPeriod ? ` - ${billingPeriod}` : ""}${computedNotes ? ` | ${computedNotes}` : ""}`;
+    } else if (isSubscriptionCategory) {
+      computedNotes = `Software Subscription${subscriptionPlan ? ` - ${subscriptionPlan}` : ""}${billingCycle ? ` (${billingCycle})` : ""}${renewalDate ? ` | Renewal: ${renewalDate}` : ""}${computedNotes ? ` | ${computedNotes}` : ""}`;
+    } else if (isLossCategory) {
+      computedNotes = `Business Loss: ${lossType}${lossRationale ? ` - ${lossRationale}` : ""}${supportingDocRef ? ` | Ref: ${supportingDocRef}` : ""}${computedNotes ? ` | ${computedNotes}` : ""}`;
+    } else if (isFixedAssetCategory) {
+      computedNotes = `Fixed Asset Purchase - ${items[0]?.item || assetCategory}${computedNotes ? ` | ${computedNotes}` : ""}`;
+    }
+
     const payload = {
       expenseDate: items[0]?.date || new Date().toISOString().split('T')[0],
+      billNumber: billNumber.trim() || null,
       vendorId: items[0]?.vendorId || null,
-      categoryId: items[0]?.categoryId || null,
+      categoryId: primaryCategoryId || items[0]?.categoryId || categories[0]?.id,
       paidBy,
       employeeId: employeeId || null,
+      paymentNature,
       paymentStatus,
       paidAmount: paymentStatus === "PAID" 
         ? Number(calc.netAmount || 0) 
@@ -237,48 +423,53 @@ export function ExpenseForm({
           ? Math.min(Number(calc.netAmount || 0), Math.max(0, parseFloat(paidAmount) || 0)) 
           : 0
       )),
-      notes: notes.trim() || null,
+      notes: computedNotes || (paymentNature === "PURCHASE" ? "Material Purchase" : "Operating Expense"),
       
       subtotal: Number(calc.subtotal ?? calc.taxableAmount ?? 0),
       discountAmount: Number(calc.totalDiscount ?? 0),
       taxableAmount: Number(calc.taxableAmount ?? 0),
 
-      inputCGST: Number(calc.totalCGST ?? 0),
-      inputSGST: Number(calc.totalSGST ?? 0),
-      inputIGST: Number(calc.totalIGST ?? 0),
-      totalInputGST: Number(calc.totalGST ?? 0),
+      inputCGST: isSalaryCategory ? 0 : Number(calc.totalCGST ?? 0),
+      inputSGST: isSalaryCategory ? 0 : Number(calc.totalSGST ?? 0),
+      inputIGST: isSalaryCategory ? 0 : Number(calc.totalIGST ?? 0),
+      totalInputGST: isSalaryCategory ? 0 : Number(calc.totalGST ?? 0),
 
       tdsRate: 0,
       tdsAmount: Number(calc.tdsAmount ?? 0),
       grossAmount: Number(calc.grossAmount ?? 0),
       netAmount: Number(calc.netAmount ?? 0),
-      isAsset: isCapitalAsset,
-      assetType: isCapitalAsset ? assetCategory : null,
-      depreciationRate: isCapitalAsset ? Number(depreciationRate || 0) : 0,
+      
+      isGstEligible: isSalaryCategory ? false : true,
+      expenseTreatment,
+      isAsset: expenseTreatment === "Fixed Asset" || isCapitalAsset,
+      assetType: expenseTreatment === "Fixed Asset" || isCapitalAsset ? assetCategory : null,
+      depreciationRate: expenseTreatment === "Fixed Asset" || isCapitalAsset ? Number(depreciationRate || 0) : 0,
+      isLoss: expenseTreatment === "Business Loss" || isLossCategory,
+      lossType: expenseTreatment === "Business Loss" || isLossCategory ? lossType : null,
 
       items: items.map((item, i) => ({
         productId: item.productId || null,
         vendorId: item.vendorId || null,
-        categoryId: item.categoryId || null,
+        categoryId: item.categoryId || primaryCategoryId || categories[0]?.id,
         date: item.date,
-        hsnSacCode: item.hsnSacCode,
+        hsnSacCode: item.hsnSacCode || (isSalaryCategory ? "9999" : "9983"),
         quantity: item.quantity,
         unit: item.unit,
         unitPrice: item.unitPrice,
-        gstRate: item.gstRate,
+        gstRate: isSalaryCategory ? 0 : item.gstRate,
         taxableAmount: calc.calculatedItems[i].taxableAmount,
-        cgstRate: calc.calculatedItems[i].cgstRate,
-        cgstAmount: calc.calculatedItems[i].cgstAmount,
-        sgstRate: calc.calculatedItems[i].sgstRate,
-        sgstAmount: calc.calculatedItems[i].sgstAmount,
-        igstRate: calc.calculatedItems[i].igstRate,
-        igstAmount: calc.calculatedItems[i].igstAmount,
-        totalGST: calc.calculatedItems[i].totalGST,
+        cgstRate: isSalaryCategory ? 0 : calc.calculatedItems[i].cgstRate,
+        cgstAmount: isSalaryCategory ? 0 : calc.calculatedItems[i].cgstAmount,
+        sgstRate: isSalaryCategory ? 0 : calc.calculatedItems[i].sgstRate,
+        sgstAmount: isSalaryCategory ? 0 : calc.calculatedItems[i].sgstAmount,
+        igstRate: isSalaryCategory ? 0 : calc.calculatedItems[i].igstRate,
+        igstAmount: isSalaryCategory ? 0 : calc.calculatedItems[i].igstAmount,
+        totalGST: isSalaryCategory ? 0 : calc.calculatedItems[i].totalGST,
         tdsRate: Number(item.tdsRate) || 0,
         tdsAmount: calc.calculatedItems[i].tdsAmount || 0,
-        isAsset: isCapitalAsset,
-        depreciationRate: isCapitalAsset ? Number(depreciationRate || 0) : 0,
-        totalAmount: calc.calculatedItems[i].totalAmount
+        isAsset: expenseTreatment === "Fixed Asset" || isCapitalAsset,
+        depreciationRate: expenseTreatment === "Fixed Asset" || isCapitalAsset ? Number(depreciationRate || 0) : 0,
+        totalAmount: isSalaryCategory ? calc.calculatedItems[i].taxableAmount : calc.calculatedItems[i].totalAmount
       }))
     };
 
@@ -304,10 +495,10 @@ export function ExpenseForm({
             EXPENSE ENTRY
           </span>
           <h1 className="text-2xl font-bold text-theme-text mt-1">
-            {initialData ? `Edit Expense (${initialData.expenseNumber})` : "Add Expense"}
+            {initialData ? `Edit Expense (${initialData.expenseNumber})` : "Record Expense"}
           </h1>
           <p className="text-theme-text-muted mt-1 text-sm">
-            Add one or more expense items. Each item is categorised for financial statements.
+            Manage all expense categories, utilities, salaries, subscriptions and capex with inline category creation.
           </p>
         </div>
         <button
@@ -331,19 +522,495 @@ export function ExpenseForm({
         </div>
       )}
 
+      {/* NATURE OF PAYMENT SWITCHER */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-slate-50/80 border border-slate-200/80 rounded-xl">
+        <div>
+          <span className="text-xs font-bold text-slate-800">Nature of Transaction:</span>
+          <p className="text-xs text-slate-500">Classify whether this is an operating expense or direct material purchase</p>
+        </div>
+        <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setPaymentNature("EXPENSE")}
+            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              paymentNature === "EXPENSE"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            🏢 Operating Expense
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaymentNature("PURCHASE")}
+            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              paymentNature === "PURCHASE"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            📦 Purchase (COGS)
+          </button>
+        </div>
+      </div>
+
+      {/* CATEGORY SELECTOR WITH + ADD CATEGORY & EDIT CATEGORY */}
+      <div className="p-4 bg-emerald-50/50 border border-emerald-200/80 rounded-2xl space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <label className="block text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+              <span>🏷️</span> Expense Category Head *
+            </label>
+            <p className="text-xs text-emerald-800 font-medium">
+              Select any expense category or create a new one directly here without leaving this form
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {selectedCategoryObj && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryToEdit(selectedCategoryObj);
+                  setIsQuickCategoryModalOpen(true);
+                }}
+                className="text-xs font-bold text-emerald-800 bg-white hover:bg-emerald-100/70 border border-emerald-300 px-3 py-1.5 rounded-xl shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+                title="Edit category settings, GST rate, or classification"
+              >
+                ✏️ Edit Category
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setCategoryToEdit(null);
+                setIsQuickCategoryModalOpen(true);
+              }}
+              className="text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 px-3.5 py-1.5 rounded-xl shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <span>+</span> Add Category
+            </button>
+          </div>
+        </div>
+
+        <select
+          value={primaryCategoryId}
+          onChange={(e) => handlePrimaryCategoryChange(e.target.value)}
+          className="w-full h-10 border border-emerald-300 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-700 font-bold text-slate-900 shadow-2xs"
+        >
+          <option value="">— Select Expense Category Head —</option>
+          <option value="ADD_NEW_CATEGORY" className="font-extrabold text-emerald-700 bg-emerald-50">
+            ✨ + Add New Category Directly...
+          </option>
+          {employeeCategories.length > 0 && (
+            <optgroup label="💼 Employee Costs & Salaries">
+              {employeeCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.code ? `(${c.code})` : ""}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {utilityCategories.length > 0 && (
+            <optgroup label="⚡ Utilities & Premises">
+              {utilityCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.code ? `(${c.code})` : ""}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {commCategories.length > 0 && (
+            <optgroup label="🌐 Communication & Internet Bills">
+              {commCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.code ? `(${c.code})` : ""}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {subscriptionCategories.length > 0 && (
+            <optgroup label="💻 Software Subscriptions & SaaS">
+              {subscriptionCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.code ? `(${c.code})` : ""}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {lossCategories.length > 0 && (
+            <optgroup label="📉 Business Losses (ICAI Loss Accounting)">
+              {lossCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.code ? `(${c.code})` : ""}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {assetCategories.length > 0 && (
+            <optgroup label="🏛️ Fixed Assets & Capex (Balance Sheet Capitalized)">
+              {assetCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.code ? `(${c.code})` : ""}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {otherCategories.length > 0 && (
+            <optgroup label="🏢 General Operating Expenses">
+              {otherCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.code ? `(${c.code})` : ""}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+      </div>
+
+      {/* DYNAMIC CATEGORY-AWARE CONTEXTUAL CARD */}
+      {selectedCategoryObj && (
+        <div className="p-4 bg-slate-50/90 border border-slate-200/80 rounded-2xl space-y-3.5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-800">Category Specific Details:</span>
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800">
+                {selectedCategoryObj.name}
+              </span>
+            </div>
+            <span className="text-xs text-slate-500 font-medium">
+              Classification: <b className="text-slate-800">{expenseTreatment}</b>
+            </span>
+          </div>
+
+          {/* Case 1: Salary & Payroll Expenses */}
+          {isSalaryCategory && (
+            <div className="space-y-3">
+              <div className="p-2.5 bg-blue-50/80 border border-blue-200 rounded-xl flex items-center justify-between text-xs text-blue-900">
+                <span className="font-semibold">💼 Employee Salary &amp; Payroll Entry</span>
+                <span className="text-[11px] bg-blue-200/60 font-bold px-2 py-0.5 rounded">
+                  Non-GST Transaction (CGST Schedule III)
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Select Employee *</label>
+                  <select
+                    value={employeeId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEmployeeId(val);
+                      const emp = employees.find(emp => emp.id === val);
+                      if (emp && Number(emp.salary || 0) > 0 && items[0]) {
+                        handleItemChange(0, "unitPrice", Number(emp.salary));
+                      }
+                    }}
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-semibold text-slate-800"
+                  >
+                    <option value="">— Select Employee from Master —</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        👤 {emp.name} ({emp.employeeCode || "Staff"}) — Salary: ₹{Number(emp.salary || 0).toLocaleString("en-IN")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Salary Month / Period *</label>
+                  <input
+                    type="text"
+                    value={salaryPeriod}
+                    onChange={(e) => setSalaryPeriod(e.target.value)}
+                    placeholder="e.g. April 2026"
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Disbursement Channel</label>
+                  <select
+                    value={paidBy}
+                    onChange={(e) => setPaidBy(e.target.value as any)}
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-semibold"
+                  >
+                    <option value="COMPANY">🏢 Direct Company Bank Payout</option>
+                    <option value="EMPLOYEE">💵 Staff Out-of-Pocket / Reimbursement</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Case 2: Internet Bill & Telecom */}
+          {isInternetCategory && (
+            <div className="space-y-3">
+              <div className="p-2.5 bg-teal-50/80 border border-teal-200 rounded-xl flex items-center justify-between text-xs text-teal-900">
+                <span className="font-semibold">🌐 Internet &amp; Telecom Utility Bill</span>
+                <span className="text-[11px] bg-teal-200/60 font-bold px-2 py-0.5 rounded">
+                  18% GST (Input Tax Credit Claimable)
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">ISP / Telecom Provider</label>
+                  <select
+                    value={items[0]?.vendorId || ""}
+                    onChange={(e) => handleItemChange(0, "vendorId", e.target.value)}
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-semibold"
+                  >
+                    <option value="">— Select ISP Vendor —</option>
+                    {vendors.map(v => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">ISP Bill / Tax Invoice #</label>
+                  <input
+                    type="text"
+                    value={billNumber}
+                    onChange={(e) => setBillNumber(e.target.value)}
+                    placeholder="e.g. AIRTEL-982138"
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Billing Period</label>
+                  <input
+                    type="text"
+                    value={billingPeriod}
+                    onChange={(e) => setBillingPeriod(e.target.value)}
+                    placeholder="01 Apr 2026 – 30 Apr 2026"
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Case 3: Electricity Bill & Power */}
+          {isElectricityCategory && (
+            <div className="space-y-3">
+              <div className="p-2.5 bg-amber-50/80 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-900">
+                <span className="font-semibold">⚡ Electricity &amp; Power Utility Bill</span>
+                <span className="text-[11px] bg-amber-200/60 font-bold px-2 py-0.5 rounded">
+                  Consumer Account Verification
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Electricity Discom / Board</label>
+                  <select
+                    value={items[0]?.vendorId || ""}
+                    onChange={(e) => handleItemChange(0, "vendorId", e.target.value)}
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-semibold"
+                  >
+                    <option value="">— Select Electricity Board —</option>
+                    {vendors.map(v => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Consumer / CA Number *</label>
+                  <input
+                    type="text"
+                    value={consumerRef}
+                    onChange={(e) => setConsumerRef(e.target.value)}
+                    placeholder="e.g. CA No. 10293847"
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Consumption Cycle / Period</label>
+                  <input
+                    type="text"
+                    value={billingPeriod}
+                    onChange={(e) => setBillingPeriod(e.target.value)}
+                    placeholder="e.g. March 2026 Billing"
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Case 4: Software Subscriptions & SaaS */}
+          {isSubscriptionCategory && (
+            <div className="space-y-3">
+              <div className="p-2.5 bg-indigo-50/80 border border-indigo-200 rounded-xl flex items-center justify-between text-xs text-indigo-900">
+                <span className="font-semibold">💻 Software Subscription / SaaS Tool</span>
+                <span className="text-[11px] bg-indigo-200/60 font-bold px-2 py-0.5 rounded">
+                  Recurring License Tracking
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">SaaS Provider</label>
+                  <select
+                    value={items[0]?.vendorId || ""}
+                    onChange={(e) => handleItemChange(0, "vendorId", e.target.value)}
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-semibold"
+                  >
+                    <option value="">— Select Provider —</option>
+                    {vendors.map(v => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Tool / Plan Name</label>
+                  <input
+                    type="text"
+                    value={subscriptionPlan}
+                    onChange={(e) => setSubscriptionPlan(e.target.value)}
+                    placeholder="e.g. Slack Pro / Google Workspace"
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Billing Frequency</label>
+                  <select
+                    value={billingCycle}
+                    onChange={(e) => setBillingCycle(e.target.value)}
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-semibold"
+                  >
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="QUARTERLY">Quarterly</option>
+                    <option value="ANNUAL">Annual</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Next Renewal Date</label>
+                  <input
+                    type="date"
+                    value={renewalDate}
+                    onChange={(e) => setRenewalDate(e.target.value)}
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Case 5: Business Loss */}
+          {isLossCategory && (
+            <div className="space-y-3">
+              <div className="p-2.5 bg-rose-50/80 border border-rose-200 rounded-xl flex items-center justify-between text-xs text-rose-900">
+                <span className="font-semibold">📉 Business Loss Accounting (P&amp;L Other Expenses)</span>
+                <span className="text-[11px] bg-rose-200/60 font-bold px-2 py-0.5 rounded">
+                  Requires Supporting Audit Documentation
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Loss Nature / Type *</label>
+                  <select
+                    value={lossType}
+                    onChange={(e) => setLossType(e.target.value)}
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-semibold"
+                  >
+                    <option value="Operational Loss">Operational / Inventory Shrinkage</option>
+                    <option value="Asset Disposal Loss">Loss on Sale / Disposal of Fixed Assets</option>
+                    <option value="Bad Debt Write-off">Bad Debt / Unrecoverable Receivable</option>
+                    <option value="Foreign Exchange Loss">Forex Loss (AS 11 / Ind AS 21)</option>
+                    <option value="Other Business Loss">Other Approved Business Loss</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Audit / Incident Ref #</label>
+                  <input
+                    type="text"
+                    value={supportingDocRef}
+                    onChange={(e) => setSupportingDocRef(e.target.value)}
+                    placeholder="e.g. AUDIT-2026-LOSS-001"
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Business Rationale / Note</label>
+                  <input
+                    type="text"
+                    value={lossRationale}
+                    onChange={(e) => setLossRationale(e.target.value)}
+                    placeholder="e.g. Scrapped defective inventory per survey"
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Case 6: Fixed Asset (Capex) */}
+          {isFixedAssetCategory && (
+            <div className="space-y-3">
+              <div className="p-2.5 bg-purple-50/80 border border-purple-200 rounded-xl flex items-center justify-between text-xs text-purple-900">
+                <span className="font-semibold">🏛️ Fixed Asset Capitalization (Balance Sheet Capex)</span>
+                <span className="text-[11px] bg-purple-200/60 font-bold px-2 py-0.5 rounded">
+                  ₹0 Operating Expense Impact • Capitalized to Net Block
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Asset Class / Block *</label>
+                  <select
+                    value={assetCategory}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setAssetCategory(val);
+                      if (val === "COMPUTERS_IT") setDepreciationRate(40);
+                      else if (val === "FURNITURE_FIXTURES") setDepreciationRate(10);
+                      else if (val === "VEHICLES" || val === "OFFICE_EQUIPMENT") setDepreciationRate(15);
+                      else setDepreciationRate(10);
+                    }}
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-semibold"
+                  >
+                    <option value="COMPUTERS_IT">💻 Computers &amp; IT Equipment (40%)</option>
+                    <option value="FURNITURE_FIXTURES">🪑 Furniture &amp; Fixtures (10%)</option>
+                    <option value="OFFICE_EQUIPMENT">📱 Office Equipment (15%)</option>
+                    <option value="VEHICLES">🚗 Motor Vehicles (15%)</option>
+                    <option value="BUILDINGS">🏢 Premises / Leasehold Improvements (10%)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Depreciation Rate (%)</label>
+                  <input
+                    type="number"
+                    value={depreciationRate}
+                    onChange={(e) => setDepreciationRate(Number(e.target.value))}
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Asset Vendor / Supplier</label>
+                  <select
+                    value={items[0]?.vendorId || ""}
+                    onChange={(e) => handleItemChange(0, "vendorId", e.target.value)}
+                    className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs bg-white font-semibold"
+                  >
+                    <option value="">— Select Equipment Vendor —</option>
+                    {vendors.map(v => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Expense Items Card */}
       <div className="bg-theme-surface rounded-xl shadow-sm border border-theme-border p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-lg font-bold text-theme-text">Expense Items</h2>
+            <h2 className="text-lg font-bold text-theme-text">Expense Line Items</h2>
             <p className="text-xs text-theme-text-muted mt-0.5">
-              Use one row for each expense. Different vendors, categories or tax treatments can be entered separately.
+              Enter item details. Category is automatically synced with the Category Head or can be chosen individually.
             </p>
           </div>
           <button
             type="button"
             onClick={addItem}
-            className="inline-flex items-center justify-center px-4 py-2 border border-theme-border rounded-lg text-sm font-medium text-theme-primary bg-theme-surface hover:bg-theme-surface-hover shadow-sm transition-colors gap-1.5 shrink-0 self-start sm:self-auto"
+            className="inline-flex items-center justify-center px-4 py-2 border border-theme-border rounded-lg text-sm font-medium text-theme-primary bg-theme-surface hover:bg-theme-surface-hover shadow-sm transition-colors gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -359,7 +1026,7 @@ export function ExpenseForm({
                 <th className="pb-3 px-2 w-36">Date</th>
                 <th className="pb-3 px-2 w-44">Party</th>
                 <th className="pb-3 px-2 w-44">Item (Optional)</th>
-                <th className="pb-3 px-2 w-44">Category</th>
+                <th className="pb-3 px-2 w-52">Category</th>
                 <th className="pb-3 px-2 w-28">HSN / SAC</th>
                 <th className="pb-3 px-2 w-24 text-right">Qty</th>
                 <th className="pb-3 px-2 w-28 text-right">Rate</th>
@@ -415,17 +1082,45 @@ export function ExpenseForm({
                       required
                       value={item.categoryId}
                       onChange={e => handleItemCategoryChange(index, e.target.value)}
-                      className="w-full border border-theme-border rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-theme-primary focus:border-transparent text-xs bg-theme-surface"
+                      className="w-full border border-theme-border rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-theme-primary focus:border-transparent text-xs bg-theme-surface font-semibold"
                     >
                       <option value="">Select Category...</option>
-                      {categories
-                        .filter((c) => (c.financialType || "EXPENSE").toUpperCase() === "EXPENSE")
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      <option value="ADD_NEW" className="font-bold text-theme-primary">+ Add New Category...</option>
+                      <option value="ADD_NEW" className="font-bold text-emerald-700 bg-emerald-50">✨ + Add New Category...</option>
+                      {employeeCategories.length > 0 && (
+                        <optgroup label="💼 Employee Costs & Salaries">
+                          {employeeCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </optgroup>
+                      )}
+                      {utilityCategories.length > 0 && (
+                        <optgroup label="⚡ Utilities & Premises">
+                          {utilityCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </optgroup>
+                      )}
+                      {commCategories.length > 0 && (
+                        <optgroup label="🌐 Communication & Internet">
+                          {commCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </optgroup>
+                      )}
+                      {subscriptionCategories.length > 0 && (
+                        <optgroup label="💻 Software & Subscriptions">
+                          {subscriptionCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </optgroup>
+                      )}
+                      {lossCategories.length > 0 && (
+                        <optgroup label="📉 Business Losses">
+                          {lossCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </optgroup>
+                      )}
+                      {assetCategories.length > 0 && (
+                        <optgroup label="🏛️ Fixed Assets (Capex)">
+                          {assetCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </optgroup>
+                      )}
+                      {otherCategories.length > 0 && (
+                        <optgroup label="🏢 General Operating">
+                          {otherCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </optgroup>
+                      )}
                     </select>
                   </td>
                   <td className="py-2.5 px-2">
@@ -445,7 +1140,7 @@ export function ExpenseForm({
                       required
                       value={item.quantity}
                       onChange={e => handleItemChange(index, "quantity", e.target.value)}
-                      className="w-full border border-theme-border rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-theme-primary focus:border-transparent text-xs text-right bg-theme-surface"
+                      className="w-full border border-theme-border rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-theme-primary focus:border-transparent text-xs text-right bg-theme-surface font-semibold"
                     />
                   </td>
                   <td className="py-2.5 px-2">
@@ -456,11 +1151,15 @@ export function ExpenseForm({
                       required
                       value={item.unitPrice}
                       onChange={e => handleItemChange(index, "unitPrice", e.target.value)}
-                      className="w-full border border-theme-border rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-theme-primary focus:border-transparent text-xs text-right bg-theme-surface"
+                      className="w-full border border-theme-border rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-theme-primary focus:border-transparent text-xs text-right bg-theme-surface font-semibold"
                     />
                   </td>
                   <td className="py-2.5 px-2">
-                    {!item.isCustomGst ? (
+                    {isSalaryCategory ? (
+                      <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md block text-center">
+                        0% (Non-GST)
+                      </span>
+                    ) : !item.isCustomGst ? (
                       <select
                         value={item.gstRate}
                         onChange={e => {
@@ -471,7 +1170,7 @@ export function ExpenseForm({
                             handleItemChange(index, "gstRate", e.target.value);
                           }
                         }}
-                        className="w-full border border-theme-border rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-theme-primary focus:border-transparent text-xs text-right bg-theme-surface"
+                        className="w-full border border-theme-border rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-theme-primary focus:border-transparent text-xs text-right bg-theme-surface font-semibold"
                       >
                         <option value="0">0%</option>
                         <option value="5">5%</option>
@@ -702,7 +1401,10 @@ export function ExpenseForm({
                   type="checkbox"
                   id="capitalAssetCheckbox"
                   checked={isCapitalAsset}
-                  onChange={(e) => setIsCapitalAsset(e.target.checked)}
+                  onChange={(e) => {
+                    setIsCapitalAsset(e.target.checked);
+                    setExpenseTreatment(e.target.checked ? "Fixed Asset" : "Operating Expense");
+                  }}
                   className="rounded border-theme-border text-theme-primary focus:ring-theme-primary h-4 w-4"
                 />
                 <label htmlFor="capitalAssetCheckbox" className="text-xs text-theme-text font-medium cursor-pointer">
@@ -754,7 +1456,7 @@ export function ExpenseForm({
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-extrabold text-emerald-700">%</span>
                     </div>
                     <p className="text-[10px] text-emerald-700 mt-0.5">
-                      Applied to Fixed Asset WDV schedule &amp; P&amp;L Depreciation.
+                      Applied to Fixed Asset WDV schedule &amp; Balance Sheet capitalisation.
                     </p>
                   </div>
                 </div>
@@ -779,13 +1481,13 @@ export function ExpenseForm({
         {/* Notes Column (Spans 2 cols on lg) */}
         <div className="lg:col-span-2 bg-theme-surface rounded-xl shadow-sm border border-theme-border p-6">
           <label className="block text-sm font-bold text-theme-text mb-2">
-            Notes
+            Notes & Remarks
           </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={5}
-            placeholder="Optional notes for this expense..."
+            placeholder="Optional internal remarks or expense notes..."
             className="w-full border border-theme-border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-theme-primary bg-theme-surface text-theme-text placeholder:text-theme-text-muted"
           />
         </div>
@@ -805,10 +1507,10 @@ export function ExpenseForm({
 
               <div className="flex justify-between text-theme-text-muted">
                 <span>GST</span>
-                <span className="font-medium text-theme-text">₹{calc.totalGST.toFixed(2)}</span>
+                <span className="font-medium text-theme-text">₹{(isSalaryCategory ? 0 : calc.totalGST).toFixed(2)}</span>
               </div>
 
-              {calc.totalGST > 0 && (
+              {!isSalaryCategory && calc.totalGST > 0 && (
                 <div className="pl-3 py-1 space-y-1 border-l-2 border-theme-border text-xs text-theme-text-muted">
                   {calc.totalCGST > 0 && (
                     <div className="flex justify-between">
@@ -841,7 +1543,7 @@ export function ExpenseForm({
               <div className="pt-3 border-t border-theme-border flex justify-between items-center">
                 <span className="font-bold text-theme-text">Total Expense</span>
                 <span className="text-xl font-bold text-emerald-600">
-                  ₹{calc.netAmount.toFixed(2)}
+                  ₹{(isSalaryCategory ? calc.taxableAmount : calc.netAmount).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -861,19 +1563,33 @@ export function ExpenseForm({
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex-1 sm:flex-none px-5 py-2.5 border border-theme-border text-theme-text rounded-lg text-sm font-medium hover:bg-theme-surface-hover transition-colors shadow-sm"
+            className="flex-1 sm:flex-none px-5 py-2.5 border border-theme-border text-theme-text rounded-lg text-sm font-medium hover:bg-theme-surface-hover transition-colors shadow-sm cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isPending}
-            className="flex-1 sm:flex-none px-6 py-2.5 bg-theme-primary text-white rounded-lg text-sm font-medium hover:bg-theme-primary-dark transition-colors shadow-sm disabled:opacity-50"
+            className="flex-1 sm:flex-none px-6 py-2.5 bg-theme-primary text-white rounded-lg text-sm font-medium hover:bg-theme-primary-dark transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
           >
             {isPending ? "Saving..." : initialData ? "Save Draft" : "Save Expense"}
           </button>
         </div>
       </div>
+
+      {/* Quick Category Modal for Adding & Editing Categories */}
+      {isQuickCategoryModalOpen && (
+        <QuickCategoryModal
+          isOpen={isQuickCategoryModalOpen}
+          categoryToEdit={categoryToEdit}
+          categories={categories}
+          onClose={() => {
+            setIsQuickCategoryModalOpen(false);
+            setCategoryToEdit(null);
+          }}
+          onSuccess={handleCategorySaved}
+        />
+      )}
 
       {modalConfig && (
         <AddMasterRecordModal

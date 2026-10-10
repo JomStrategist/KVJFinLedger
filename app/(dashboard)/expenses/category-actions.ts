@@ -4,10 +4,14 @@ import { revalidatePath } from "next/cache";
 import { ExpenseCategoryService, CreateCategoryInput } from "@/services/expense-category.service";
 
 function revalidateCategoryRoutes() {
-  revalidatePath("/expenses");
-  revalidatePath("/expenses?tab=categories");
-  revalidatePath("/masters");
-  revalidatePath("/reports");
+  try {
+    revalidatePath("/expenses");
+    revalidatePath("/expenses?tab=categories");
+    revalidatePath("/masters");
+    revalidatePath("/reports");
+  } catch {
+    // Graceful fallback when executed in testing/CLI contexts outside Next.js request store
+  }
 }
 
 export async function createExpenseCategoryAction(data: CreateCategoryInput) {

@@ -7,17 +7,21 @@ import { prisma } from "@/lib/prisma";
 import { deleteEmployeeMasterAction } from "../masters/actions";
 
 function revalidateAllExpenseRoutes(id?: string) {
-  revalidatePath("/expenses");
-  revalidatePath("/reports");
-  revalidatePath("/reports/balance-sheet");
-  revalidatePath("/reports/payables");
-  revalidatePath("/reports/expenses");
-  revalidatePath("/dashboard");
-  revalidatePath("/finance");
-  revalidatePath("/profit-loss");
-  revalidatePath("/ledgers");
-  if (id) {
-    revalidatePath(`/expenses/${id}`);
+  try {
+    revalidatePath("/expenses");
+    revalidatePath("/reports");
+    revalidatePath("/reports/balance-sheet");
+    revalidatePath("/reports/payables");
+    revalidatePath("/reports/expenses");
+    revalidatePath("/dashboard");
+    revalidatePath("/finance");
+    revalidatePath("/profit-loss");
+    revalidatePath("/ledgers");
+    if (id) {
+      revalidatePath(`/expenses/${id}`);
+    }
+  } catch {
+    // Graceful fallback when executed in test/CLI context
   }
 }
 
