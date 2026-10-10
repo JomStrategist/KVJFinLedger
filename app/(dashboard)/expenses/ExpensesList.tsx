@@ -127,7 +127,7 @@ export async function ExpensesList({
                   </td>
                 </tr>
               ) : (
-                expenses.map((expense) => (
+                expenses.map((expense: any) => (
                   <tr key={expense.id} className="hover:bg-theme-surface-hover/50 transition-colors">
                     <td className="px-6 py-4">
                       <Link href={`/expenses/${expense.id}`} className="font-medium text-theme-primary hover:underline block">

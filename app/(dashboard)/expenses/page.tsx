@@ -1,10 +1,14 @@
 import { requireAuth } from '@/lib/auth-utils';
+import { prisma } from '@/lib/prisma';
 import { ExpenseService } from '@/services/expense.service';
 import { ExpenseCategoryService } from '@/services/expense-category.service';
 import { VendorService } from '@/services/vendor.service';
 import { EmployeeService } from '@/services/employee.service';
 import { EmployeeAdvanceService } from '@/services/employee-advance.service';
+import { RecurringExpenseService } from '@/services/recurring-expense.service';
 import { ExpensesClientList } from './ExpensesClientList';
+import { RecurringExpensesView } from './RecurringExpensesView';
+import { CategoryClient } from './CategoryClient';
 import { ExpenseVendorsView } from './ExpenseVendorsView';
 import { ExpenseEmployeesView } from './ExpenseEmployeesView';
 import { OptimisticTabs } from '@/components/OptimisticTabs';
@@ -19,12 +23,24 @@ export default async function ExpensesPage({
   const params = await searchParams;
   const activeTab = params.tab || 'expenses';
 
-  const [expenses, categories, vendors, employees, advances] = await Promise.all([
+  const [
+    expenses,
+    categories,
+    vendors,
+    employees,
+    advances,
+    schedules,
+    dueItems,
+    bankAccounts,
+  ] = await Promise.all([
     ExpenseService.getExpenses(),
     ExpenseCategoryService.getExpenseCategories(),
     VendorService.getVendors(),
     EmployeeService.getEmployees(),
     EmployeeAdvanceService.getAdvances(),
+    RecurringExpenseService.getSchedules(),
+    RecurringExpenseService.getDueItems(),
+    prisma.bankAccount.findMany({ where: { isActive: true }, orderBy: { isPrimary: 'desc' } }),
   ]);
 
   return (
@@ -32,9 +48,9 @@ export default async function ExpensesPage({
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Expense</h1>
+          <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Business Expenses</h1>
           <p className="text-[#68756C] text-sm mt-0.5 font-normal">
-            Business expenses, vendor obligations, and employee reimbursements.
+            Manage operational costs, salaries, utility bills, capital additions, and employee reimbursements.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -65,26 +81,44 @@ export default async function ExpensesPage({
         </div>
       </div>
 
-      {/* Expense Ribbon: Expenses | Vendors | Employees */}
+      {/* Comprehensive Ribbon: Expenses | Recurring Schedules | Categories Master | Vendors | Employees & Payroll */}
       <OptimisticTabs
         basePath="/expenses"
         defaultTab="expenses"
         tabs={[
-          { id: 'expenses', label: 'Expenses' },
+          { id: 'expenses', label: 'Expenses Register' },
+          { id: 'recurring', label: 'Recurring Schedules' },
+          { id: 'categories', label: 'Categories Master' },
           { id: 'vendors', label: 'Vendors' },
-          { id: 'employees', label: 'Employees' },
+          { id: 'employees', label: 'Employees & Payroll' },
         ]}
       />
 
-      {/* Ribbon Content */}
+      {/* Tab Content */}
       {activeTab === 'expenses' && (
         <ExpensesClientList
           initialExpenses={JSON.parse(JSON.stringify(expenses))}
           categories={JSON.parse(JSON.stringify(categories))}
           vendors={JSON.parse(JSON.stringify(vendors))}
           employees={JSON.parse(JSON.stringify(employees))}
+          bankAccounts={JSON.parse(JSON.stringify(bankAccounts))}
           showHeader={false}
         />
+      )}
+
+      {activeTab === 'recurring' && (
+        <RecurringExpensesView
+          schedules={JSON.parse(JSON.stringify(schedules))}
+          dueItems={JSON.parse(JSON.stringify(dueItems))}
+          categories={JSON.parse(JSON.stringify(categories))}
+          vendors={JSON.parse(JSON.stringify(vendors))}
+          employees={JSON.parse(JSON.stringify(employees))}
+          bankAccounts={JSON.parse(JSON.stringify(bankAccounts))}
+        />
+      )}
+
+      {activeTab === 'categories' && (
+        <CategoryClient categories={JSON.parse(JSON.stringify(categories))} />
       )}
 
       {activeTab === 'vendors' && (

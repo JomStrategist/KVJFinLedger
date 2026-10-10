@@ -357,7 +357,7 @@ export class AccountingEngine {
       assetDepreciations,
       loans,
       assetDisposals,
-      primaryBank,
+      bankAccounts,
       customers,
       vendors,
       categories
@@ -386,7 +386,11 @@ export class AccountingEngine {
           vendor: true,
           category: true,
           employee: true,
-          items: { include: { category: true } }
+          items: { include: { category: true } },
+          payments: {
+            include: { bankAccount: true },
+            orderBy: { paymentDate: "asc" }
+          }
         },
         orderBy: { expenseDate: "asc" }
       }),
@@ -417,14 +421,16 @@ export class AccountingEngine {
         include: { expense: true },
         orderBy: { disposalDate: "asc" }
       }),
-      prisma.bankAccount.findFirst({
-        where: { isPrimary: true, isActive: true }
+      prisma.bankAccount.findMany({
+        where: { isActive: true }
       }),
       prisma.customer.findMany(),
       prisma.vendor.findMany(),
       prisma.expenseCategory.findMany()
     ]);
 
+    const bankAccountMap = new Map(bankAccounts.map((b: any) => [b.id, b]));
+    const primaryBank = bankAccounts.find((b: any) => b.isPrimary) || bankAccounts[0];
     const defaultBankId = primaryBank ? `bank_${primaryBank.id}` : "account_bank_primary";
     const defaultBankName = primaryBank ? `${primaryBank.bankName} (${primaryBank.accountName})` : "Primary Bank Account";
 
@@ -751,21 +757,39 @@ export class AccountingEngine {
       const totalInputGst = Number(exp.totalInputGST || 0);
       const tds = Number(exp.tdsAmount || 0);
       const netAmount = Number(exp.netAmount || (taxable + totalInputGst - tds));
-      const grossAmount = taxable + totalInputGst;
-      const isAsset = Boolean(exp.isAsset);
+      const catAny = exp.category as any;
+      const isAsset = Boolean(exp.isAsset || catAny?.isCapitalAsset || catAny?.accountingClassification === "FIXED_ASSET");
+      const isLoss = Boolean(exp.isLoss || catAny?.isLossCategory || catAny?.accountingClassification === "BUSINESS_LOSS");
+      const isEmployee = Boolean(exp.employeeId || catAny?.accountingClassification === "EMPLOYEE_EXPENSE");
 
       const vendorName = exp.vendor?.businessName || exp.vendor?.name || "Vendor";
       const vendorId = exp.vendorId ? `vendor_${exp.vendorId}` : "vendor_cash";
       const employeeName = exp.employee?.name || "Employee";
       const employeeId = exp.employeeId ? `emp_${exp.employeeId}` : "emp_unassigned";
 
-      const catId = isAsset ? "asset_fixed" : (exp.categoryId ? `cat_${exp.categoryId}` : "cat_exp_general");
+      const catId = isAsset 
+        ? "asset_fixed" 
+        : (isLoss 
+          ? (exp.categoryId ? `cat_${exp.categoryId}` : "cat_exp_loss")
+          : (isEmployee 
+            ? (exp.categoryId ? `cat_${exp.categoryId}` : "cat_exp_emp") 
+            : (exp.categoryId ? `cat_${exp.categoryId}` : "cat_exp_general")));
+
       const catName = isAsset 
         ? "Fixed Assets & Equipment" 
-        : (exp.category?.name || "Administrative & General Expenses");
+        : (isLoss
+          ? (exp.lossType ? `Business Loss (${exp.lossType})` : (exp.category?.name || "Business Loss"))
+          : (isEmployee 
+            ? (exp.category?.name || "Employee Benefit Expenses") 
+            : (exp.category?.name || "Administrative & General Expenses")));
+
       const catGroup = isAsset 
         ? "Fixed Assets" 
-        : (exp.category?.statementGroup || "Operating Expenses");
+        : (isLoss
+          ? "Other Expenses"
+          : (isEmployee 
+            ? "Employee Costs" 
+            : (exp.category?.statementGroup || "Operating Expenses")));
 
       const lines: JournalVoucherLine[] = [];
 
@@ -783,7 +807,7 @@ export class AccountingEngine {
         normalBalance: "DEBIT",
         debit: expenseDebit,
         credit: 0,
-        particulars: exp.description || (isAsset ? "Fixed Asset Purchase" : "Business Expense"),
+        particulars: exp.description || (isAsset ? "Fixed Asset Purchase" : isLoss ? "Business Loss" : "Business Expense"),
         entityId: exp.categoryId || undefined,
         entityType: "CATEGORY"
       });
@@ -866,198 +890,38 @@ export class AccountingEngine {
 
       const secondaryVouchers: JournalVoucher[] = [];
 
-      // Credit Bank / Vendor / Employee
-      if (exp.paidBy === "EMPLOYEE") {
-        // Employee personally paid -> Company owes Employee
-        lines.push({
-          accountId: employeeId,
-          accountName: `${employeeName} (Employee Payable)`,
-          accountGroup: "Employee Payables",
-          financialType: "LIABILITY",
-          financialStatement: "BALANCE_SHEET",
-          normalBalance: "CREDIT",
-          debit: 0,
-          credit: netAmount,
-          particulars: `Expense incurred by employee ${employeeName}`,
-          entityId: exp.employeeId || undefined,
-          entityType: "EMPLOYEE"
-        });
-
-        // If reimbursed to employee (full or partial), create reimbursement voucher
-        const reimbursed = exp.paymentStatus === "PAID" 
-          ? (netAmount + advanceAmount) 
-          : exp.paymentStatus === "PARTIALLY_PAID" 
-          ? Number(exp.paidAmount || 0) 
-          : 0;
-
-        if (reimbursed > 0) {
-          const reimbLines: JournalVoucherLine[] = [
-            {
-              accountId: employeeId,
-              accountName: `${employeeName} (Employee Payable)`,
-              accountGroup: "Employee Payables",
-              financialType: "LIABILITY",
-              financialStatement: "BALANCE_SHEET",
-              normalBalance: "CREDIT",
-              debit: reimbursed,
-              credit: 0,
-              particulars: `Reimbursement paid to employee ${employeeName}`,
-              entityId: exp.employeeId || undefined,
-              entityType: "EMPLOYEE"
-            },
-            {
-              accountId: defaultBankId,
-              accountName: defaultBankName,
-              accountGroup: "Bank Accounts",
-              financialType: "ASSET",
-              financialStatement: "BALANCE_SHEET",
-              normalBalance: "DEBIT",
-              debit: 0,
-              credit: reimbursed,
-              particulars: `Bank disbursement for employee reimbursement`,
-              entityType: "BANK"
-            }
-          ];
-
-          const { balancedLines: balReimb, totalDebit: rDr, totalCredit: rCr, isBalanced: rBal } = this.balanceVoucher(reimbLines, `REIMB-${exp.expenseNumber}`);
-
-          secondaryVouchers.push({
-            id: `voucher_reimb_${exp.id}`,
-            voucherNumber: `REIMB-${exp.expenseNumber}`,
-            voucherType: "Payment",
-            date: new Date(exp.expenseDate),
-            reference: exp.expenseNumber,
-            narration: `Reimbursement paid to employee ${employeeName} for ${exp.expenseNumber}`,
-            sourceType: "EXPENSE_REIMBURSEMENT",
-            sourceId: exp.id,
-            sourceUrl: `/expenses/${exp.id}`,
-            totalDebit: rDr,
-            totalCredit: rCr,
-            isBalanced: rBal,
-            lines: balReimb
-          });
-        }
-      } else if (exp.employeeId) {
-        // Company Paid, but assigned to Employee (e.g. Salary, Wages, Bonus, Direct Payout)
-        // 1. Accrue employee payable liability in primary voucher
-        lines.push({
-          accountId: employeeId,
-          accountName: `${employeeName} (Employee Payable)`,
-          accountGroup: "Employee Payables",
-          financialType: "LIABILITY",
-          financialStatement: "BALANCE_SHEET",
-          normalBalance: "CREDIT",
-          debit: 0,
-          credit: netAmount,
-          particulars: `Salary / Remuneration payable to ${employeeName}`,
-          entityId: exp.employeeId || undefined,
-          entityType: "EMPLOYEE"
-        });
-
-        // 2. If paid or partially paid, create payment/disbursement voucher settling from Bank
-        const paid = exp.paymentStatus === "PAID"
-          ? (netAmount + advanceAmount)
-          : exp.paymentStatus === "PARTIALLY_PAID"
-          ? Number(exp.paidAmount || 0)
-          : 0;
-
-        if (paid > 0) {
-          const salPayLines: JournalVoucherLine[] = [
-            {
-              accountId: employeeId,
-              accountName: `${employeeName} (Employee Payable)`,
-              accountGroup: "Employee Payables",
-              financialType: "LIABILITY",
-              financialStatement: "BALANCE_SHEET",
-              normalBalance: "CREDIT",
-              debit: paid,
-              credit: 0,
-              particulars: `Salary / payment disbursed to ${employeeName}`,
-              entityId: exp.employeeId || undefined,
-              entityType: "EMPLOYEE"
-            },
-            {
-              accountId: defaultBankId,
-              accountName: defaultBankName,
-              accountGroup: "Bank Accounts",
-              financialType: "ASSET",
-              financialStatement: "BALANCE_SHEET",
-              normalBalance: "DEBIT",
-              debit: 0,
-              credit: paid,
-              particulars: `Bank payment for salary of ${employeeName}`,
-              entityType: "BANK"
-            }
-          ];
-
-          const { balancedLines: balSal, totalDebit: sDr, totalCredit: sCr, isBalanced: sBal } = this.balanceVoucher(salPayLines, `PAY-${exp.expenseNumber}`);
-
-          secondaryVouchers.push({
-            id: `voucher_salpay_${exp.id}`,
-            voucherNumber: `PAY-${exp.expenseNumber}`,
-            voucherType: "Payment",
-            date: new Date(exp.expenseDate),
-            reference: exp.expenseNumber,
-            narration: `Salary / payment disbursement to ${employeeName} for ${exp.expenseNumber}`,
-            sourceType: "EXPENSE_PAYMENT",
-            sourceId: exp.id,
-            sourceUrl: `/expenses/${exp.id}`,
-            totalDebit: sDr,
-            totalCredit: sCr,
-            isBalanced: sBal,
-            lines: balSal
-          });
-        }
-      } else {
-        // Standard Company-Paid Expense (Vendor or Cash)
-        if (exp.paymentStatus === "PAID") {
+      // MULTI-PAYMENT / INSTALLMENT ACCOUNTING (Zero P&L Duplication)
+      if (exp.payments && exp.payments.length > 0) {
+        // 1. Accrue payable liability in primary voucher
+        if (exp.paidBy === "EMPLOYEE") {
           lines.push({
-            accountId: defaultBankId,
-            accountName: defaultBankName,
-            accountGroup: "Bank Accounts",
-            financialType: "ASSET",
+            accountId: employeeId,
+            accountName: `${employeeName} (Employee Payable)`,
+            accountGroup: "Employee Payables",
+            financialType: "LIABILITY",
             financialStatement: "BALANCE_SHEET",
-            normalBalance: "DEBIT",
+            normalBalance: "CREDIT",
             debit: 0,
-            credit: netAmount + advanceAmount,
-            particulars: `Bank payment for expense ${exp.expenseNumber}`,
-            entityType: "BANK"
+            credit: netAmount,
+            particulars: `Expense incurred by employee ${employeeName}`,
+            entityId: exp.employeeId || undefined,
+            entityType: "EMPLOYEE"
           });
-        } else if (exp.paymentStatus === "PARTIALLY_PAID") {
-          const paid = Number(exp.paidAmount || 0);
-          const unpaid = Math.max(0, netAmount - paid);
-
-          if (paid > 0) {
-            lines.push({
-              accountId: defaultBankId,
-              accountName: defaultBankName,
-              accountGroup: "Bank Accounts",
-              financialType: "ASSET",
-              financialStatement: "BALANCE_SHEET",
-              normalBalance: "DEBIT",
-              debit: 0,
-              credit: paid,
-              particulars: `Part payment for expense ${exp.expenseNumber}`,
-              entityType: "BANK"
-            });
-          }
-          if (unpaid > 0) {
-            lines.push({
-              accountId: vendorId,
-              accountName: `${vendorName} (Trade Payable)`,
-              accountGroup: "Trade Payables",
-              financialType: "LIABILITY",
-              financialStatement: "BALANCE_SHEET",
-              normalBalance: "CREDIT",
-              debit: 0,
-              credit: unpaid,
-              particulars: `Outstanding balance payable to ${vendorName}`,
-              entityId: exp.vendorId || undefined,
-              entityType: "VENDOR"
-            });
-          }
+        } else if (exp.employeeId) {
+          lines.push({
+            accountId: employeeId,
+            accountName: `${employeeName} (Employee Payable)`,
+            accountGroup: "Employee Payables",
+            financialType: "LIABILITY",
+            financialStatement: "BALANCE_SHEET",
+            normalBalance: "CREDIT",
+            debit: 0,
+            credit: netAmount,
+            particulars: `Salary / Remuneration payable to ${employeeName}`,
+            entityId: exp.employeeId || undefined,
+            entityType: "EMPLOYEE"
+          });
         } else {
-          // UNPAID Vendor Credit
           lines.push({
             accountId: vendorId,
             accountName: `${vendorName} (Trade Payable)`,
@@ -1067,10 +931,282 @@ export class AccountingEngine {
             normalBalance: "CREDIT",
             debit: 0,
             credit: netAmount,
-            particulars: `Credit purchase from ${vendorName}`,
+            particulars: `Expense payable to ${vendorName}`,
             entityId: exp.vendorId || undefined,
             entityType: "VENDOR"
           });
+        }
+
+        // 2. Generate distinct Payment Vouchers for each payment record (Debit Payable, Credit Bank)
+        for (const pmt of exp.payments) {
+          const pmtBank = pmt.bankAccount || (pmt.bankAccountId ? bankAccountMap.get(pmt.bankAccountId) : null);
+          const pmtBankId = pmt.bankAccountId ? `bank_${pmt.bankAccountId}` : defaultBankId;
+          const pmtBankName = pmtBank ? `${pmtBank.bankName} (${pmtBank.accountName})` : defaultBankName;
+          const isReimb = Boolean((pmt as any).isReimbursement || pmt.paymentType === "REIMBURSEMENT" || exp.paidBy === "EMPLOYEE");
+          const targetPayableId = (isReimb || exp.employeeId) ? employeeId : vendorId;
+          const targetPayableName = (isReimb || exp.employeeId) ? `${employeeName} (Employee Payable)` : `${vendorName} (Trade Payable)`;
+          const targetPayableGroup = (isReimb || exp.employeeId) ? "Employee Payables" : "Trade Payables";
+          const pmtAmt = Number(pmt.amount);
+
+          const payLines: JournalVoucherLine[] = [
+            {
+              accountId: targetPayableId,
+              accountName: targetPayableName,
+              accountGroup: targetPayableGroup,
+              financialType: "LIABILITY",
+              financialStatement: "BALANCE_SHEET",
+              normalBalance: "CREDIT",
+              debit: pmtAmt,
+              credit: 0,
+              particulars: isReimb
+                ? `Reimbursement paid to ${employeeName} for ${exp.expenseNumber}`
+                : `Payment disbursed to ${exp.employeeId ? employeeName : vendorName} for ${exp.expenseNumber}`,
+              entityId: (isReimb || exp.employeeId) ? exp.employeeId || undefined : exp.vendorId || undefined,
+              entityType: (isReimb || exp.employeeId) ? "EMPLOYEE" : "VENDOR",
+            },
+            {
+              accountId: pmtBankId,
+              accountName: pmtBankName,
+              accountGroup: "Bank Accounts",
+              financialType: "ASSET",
+              financialStatement: "BALANCE_SHEET",
+              normalBalance: "DEBIT",
+              debit: 0,
+              credit: pmtAmt,
+              particulars: `Bank payment for expense ${exp.expenseNumber}${pmt.reference ? ` [Ref: ${pmt.reference}]` : ""}`,
+              entityType: "BANK",
+            }
+          ];
+
+          const vNum = pmt.reference && !pmt.reference.startsWith("EXP")
+            ? `PAY-${pmt.reference}`
+            : `PAY-${exp.expenseNumber}-${pmt.id.slice(-4)}`;
+
+          const { balancedLines: balPay, totalDebit: pDr, totalCredit: pCr, isBalanced: pBal } = this.balanceVoucher(payLines, vNum);
+
+          secondaryVouchers.push({
+            id: `voucher_exppay_${pmt.id}`,
+            voucherNumber: vNum,
+            voucherType: "Payment",
+            date: new Date(pmt.paymentDate),
+            reference: exp.expenseNumber,
+            narration: `${isReimb ? "Reimbursement" : "Payment"} for ${exp.expenseNumber} to ${isReimb || exp.employeeId ? employeeName : vendorName}`,
+            sourceType: isReimb ? "EXPENSE_REIMBURSEMENT" : "EXPENSE_PAYMENT",
+            sourceId: exp.id,
+            sourceUrl: `/expenses/${exp.id}`,
+            totalDebit: pDr,
+            totalCredit: pCr,
+            isBalanced: pBal,
+            lines: balPay,
+          });
+        }
+      } else {
+        // Fallback for legacy single-step expenses without separate ExpensePayment rows
+        const expBank = exp.bankAccountId ? bankAccountMap.get(exp.bankAccountId) : null;
+        const bankId = exp.bankAccountId ? `bank_${exp.bankAccountId}` : defaultBankId;
+        const bankName = expBank ? `${expBank.bankName} (${expBank.accountName})` : defaultBankName;
+
+        if (exp.paidBy === "EMPLOYEE") {
+          // Employee personally paid -> Company owes Employee
+          lines.push({
+            accountId: employeeId,
+            accountName: `${employeeName} (Employee Payable)`,
+            accountGroup: "Employee Payables",
+            financialType: "LIABILITY",
+            financialStatement: "BALANCE_SHEET",
+            normalBalance: "CREDIT",
+            debit: 0,
+            credit: netAmount,
+            particulars: `Expense incurred by employee ${employeeName}`,
+            entityId: exp.employeeId || undefined,
+            entityType: "EMPLOYEE"
+          });
+
+          const reimbursed = exp.paymentStatus === "PAID" 
+            ? (netAmount + advanceAmount) 
+            : exp.paymentStatus === "PARTIALLY_PAID" 
+            ? Number(exp.paidAmount || 0) 
+            : 0;
+
+          if (reimbursed > 0) {
+            const reimbLines: JournalVoucherLine[] = [
+              {
+                accountId: employeeId,
+                accountName: `${employeeName} (Employee Payable)`,
+                accountGroup: "Employee Payables",
+                financialType: "LIABILITY",
+                financialStatement: "BALANCE_SHEET",
+                normalBalance: "CREDIT",
+                debit: reimbursed,
+                credit: 0,
+                particulars: `Reimbursement paid to employee ${employeeName}`,
+                entityId: exp.employeeId || undefined,
+                entityType: "EMPLOYEE"
+              },
+              {
+                accountId: bankId,
+                accountName: bankName,
+                accountGroup: "Bank Accounts",
+                financialType: "ASSET",
+                financialStatement: "BALANCE_SHEET",
+                normalBalance: "DEBIT",
+                debit: 0,
+                credit: reimbursed,
+                particulars: `Bank disbursement for employee reimbursement`,
+                entityType: "BANK"
+              }
+            ];
+
+            const { balancedLines: balReimb, totalDebit: rDr, totalCredit: rCr, isBalanced: rBal } = this.balanceVoucher(reimbLines, `REIMB-${exp.expenseNumber}`);
+
+            secondaryVouchers.push({
+              id: `voucher_reimb_${exp.id}`,
+              voucherNumber: `REIMB-${exp.expenseNumber}`,
+              voucherType: "Payment",
+              date: new Date(exp.expenseDate),
+              reference: exp.expenseNumber,
+              narration: `Reimbursement paid to employee ${employeeName} for ${exp.expenseNumber}`,
+              sourceType: "EXPENSE_REIMBURSEMENT",
+              sourceId: exp.id,
+              sourceUrl: `/expenses/${exp.id}`,
+              totalDebit: rDr,
+              totalCredit: rCr,
+              isBalanced: rBal,
+              lines: balReimb
+            });
+          }
+        } else if (exp.employeeId) {
+          lines.push({
+            accountId: employeeId,
+            accountName: `${employeeName} (Employee Payable)`,
+            accountGroup: "Employee Payables",
+            financialType: "LIABILITY",
+            financialStatement: "BALANCE_SHEET",
+            normalBalance: "CREDIT",
+            debit: 0,
+            credit: netAmount,
+            particulars: `Salary / Remuneration payable to ${employeeName}`,
+            entityId: exp.employeeId || undefined,
+            entityType: "EMPLOYEE"
+          });
+
+          const paid = exp.paymentStatus === "PAID"
+            ? (netAmount + advanceAmount)
+            : exp.paymentStatus === "PARTIALLY_PAID"
+            ? Number(exp.paidAmount || 0)
+            : 0;
+
+          if (paid > 0) {
+            const salPayLines: JournalVoucherLine[] = [
+              {
+                accountId: employeeId,
+                accountName: `${employeeName} (Employee Payable)`,
+                accountGroup: "Employee Payables",
+                financialType: "LIABILITY",
+                financialStatement: "BALANCE_SHEET",
+                normalBalance: "CREDIT",
+                debit: paid,
+                credit: 0,
+                particulars: `Salary / payment disbursed to ${employeeName}`,
+                entityId: exp.employeeId || undefined,
+                entityType: "EMPLOYEE"
+              },
+              {
+                accountId: bankId,
+                accountName: bankName,
+                accountGroup: "Bank Accounts",
+                financialType: "ASSET",
+                financialStatement: "BALANCE_SHEET",
+                normalBalance: "DEBIT",
+                debit: 0,
+                credit: paid,
+                particulars: `Bank payment for salary of ${employeeName}`,
+                entityType: "BANK"
+              }
+            ];
+
+            const { balancedLines: balSal, totalDebit: sDr, totalCredit: sCr, isBalanced: sBal } = this.balanceVoucher(salPayLines, `PAY-${exp.expenseNumber}`);
+
+            secondaryVouchers.push({
+              id: `voucher_salpay_${exp.id}`,
+              voucherNumber: `PAY-${exp.expenseNumber}`,
+              voucherType: "Payment",
+              date: new Date(exp.expenseDate),
+              reference: exp.expenseNumber,
+              narration: `Salary / payment disbursement to ${employeeName} for ${exp.expenseNumber}`,
+              sourceType: "EXPENSE_PAYMENT",
+              sourceId: exp.id,
+              sourceUrl: `/expenses/${exp.id}`,
+              totalDebit: sDr,
+              totalCredit: sCr,
+              isBalanced: sBal,
+              lines: balSal
+            });
+          }
+        } else {
+          // Standard Company-Paid Expense (Vendor or Cash)
+          if (exp.paymentStatus === "PAID") {
+            lines.push({
+              accountId: bankId,
+              accountName: bankName,
+              accountGroup: "Bank Accounts",
+              financialType: "ASSET",
+              financialStatement: "BALANCE_SHEET",
+              normalBalance: "DEBIT",
+              debit: 0,
+              credit: netAmount + advanceAmount,
+              particulars: `Bank payment for expense ${exp.expenseNumber}`,
+              entityType: "BANK"
+            });
+          } else if (exp.paymentStatus === "PARTIALLY_PAID") {
+            const paid = Number(exp.paidAmount || 0);
+            const unpaid = Math.max(0, netAmount - paid);
+
+            if (paid > 0) {
+              lines.push({
+                accountId: bankId,
+                accountName: bankName,
+                accountGroup: "Bank Accounts",
+                financialType: "ASSET",
+                financialStatement: "BALANCE_SHEET",
+                normalBalance: "DEBIT",
+                debit: 0,
+                credit: paid,
+                particulars: `Part payment for expense ${exp.expenseNumber}`,
+                entityType: "BANK"
+              });
+            }
+            if (unpaid > 0) {
+              lines.push({
+                accountId: vendorId,
+                accountName: `${vendorName} (Trade Payable)`,
+                accountGroup: "Trade Payables",
+                financialType: "LIABILITY",
+                financialStatement: "BALANCE_SHEET",
+                normalBalance: "CREDIT",
+                debit: 0,
+                credit: unpaid,
+                particulars: `Outstanding balance payable to ${vendorName}`,
+                entityId: exp.vendorId || undefined,
+                entityType: "VENDOR"
+              });
+            }
+          } else {
+            // UNPAID Vendor Credit
+            lines.push({
+              accountId: vendorId,
+              accountName: `${vendorName} (Trade Payable)`,
+              accountGroup: "Trade Payables",
+              financialType: "LIABILITY",
+              financialStatement: "BALANCE_SHEET",
+              normalBalance: "CREDIT",
+              debit: 0,
+              credit: netAmount,
+              particulars: `Credit purchase from ${vendorName}`,
+              entityId: exp.vendorId || undefined,
+              entityType: "VENDOR"
+            });
+          }
         }
       }
 

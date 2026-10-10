@@ -125,10 +125,18 @@ export function ExpenseModal({
 
   const [items, setItems] = useState<ExpenseItemRow[]>(initialItems);
 
-  // Section 3: Accounting Treatment
+  // Section 3: Accounting Treatment & Classification
+  const [billNumber, setBillNumber] = useState<string>(expense?.billNumber || "");
   const [isGstEligible, setIsGstEligible] = useState(expense?.isGstEligible ?? true);
-  const [expenseTreatment, setExpenseTreatment] = useState(
-    expense?.isAsset || expense?.expenseTreatment === "Fixed Asset" ? "Fixed Asset" : "Operating Expense"
+  const [expenseTreatment, setExpenseTreatment] = useState<"Operating Expense" | "Fixed Asset" | "Business Loss">(
+    expense?.isAsset || expense?.expenseTreatment === "Fixed Asset" 
+      ? "Fixed Asset" 
+      : expense?.isLoss || expense?.expenseTreatment === "Business Loss"
+      ? "Business Loss"
+      : "Operating Expense"
+  );
+  const [lossType, setLossType] = useState<string>(
+    expense?.lossType || "Operational Loss"
   );
   const [assetType, setAssetType] = useState<string>(
     expense?.assetType || "Computers & IT Equipment (40%)"
@@ -147,7 +155,17 @@ export function ExpenseModal({
 
       if (field === "categoryId") {
         const cat = categoryList.find((c) => c.id === val);
-        if (cat) target.categoryName = cat.name;
+        if (cat) {
+          target.categoryName = cat.name;
+          if (cat.isCapitalAsset || cat.accountingClassification === "FIXED_ASSET") {
+            setExpenseTreatment("Fixed Asset");
+          } else if (cat.isLossCategory || cat.accountingClassification === "BUSINESS_LOSS") {
+            setExpenseTreatment("Business Loss");
+          }
+          if (cat.isTaxApplicable === false) {
+            target.gstRate = 0;
+          }
+        }
       }
 
       const qty = Number(target.quantity) || 1;
@@ -227,6 +245,7 @@ export function ExpenseModal({
 
     const payload = {
       expenseDate: new Date(date),
+      billNumber: billNumber.trim() || null,
       vendorId: finalVendorId,
       paidBy: isEmployeePaid ? "EMPLOYEE" : "COMPANY",
       employeeId: selectedEmployeeId,
@@ -256,6 +275,8 @@ export function ExpenseModal({
       isAsset: expenseTreatment === "Fixed Asset",
       assetType: expenseTreatment === "Fixed Asset" ? assetType : null,
       depreciationRate: expenseTreatment === "Fixed Asset" ? Number(depreciationRate || 0) : 0,
+      isLoss: expenseTreatment === "Business Loss",
+      lossType: expenseTreatment === "Business Loss" ? lossType : null,
       items: items.map((i) => ({
         categoryId: i.categoryId,
         description: i.item || (paymentNature === "PURCHASE" ? "Purchase Item" : "Expense Item"),
@@ -363,7 +384,7 @@ export function ExpenseModal({
             {/* Section 1: Transaction Details */}
             <div className="space-y-2">
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Transaction Details</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Date *
@@ -373,6 +394,19 @@ export function ExpenseModal({
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
+                    className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Bill / Invoice Ref
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. INV-9021 or Bill #"
+                    value={billNumber}
+                    onChange={(e) => setBillNumber(e.target.value)}
                     className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
                   />
                 </div>
@@ -681,7 +715,62 @@ export function ExpenseModal({
             {/* Section 4: Accounting Treatment & Calculations */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-200">
               <div className="space-y-3 p-3.5 bg-slate-50/70 border border-slate-200/70 rounded-2xl">
-                <span className="text-xs font-bold text-slate-800">Tax &amp; Depreciation Rules</span>
+                <span className="text-xs font-bold text-slate-800">Accounting Treatment &amp; Taxes</span>
+
+                {/* Classification Selector */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Accounting Classification</label>
+                  <select
+                    value={expenseTreatment}
+                    onChange={(e) => setExpenseTreatment(e.target.value as any)}
+                    className="w-full h-8 border border-slate-200 rounded-lg px-2 text-xs bg-white font-semibold text-slate-800"
+                  >
+                    <option value="Operating Expense">Operating Expense (P&L OPEX)</option>
+                    <option value="Fixed Asset">Fixed Asset (Capitalize to Balance Sheet)</option>
+                    <option value="Business Loss">Business Loss (ICAI Loss Treatment)</option>
+                  </select>
+                </div>
+
+                {expenseTreatment === "Business Loss" && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Loss Nature / Type</label>
+                    <select
+                      value={lossType}
+                      onChange={(e) => setLossType(e.target.value)}
+                      className="w-full h-8 border border-slate-200 rounded-lg px-2 text-xs bg-white font-medium"
+                    >
+                      <option value="Operational Loss">Operational Loss</option>
+                      <option value="Bad Debt Loss">Bad Debt Loss</option>
+                      <option value="Inventory / Stock Loss">Inventory / Stock Loss</option>
+                      <option value="Asset Disposal Loss">Asset Disposal Loss</option>
+                      <option value="Other Approved Loss">Other Approved Business Loss</option>
+                    </select>
+                  </div>
+                )}
+
+                {expenseTreatment === "Fixed Asset" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Asset Category</label>
+                      <input
+                        type="text"
+                        value={assetType}
+                        onChange={(e) => setAssetType(e.target.value)}
+                        className="w-full h-8 border border-slate-200 rounded-lg px-2 text-xs bg-white font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Depr. Rate (%)</label>
+                      <input
+                        type="number"
+                        value={depreciationRate}
+                        onChange={(e) => setDepreciationRate(Number(e.target.value))}
+                        className="w-full h-8 border border-slate-200 rounded-lg px-2 text-xs bg-white font-bold"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-2.5">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">GST Input Credit</label>

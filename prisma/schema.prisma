@@ -69,6 +69,7 @@ model Employee {
   updatedAt     DateTime          @updatedAt
   expenses      Expense[]
   advances      EmployeeAdvance[]
+  recurringExpenses RecurringExpense[] @relation("RecurringEmployee")
 }
 
 model EmployeeAdvance {
@@ -172,6 +173,7 @@ model BankAccount {
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  expensePayments ExpensePayment[]
 }
 
 enum ProformaInvoiceStatus {
@@ -470,6 +472,14 @@ model ExpenseCategory {
   proformaItems           ProformaInvoiceItem[]    @relation("ProformaIncomeCategory")
   taxInvoiceItems         TaxInvoiceItem[]         @relation("TaxInvoiceIncomeCategory")
 
+  isTaxApplicable         Boolean?                 @default(true)
+  defaultGstRate          Float?                   @default(0)
+  isCapitalAsset          Boolean?                 @default(false)
+  isLossCategory          Boolean?                 @default(false)
+  isRecurringDefault      Boolean?                 @default(false)
+  accountingClassification String?
+  recurringExpenses       RecurringExpense[]       @relation("RecurringCategory")
+
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 }
@@ -494,6 +504,7 @@ model Vendor {
 
   expenses              Expense[]
   expenseItems          ExpenseItem[]
+  recurringExpenses     RecurringExpense[]       @relation("RecurringVendor")
 
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -562,6 +573,14 @@ model Expense {
   assetType         String?
   depreciationRate  Float?        @default(0)
 
+  billNumber        String?
+  financialYear     String?
+  isLoss            Boolean?      @default(false)
+  lossType          String?
+  isRecurring       Boolean?      @default(false)
+  recurringScheduleId String?     @db.ObjectId
+  bankAccountId     String?       @db.ObjectId
+
   notes             String?
 
   cancellationReason String?
@@ -571,6 +590,7 @@ model Expense {
   updatedAt         DateTime @updatedAt
 
   items             ExpenseItem[]
+  payments          ExpensePayment[]
   depreciations     AssetDepreciation[]
   disposal          AssetDisposal?
 }
@@ -627,6 +647,51 @@ model ExpenseItem {
   isItcEligible   Boolean? @default(true)
 
   totalAmount     Float
+}
+
+model ExpensePayment {
+  id                  String       @id @default(auto()) @map("_id") @db.ObjectId
+  expenseId           String       @db.ObjectId
+  expense             Expense      @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  paymentDate         DateTime     @default(now())
+  amount              Float
+  bankAccountId       String?      @db.ObjectId
+  bankAccount         BankAccount? @relation(fields: [bankAccountId], references: [id])
+  paymentMode         String?      @default("BANK") // BANK, CASH, CHEQUE, ONLINE
+  reference           String?      // UTR / Cheque No / Txn Ref
+  referenceNumber     String?      // Reference Number alias
+  paymentType         String?      @default("SETTLEMENT") // SETTLEMENT, REIMBURSEMENT, ADVANCE
+  isReimbursement     Boolean?     @default(false)
+  notes               String?
+  isCancelled         Boolean?     @default(false)
+  cancelledAt         DateTime?
+  cancellationReason  String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+}
+
+model RecurringExpense {
+  id                  String           @id @default(auto()) @map("_id") @db.ObjectId
+  title               String
+  frequency           String           // WEEKLY, MONTHLY, QUARTERLY, ANNUALLY
+  categoryId          String?          @db.ObjectId
+  category            ExpenseCategory? @relation("RecurringCategory", fields: [categoryId], references: [id])
+  vendorId            String?          @db.ObjectId
+  vendor              Vendor?          @relation("RecurringVendor", fields: [vendorId], references: [id])
+  employeeId          String?          @db.ObjectId
+  employee            Employee?        @relation("RecurringEmployee", fields: [employeeId], references: [id])
+  expectedAmount      Float
+  startDate           DateTime
+  endDate             DateTime?
+  nextDueDate         DateTime
+  billingCycle        String?          // e.g. "Monthly - 1st of month"
+  autoRemind          Boolean          @default(true)
+  isActive            Boolean          @default(true)
+  notes               String?
+  lastGeneratedPeriod String?          // Idempotency check e.g. "2026-10"
+  lastExpenseId       String?          // Reference to last created expense
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 }
 
 // ----------------------------------------------------------------------------

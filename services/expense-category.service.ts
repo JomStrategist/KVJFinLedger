@@ -13,6 +13,11 @@ export type CreateCategoryInput = {
   accountNature?: string | null;
   normalBalance?: string | null;
   isActive?: boolean;
+  isTaxApplicable?: boolean;
+  defaultGstRate?: number;
+  isCapitalAsset?: boolean;
+  isLossCategory?: boolean;
+  isRecurringDefault?: boolean;
 };
 
 export function deriveFinancialStatement(financialType: string): string {
@@ -182,19 +187,22 @@ export class ExpenseCategoryService {
       code = candidate;
     }
 
-    const existingName = await prisma.expenseCategory.findUnique({
-      where: { name }
+    const existingName = await prisma.expenseCategory.findFirst({
+      where: { name: { equals: name, mode: "insensitive" } }
     });
     if (existingName) {
       throw new Error(`Category name "${name}" already exists.`);
     }
 
     const existingCode = await prisma.expenseCategory.findFirst({
-      where: { code }
+      where: { code: { equals: code, mode: "insensitive" } }
     });
     if (existingCode) {
       throw new Error(`Category code "${code}" already exists.`);
     }
+
+    const isCapital = data.isCapitalAsset ?? (finTypeCode === "ASSET");
+    const isLoss = data.isLossCategory ?? (name.toLowerCase().includes("loss"));
 
     return await prisma.expenseCategory.create({
       data: {
@@ -212,6 +220,11 @@ export class ExpenseCategoryService {
         financialStatement: dbType?.financialStatement || (finTypeCode === "INCOME" || finTypeCode === "EXPENSE" ? "Profit & Loss" : "Balance Sheet"),
         normalBalance: dbType?.normalBalance || (finTypeCode === "ASSET" || finTypeCode === "EXPENSE" ? "Debit" : "Credit"),
         isActive: data.isActive ?? true,
+        isTaxApplicable: data.isTaxApplicable ?? (finTypeCode !== "INCOME" && !name.toLowerCase().includes("salary") && !isLoss),
+        defaultGstRate: Number(data.defaultGstRate || 0),
+        isCapitalAsset: isCapital,
+        isLossCategory: isLoss,
+        isRecurringDefault: data.isRecurringDefault ?? false,
       }
     });
   }
@@ -222,19 +235,25 @@ export class ExpenseCategoryService {
     }
 
     if (data.name) {
-      const existing = await prisma.expenseCategory.findUnique({
-        where: { name: data.name.trim() }
+      const existing = await prisma.expenseCategory.findFirst({
+        where: { 
+          name: { equals: data.name.trim(), mode: "insensitive" },
+          id: { not: id }
+        }
       });
-      if (existing && existing.id !== id) {
+      if (existing) {
         throw new Error(`Another category with name "${data.name.trim()}" already exists.`);
       }
     }
 
     if (data.code) {
       const existingCode = await prisma.expenseCategory.findFirst({
-        where: { code: data.code.trim() }
+        where: { 
+          code: { equals: data.code.trim(), mode: "insensitive" },
+          id: { not: id }
+        }
       });
-      if (existingCode && existingCode.id !== id) {
+      if (existingCode) {
         throw new Error(`Another category with code "${data.code.trim()}" already exists.`);
       }
     }
@@ -270,6 +289,11 @@ export class ExpenseCategoryService {
         accountNature: data.accountNature || current?.accountNature,
         normalBalance: balance,
         isActive: data.isActive !== undefined ? data.isActive : undefined,
+        isTaxApplicable: data.isTaxApplicable !== undefined ? data.isTaxApplicable : undefined,
+        defaultGstRate: data.defaultGstRate !== undefined ? Number(data.defaultGstRate) : undefined,
+        isCapitalAsset: data.isCapitalAsset !== undefined ? data.isCapitalAsset : undefined,
+        isLossCategory: data.isLossCategory !== undefined ? data.isLossCategory : undefined,
+        isRecurringDefault: data.isRecurringDefault !== undefined ? data.isRecurringDefault : undefined,
       },
     });
   }
@@ -281,6 +305,22 @@ export class ExpenseCategoryService {
     });
   }
 
+  static async deleteExpenseCategory(id: string) {
+    const expenseUsage = await prisma.expense.count({ where: { categoryId: id } });
+    const itemUsage = await prisma.expenseItem.count({ where: { categoryId: id } });
+    const recurringUsage = await prisma.recurringExpense.count({ where: { categoryId: id } });
+    if (expenseUsage > 0 || itemUsage > 0 || recurringUsage > 0) {
+      throw new Error("Cannot delete category referenced by historical transactions or recurring schedules. Deactivate the category instead to preserve historical accounting integrity.");
+    }
+
+    const childrenCount = await prisma.expenseCategory.count({ where: { parentId: id } });
+    if (childrenCount > 0) {
+      throw new Error("Cannot delete category with subcategories. Reassign or delete subcategories first.");
+    }
+
+    return await prisma.expenseCategory.delete({ where: { id } });
+  }
+
   static async seedDefaultCategories() {
     await ChartOfAccountsService.seedAccountingMasters();
 
@@ -290,57 +330,57 @@ export class ExpenseCategoryService {
 
     const typeMap = new Map(types.map((t) => [t.code, t]));
 
+    // Parent Categories & Defaults
     const defaults = [
       // INCOME
-      { name: "Revenue from Services", code: "INC-REV-001", financialType: "INCOME", statementGroup: "Revenue from Operations", accountNature: "Operating Income" },
-      { name: "Other Income", code: "INC-OTH-001", financialType: "INCOME", statementGroup: "Other Income", accountNature: "Other Income" },
-      { name: "Interest Income", code: "INC-INT-001", financialType: "INCOME", statementGroup: "Other Income", accountNature: "Other Income" },
+      { name: "Revenue from Services", code: "INC-REV-001", financialType: "INCOME", statementGroup: "Revenue from Operations", accountNature: "Operating Income", isTax: true, defaultGst: 18 },
+      { name: "Other Income", code: "INC-OTH-001", financialType: "INCOME", statementGroup: "Other Income", accountNature: "Other Income", isTax: false, defaultGst: 0 },
+      { name: "Interest Income", code: "INC-INT-001", financialType: "INCOME", statementGroup: "Other Income", accountNature: "Other Income", isTax: false, defaultGst: 0 },
 
-      // EXPENSES
-      { name: "Printing", code: "EXP-PRT-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
-      { name: "Designing", code: "EXP-DES-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
-      { name: "Office Supplies", code: "EXP-OFF-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
-      { name: "Stationery", code: "EXP-STN-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
-      { name: "Cleaning & Maintenance", code: "EXP-CLN-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
-      { name: "Rent", code: "EXP-RNT-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
-      { name: "Electricity", code: "EXP-ELE-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
-      { name: "Internet & Telephone", code: "EXP-COMM-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
-      { name: "Software & Subscriptions", code: "EXP-SW-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
-      { name: "Professional & Consultancy", code: "EXP-PRF-001", financialType: "EXPENSE", statementGroup: "Professional & Consultancy", accountNature: "Operating Expense" },
-      { name: "Travel", code: "EXP-TRV-001", financialType: "EXPENSE", statementGroup: "Selling & Marketing Expenses", accountNature: "Operating Expense" },
-      { name: "Staff Welfare", code: "EXP-STF-001", financialType: "EXPENSE", statementGroup: "Employee Costs", accountNature: "Operating Expense" },
-      { name: "Advertising & Marketing", code: "EXP-MKT-001", financialType: "EXPENSE", statementGroup: "Selling & Marketing Expenses", accountNature: "Operating Expense" },
-      { name: "Bank Charges", code: "EXP-BNK-001", financialType: "EXPENSE", statementGroup: "Finance Costs", accountNature: "Finance Cost" },
-      { name: "Insurance", code: "EXP-INS-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
-      { name: "Repairs & Maintenance", code: "EXP-RPM-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense" },
-      { name: "Other Operating Expenses", code: "EXP-OTH-001", financialType: "EXPENSE", statementGroup: "Other Expenses", accountNature: "Other Expense" },
+      // CORE EXPENSE HEADS WITH INDIAN ACCOUNTING MAPPING
+      { name: "Employee Costs", code: "EXP-EMP-001", financialType: "EXPENSE", statementGroup: "Employee Costs", accountNature: "Operating Expense", isTax: false, defaultGst: 0, isRecurring: true },
+      { name: "Rent and Occupancy", code: "EXP-RNT-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense", isTax: true, defaultGst: 18, isRecurring: true },
+      { name: "Utilities", code: "EXP-UTL-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense", isTax: true, defaultGst: 18, isRecurring: true },
+      { name: "Communication", code: "EXP-COMM-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense", isTax: true, defaultGst: 18, isRecurring: true },
+      { name: "Software and Subscriptions", code: "EXP-SW-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense", isTax: true, defaultGst: 18, isRecurring: true },
+      { name: "Office Administration", code: "EXP-OFF-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense", isTax: true, defaultGst: 18 },
+      { name: "Travel and Accommodation", code: "EXP-TRV-001", financialType: "EXPENSE", statementGroup: "Selling & Marketing Expenses", accountNature: "Operating Expense", isTax: true, defaultGst: 18 },
+      { name: "Repairs and Maintenance", code: "EXP-RPM-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense", isTax: true, defaultGst: 18 },
+      { name: "Professional Services", code: "EXP-PRF-001", financialType: "EXPENSE", statementGroup: "Professional & Consultancy", accountNature: "Operating Expense", isTax: true, defaultGst: 18 },
+      { name: "Bank and Finance Charges", code: "EXP-BNK-001", financialType: "EXPENSE", statementGroup: "Finance Costs", accountNature: "Finance Cost", isTax: true, defaultGst: 18 },
+      { name: "Voucher Purchases", code: "EXP-VCH-001", financialType: "EXPENSE", statementGroup: "Administrative Expenses", accountNature: "Operating Expense", isTax: true, defaultGst: 18 },
+      { name: "Losses", code: "EXP-LOS-001", financialType: "EXPENSE", statementGroup: "Other Expenses", accountNature: "Other Expense", isTax: false, defaultGst: 0, isLoss: true },
+      { name: "Other Operating Expenses", code: "EXP-OTH-001", financialType: "EXPENSE", statementGroup: "Other Expenses", accountNature: "Other Expense", isTax: true, defaultGst: 18 },
 
-      // ASSETS
-      { name: "Computer Equipment", code: "AST-CMP-001", financialType: "ASSET", statementGroup: "Fixed Assets", accountNature: "Fixed Asset" },
-      { name: "Furniture & Fixtures", code: "AST-FUR-001", financialType: "ASSET", statementGroup: "Fixed Assets", accountNature: "Fixed Asset" },
-      { name: "Office Equipment", code: "AST-OEQ-001", financialType: "ASSET", statementGroup: "Fixed Assets", accountNature: "Fixed Asset" },
-      { name: "Other Fixed Assets", code: "AST-OFX-001", financialType: "ASSET", statementGroup: "Fixed Assets", accountNature: "Fixed Asset" },
+      // ASSETS / CAPEX
+      { name: "Fixed Assets", code: "AST-FXA-001", financialType: "ASSET", statementGroup: "Fixed Assets", accountNature: "Fixed Asset", isTax: true, defaultGst: 18, isAsset: true },
+      { name: "Computer Equipment", code: "AST-CMP-001", financialType: "ASSET", statementGroup: "Fixed Assets", accountNature: "Fixed Asset", isTax: true, defaultGst: 18, isAsset: true },
+      { name: "Furniture & Fixtures", code: "AST-FUR-001", financialType: "ASSET", statementGroup: "Fixed Assets", accountNature: "Fixed Asset", isTax: true, defaultGst: 18, isAsset: true },
+      { name: "Office Equipment", code: "AST-OEQ-001", financialType: "ASSET", statementGroup: "Fixed Assets", accountNature: "Fixed Asset", isTax: true, defaultGst: 18, isAsset: true },
       { name: "Trade Receivables", code: "AST-REC-001", financialType: "ASSET", statementGroup: "Trade Receivables", accountNature: "Trade Receivable" },
-      { name: "Other Current Assets", code: "AST-OCA-001", financialType: "ASSET", statementGroup: "Other Current Assets", accountNature: "Current Asset" },
 
       // LIABILITIES
       { name: "Trade Payables", code: "LIAB-PAY-001", financialType: "LIABILITY", statementGroup: "Trade Payables", accountNature: "Trade Payable" },
       { name: "GST Payable", code: "LIAB-GST-001", financialType: "LIABILITY", statementGroup: "Statutory Liabilities", accountNature: "Statutory Liability" },
       { name: "TDS Payable", code: "LIAB-TDS-001", financialType: "LIABILITY", statementGroup: "Statutory Liabilities", accountNature: "Statutory Liability" },
-      { name: "Other Statutory Payables", code: "LIAB-OST-001", financialType: "LIABILITY", statementGroup: "Statutory Liabilities", accountNature: "Statutory Liability" },
-      { name: "Other Current Liabilities", code: "LIAB-OCL-001", financialType: "LIABILITY", statementGroup: "Other Current Liabilities", accountNature: "Current Liability" },
-      { name: "Loans & Borrowings", code: "LIAB-LON-001", financialType: "LIABILITY", statementGroup: "Borrowings", accountNature: "Borrowing" },
+      { name: "Employee Payable", code: "LIAB-EMP-001", financialType: "LIABILITY", statementGroup: "Employee Payables", accountNature: "Current Liability" },
 
       // EQUITY
       { name: "Owner Capital", code: "EQ-CAP-001", financialType: "EQUITY", statementGroup: "Capital", accountNature: "Capital" },
       { name: "Retained Earnings", code: "EQ-RET-001", financialType: "EQUITY", statementGroup: "Retained Earnings", accountNature: "Retained Earnings" },
-      { name: "Reserves", code: "EQ-RES-001", financialType: "EQUITY", statementGroup: "Reserves", accountNature: "Reserve" },
     ];
 
     let created = 0;
+    const createdMap = new Map<string, string>();
+
     for (const item of defaults) {
       const existing = await prisma.expenseCategory.findFirst({
-        where: { OR: [{ name: item.name }, { code: item.code }] }
+        where: { 
+          OR: [
+            { name: { equals: item.name, mode: "insensitive" } },
+            { code: { equals: item.code, mode: "insensitive" } }
+          ]
+        }
       });
 
       if (!existing) {
@@ -352,7 +392,7 @@ export class ExpenseCategoryService {
           (n) => n.financialTypeId === ft?.id && n.name.toLowerCase() === item.accountNature.toLowerCase()
         );
 
-        await prisma.expenseCategory.create({
+        const newCat = await prisma.expenseCategory.create({
           data: {
             name: item.name,
             code: item.code,
@@ -362,14 +402,115 @@ export class ExpenseCategoryService {
             statementGroup: groupObj?.name || item.statementGroup,
             accountNatureId: natureObj?.id || null,
             accountNature: natureObj?.name || item.accountNature,
-            financialStatement: ft?.financialStatement || "Profit & Loss",
-            normalBalance: ft?.normalBalance || "Debit",
+            financialStatement: ft?.financialStatement || (item.financialType === "INCOME" || item.financialType === "EXPENSE" ? "Profit & Loss" : "Balance Sheet"),
+            normalBalance: ft?.normalBalance || (item.financialType === "ASSET" || item.financialType === "EXPENSE" ? "Debit" : "Credit"),
             isActive: true,
+            isTaxApplicable: (item as any).isTax ?? true,
+            defaultGstRate: (item as any).defaultGst ?? 0,
+            isCapitalAsset: (item as any).isAsset ?? (item.financialType === "ASSET"),
+            isLossCategory: (item as any).isLoss ?? false,
+            isRecurringDefault: (item as any).isRecurring ?? false,
           }
         });
+        createdMap.set(item.name.toLowerCase(), newCat.id);
         created++;
+      } else {
+        createdMap.set(existing.name.toLowerCase(), existing.id);
       }
     }
+
+    // Recommended Subcategories
+    const subcategories = [
+      // Under Employee Costs
+      { parent: "employee costs", name: "Salaries & Wages", code: "EXP-EMP-SAL", isRecurring: true },
+      { parent: "employee costs", name: "Staff Bonus & Incentives", code: "EXP-EMP-BON" },
+      { parent: "employee costs", name: "Employer PF & ESI Contributions", code: "EXP-EMP-CON", isRecurring: true },
+      { parent: "employee costs", name: "Staff Welfare & Reimbursements", code: "EXP-EMP-WLF" },
+
+      // Under Rent and Occupancy
+      { parent: "rent and occupancy", name: "Office Rent", code: "EXP-RNT-OFF", isRecurring: true },
+      { parent: "rent and occupancy", name: "Premises Maintenance Charges", code: "EXP-RNT-MNT", isRecurring: true },
+
+      // Under Utilities
+      { parent: "utilities", name: "Electricity Expenses", code: "EXP-UTL-ELE", isRecurring: true },
+      { parent: "utilities", name: "Water Charges", code: "EXP-UTL-WTR", isRecurring: true },
+
+      // Under Communication
+      { parent: "communication", name: "Internet Expenses", code: "EXP-COMM-INT", isRecurring: true },
+      { parent: "communication", name: "Telephone & Mobile Bills", code: "EXP-COMM-TEL", isRecurring: true },
+
+      // Under Software and Subscriptions
+      { parent: "software and subscriptions", name: "SaaS & Cloud Licences", code: "EXP-SW-LIC", isRecurring: true },
+      { parent: "software and subscriptions", name: "Hosting & Infrastructure", code: "EXP-SW-HST", isRecurring: true },
+      { parent: "software and subscriptions", name: "Online Tools & Services", code: "EXP-SW-TLS", isRecurring: true },
+
+      // Under Office Administration
+      { parent: "office administration", name: "Stationery & Printing", code: "EXP-OFF-STN" },
+      { parent: "office administration", name: "Office Supplies & Pantry", code: "EXP-OFF-SUP" },
+
+      // Under Travel and Accommodation
+      { parent: "travel and accommodation", name: "Business Travel & Airfare", code: "EXP-TRV-AIR" },
+      { parent: "travel and accommodation", name: "Hotel & Lodging", code: "EXP-TRV-HTL" },
+      { parent: "travel and accommodation", name: "Local Conveyance & Taxi", code: "EXP-TRV-LOC" },
+
+      // Under Professional Services
+      { parent: "professional services", name: "Legal & Professional Fees", code: "EXP-PRF-LGL" },
+      { parent: "professional services", name: "Consultancy Charges", code: "EXP-PRF-CNS" },
+
+      // Under Voucher Purchases
+      { parent: "voucher purchases", name: "Certification Vouchers", code: "EXP-VCH-CRT" },
+      { parent: "voucher purchases", name: "Training Exam Vouchers", code: "EXP-VCH-EXM" },
+
+      // Under Losses
+      { parent: "losses", name: "Approved Business Loss", code: "EXP-LOS-BIZ", isLoss: true },
+      { parent: "losses", name: "Asset Disposal Loss", code: "EXP-LOS-AST", isLoss: true },
+
+      // Under Fixed Assets
+      { parent: "fixed assets", name: "Computers & Laptops", code: "AST-FXA-CMP", isAsset: true },
+      { parent: "fixed assets", name: "Office Furniture", code: "AST-FXA-FUR", isAsset: true },
+    ];
+
+    for (const sub of subcategories) {
+      const parentId = createdMap.get(sub.parent.toLowerCase());
+      if (parentId) {
+        const existingSub = await prisma.expenseCategory.findFirst({
+          where: { 
+            OR: [
+              { name: { equals: sub.name, mode: "insensitive" } },
+              { code: { equals: sub.code, mode: "insensitive" } }
+            ]
+          }
+        });
+
+        if (!existingSub) {
+          const parent = await prisma.expenseCategory.findUnique({ where: { id: parentId } });
+          await prisma.expenseCategory.create({
+            data: {
+              name: sub.name,
+              code: sub.code,
+              parentId: parentId,
+              hierarchyLevel: 2,
+              financialTypeId: parent?.financialTypeId || null,
+              financialType: parent?.financialType || "EXPENSE",
+              statementGroupId: parent?.statementGroupId || null,
+              statementGroup: parent?.statementGroup || null,
+              accountNatureId: parent?.accountNatureId || null,
+              accountNature: parent?.accountNature || null,
+              financialStatement: parent?.financialStatement || "Profit & Loss",
+              normalBalance: parent?.normalBalance || "Debit",
+              isActive: true,
+              isTaxApplicable: parent?.isTaxApplicable ?? true,
+              defaultGstRate: parent?.defaultGstRate ?? 18,
+              isCapitalAsset: (sub as any).isAsset ?? parent?.isCapitalAsset ?? false,
+              isLossCategory: (sub as any).isLoss ?? parent?.isLossCategory ?? false,
+              isRecurringDefault: (sub as any).isRecurring ?? parent?.isRecurringDefault ?? false,
+            }
+          });
+          created++;
+        }
+      }
+    }
+
     return created;
   }
 }

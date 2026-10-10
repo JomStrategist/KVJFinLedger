@@ -71,6 +71,52 @@ export async function updatePaymentStatusAction(id: string, status: PaymentStatu
   }
 }
 
+export async function recordExpensePaymentAction(data: {
+  expenseId: string;
+  amount: number;
+  paymentDate: string;
+  bankAccountId: string;
+  paymentMode?: string;
+  referenceNumber?: string;
+  notes?: string;
+  isReimbursement?: boolean;
+}) {
+  try {
+    const result = await ExpenseService.recordExpensePayment(data.expenseId, {
+      amount: data.amount,
+      paymentDate: data.paymentDate,
+      bankAccountId: data.bankAccountId,
+      paymentMode: data.paymentMode,
+      referenceNumber: data.referenceNumber,
+      notes: data.notes,
+      isReimbursement: data.isReimbursement,
+    });
+    revalidateAllExpenseRoutes(data.expenseId);
+    return { success: true, data: JSON.parse(JSON.stringify(result)) };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to record expense payment." };
+  }
+}
+
+export async function deleteExpensePaymentAction(paymentId: string, expenseId?: string) {
+  try {
+    const updatedExpense = await ExpenseService.deleteExpensePayment(paymentId);
+    revalidateAllExpenseRoutes(expenseId || updatedExpense.id);
+    return { success: true, data: JSON.parse(JSON.stringify(updatedExpense)) };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to delete payment record." };
+  }
+}
+
+export async function getExpensePaymentsAction(expenseId: string) {
+  try {
+    const payments = await ExpenseService.getExpensePayments(expenseId);
+    return { success: true, data: JSON.parse(JSON.stringify(payments)) };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to fetch payments." };
+  }
+}
+
 export async function deleteExpenseAction(id: string) {
   try {
     await ExpenseService.deleteExpense(id);

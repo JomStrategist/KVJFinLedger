@@ -1,6 +1,7 @@
 import { ExpenseForm } from "../ExpenseForm";
 import { VendorService } from "@/services/vendor.service";
 import { ExpenseCategoryService } from "@/services/expense-category.service";
+import { EmployeeService } from "@/services/employee.service";
 import { prisma } from "@/lib/prisma";
 
 export default async function NewExpensePage() {
@@ -8,11 +9,7 @@ export default async function NewExpensePage() {
     VendorService.getVendors({ isActive: true }),
     ExpenseCategoryService.getExpenseCategories({ isActive: true }),
     prisma.product.findMany({ where: { isActive: true } }),
-    prisma.user.findMany({ 
-      where: { isActive: true }, 
-      select: { id: true, name: true, email: true, role: true },
-      orderBy: { name: "asc" }
-    })
+    EmployeeService.getEmployees({ isActive: true }),
   ]);
 
   return (
