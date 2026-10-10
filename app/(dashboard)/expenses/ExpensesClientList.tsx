@@ -1,11 +1,40 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { ExpenseModal } from "./ExpenseModal";
-import { RecordPaymentModal } from "./RecordPaymentModal";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { markExpenseTdsPaidAction } from "../reports/tds-actions";
 import { deleteExpenseAction } from "./actions";
+
+const ExpenseModal = dynamic(
+  () => import("./ExpenseModal").then((mod) => mod.ExpenseModal),
+  {
+    loading: () => (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
+        <div className="bg-[#0f172a] border border-slate-700/80 rounded-2xl p-6 shadow-2xl flex items-center gap-3 text-slate-200">
+          <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm font-semibold">Loading Record Expense form...</span>
+        </div>
+      </div>
+    ),
+    ssr: false,
+  }
+);
+
+const RecordPaymentModal = dynamic(
+  () => import("./RecordPaymentModal").then((mod) => mod.RecordPaymentModal),
+  {
+    loading: () => (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
+        <div className="bg-[#0f172a] border border-slate-700/80 rounded-2xl p-6 shadow-2xl flex items-center gap-3 text-slate-200">
+          <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm font-semibold">Loading Payment Settlement...</span>
+        </div>
+      </div>
+    ),
+    ssr: false,
+  }
+);
 
 function getMonthRange(offset: 0 | -1): { start: Date; end: Date } {
   const now = new Date();

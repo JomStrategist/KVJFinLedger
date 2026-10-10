@@ -1,21 +1,21 @@
 "use client";
 
-import * as XLSX from 'xlsx';
-
 interface ExportButtonProps {
   data: any[];
   filename: string;
 }
 
 export function ExportButton({ data, filename }: ExportButtonProps) {
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
+    const XLSX = await import('xlsx');
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
     XLSX.writeFile(workbook, `${filename}.xlsx`);
   };
 
-  const exportToCSV = () => {
+  const exportToCSV = async () => {
+    const XLSX = await import('xlsx');
     const worksheet = XLSX.utils.json_to_sheet(data);
     const csvContent = XLSX.utils.sheet_to_csv(worksheet);
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

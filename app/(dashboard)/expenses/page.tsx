@@ -23,25 +23,42 @@ export default async function ExpensesPage({
   const params = await searchParams;
   const activeTab = params.tab || 'expenses';
 
-  const [
-    expenses,
-    categories,
-    vendors,
-    employees,
-    advances,
-    schedules,
-    dueItems,
-    bankAccounts,
-  ] = await Promise.all([
-    ExpenseService.getExpenses(),
-    ExpenseCategoryService.getExpenseCategories(),
-    VendorService.getVendors(),
-    EmployeeService.getEmployees(),
-    EmployeeAdvanceService.getAdvances(),
-    RecurringExpenseService.getSchedules(),
-    RecurringExpenseService.getDueItems(),
-    prisma.bankAccount.findMany({ where: { isActive: true }, orderBy: { isPrimary: 'desc' } }),
-  ]);
+  let expenses: any[] = [];
+  let categories: any[] = [];
+  let vendors: any[] = [];
+  let employees: any[] = [];
+  let advances: any[] = [];
+  let schedules: any[] = [];
+  let dueItems: any[] = [];
+  let bankAccounts: any[] = [];
+
+  if (activeTab === 'expenses') {
+    [expenses, categories, vendors, employees, bankAccounts] = await Promise.all([
+      ExpenseService.getExpenses(),
+      ExpenseCategoryService.getExpenseCategories(),
+      VendorService.getVendors(),
+      EmployeeService.getEmployees(),
+      prisma.bankAccount.findMany({ where: { isActive: true }, orderBy: { isPrimary: 'desc' } }),
+    ]);
+  } else if (activeTab === 'recurring') {
+    [schedules, dueItems, categories, vendors, employees, bankAccounts] = await Promise.all([
+      RecurringExpenseService.getSchedules(),
+      RecurringExpenseService.getDueItems(),
+      ExpenseCategoryService.getExpenseCategories(),
+      VendorService.getVendors(),
+      EmployeeService.getEmployees(),
+      prisma.bankAccount.findMany({ where: { isActive: true }, orderBy: { isPrimary: 'desc' } }),
+    ]);
+  } else if (activeTab === 'categories') {
+    categories = await ExpenseCategoryService.getExpenseCategories();
+  } else if (activeTab === 'vendors') {
+    vendors = await VendorService.getVendors();
+  } else if (activeTab === 'employees') {
+    [employees, advances] = await Promise.all([
+      EmployeeService.getEmployees(),
+      EmployeeAdvanceService.getAdvances(),
+    ]);
+  }
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-7">

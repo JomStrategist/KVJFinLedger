@@ -18,6 +18,7 @@ export type CreateCategoryInput = {
   isCapitalAsset?: boolean;
   isLossCategory?: boolean;
   isRecurringDefault?: boolean;
+  accountingClassification?: string | null;
 };
 
 export function deriveFinancialStatement(financialType: string): string {
@@ -209,6 +210,7 @@ export class ExpenseCategoryService {
 
     const isCapital = data.isCapitalAsset ?? (finTypeCode === "ASSET");
     const isLoss = data.isLossCategory ?? (name.toLowerCase().includes("loss"));
+    const classification = data.accountingClassification || (isCapital ? "FIXED_ASSET" : isLoss ? "BUSINESS_LOSS" : name.toLowerCase().includes("salary") ? "EMPLOYEE_EXPENSE" : "OPERATING_EXPENSE");
 
     return await prisma.expenseCategory.create({
       data: {
@@ -231,6 +233,7 @@ export class ExpenseCategoryService {
         isCapitalAsset: isCapital,
         isLossCategory: isLoss,
         isRecurringDefault: data.isRecurringDefault ?? false,
+        accountingClassification: classification,
       }
     });
   }
@@ -300,6 +303,7 @@ export class ExpenseCategoryService {
         isCapitalAsset: data.isCapitalAsset !== undefined ? data.isCapitalAsset : undefined,
         isLossCategory: data.isLossCategory !== undefined ? data.isLossCategory : undefined,
         isRecurringDefault: data.isRecurringDefault !== undefined ? data.isRecurringDefault : undefined,
+        accountingClassification: data.accountingClassification !== undefined ? data.accountingClassification : undefined,
       },
     });
   }
