@@ -13,16 +13,16 @@
 
 ## 1. Master Task Inventory Summary
 
-| Phase | Phase Name | Focus Area | Task Count | Priority Distribution |
-| :---: | :--- | :--- | :---: | :---: |
-| **Phase 1** | Security, Auth & Environmental Hardening | NextAuth, Middleware, Server Actions, Secrets | 6 | 4 Critical, 2 High |
-| **Phase 2** | Data Model, General Ledger & Monetary Precision | Prisma Schema, `JournalEntry`, Precision & Rounding | 6 | 3 Critical, 3 High |
-| **Phase 3** | Invoice Preservation & Customer Receipts | Numbering concurrency, idempotency, Payment bank link | 5 | 2 High, 3 Medium |
-| **Phase 4** | Expenses, Payroll & Banking Modernization | Accruals, inter-bank transfers, payroll batch sequencing | 6 | 2 High, 4 Medium |
-| **Phase 5** | Statutory Tax, Fixed Assets & Multi-Year Continuity | GST settlement consolidation, TDS, Depreciation, Retained Earnings | 6 | 3 High, 3 Medium |
-| **Phase 6** | Reports, Statements & Reconciliation Engine | Dynamic GL queries, Trial Balance, P&L, Balance Sheet, Cash Flow | 5 | 2 High, 3 Medium |
-| **Phase 7** | Automated Testing, Backup/Restore & Release Readiness | Vitest/Playwright, Restore tool, Excel Tracker, Auditing | 6 | 2 High, 4 Medium |
-| **Total** | | | **40 Tasks** | **7 Critical, 18 High, 15 Medium** |
+| Phase | Phase Name | Focus Area | Task Count | Priority Distribution | Status |
+| :---: | :--- | :--- | :---: | :---: | :---: |
+| **Phase 1** | Security, Auth & Environmental Hardening | NextAuth, Middleware, Server Actions, Secrets | 6 | 4 Critical, 2 High | **Completed (Prompt 2)** |
+| **Phase 2** | Data Model, General Ledger & Monetary Precision | Prisma Schema, `JournalEntry`, Precision & Rounding | 6 | 3 Critical, 3 High | **Pending (Design Complete - Prompt 3)** |
+| **Phase 3** | Invoice Preservation & Customer Receipts | Numbering concurrency, idempotency, Payment bank link | 5 | 2 High, 3 Medium | **Pending** |
+| **Phase 4** | Expenses, Payroll & Banking Modernization | Accruals, inter-bank transfers, payroll batch sequencing | 6 | 2 High, 4 Medium | **Pending** |
+| **Phase 5** | Statutory Tax, Fixed Assets & Multi-Year Continuity | GST settlement consolidation, TDS, Depreciation, Retained Earnings | 6 | 3 High, 3 Medium | **Pending** |
+| **Phase 6** | Reports, Statements & Reconciliation Engine | Dynamic GL queries, Trial Balance, P&L, Balance Sheet, Cash Flow | 5 | 2 High, 3 Medium | **Pending** |
+| **Phase 7** | Automated Testing, Backup/Restore & Release Readiness | Vitest/Playwright, Restore tool, Excel Tracker, Auditing | 6 | 2 High, 4 Medium | **Pending** |
+| **Total** | | | **40 Tasks** | **7 Critical, 18 High, 15 Medium** | **6 Completed, 34 Pending** |
 
 ---
 
@@ -36,7 +36,7 @@
 - **Description:** Remove fallback default secret `"ATG7kBWRrKlZnzMiJ8wYXjFt5O2eQc3p"`. Enforce strict startup validation that requires a 32+ character `AUTH_SECRET` environment variable.
 - **Acceptance Criteria:** Application refuses to boot if `AUTH_SECRET` is unset; no fallback secret exists in source code.
 - **Proposed Phase:** Phase 1 (Prompt 2)
-- **Status:** `Pending`
+- **Status:** `Completed (Implemented & Verified in Prompt 2)`
 
 ### TASK-SEC-002: Purge Hardcoded Backdoor Credentials from Credentials Provider
 - **Module:** Authentication
@@ -46,7 +46,7 @@
 - **Description:** Remove hardcoded email/password branches for `info@thestrategist.co.in` and `mail@thestrategist.co.in`. Authenticate all users strictly through bcrypt password hash comparison against the database `User` collection.
 - **Acceptance Criteria:** No plain-text passwords or bypass accounts exist in source code; all logins require active user records with valid bcrypt hashes.
 - **Proposed Phase:** Phase 1 (Prompt 2)
-- **Status:** `Pending`
+- **Status:** `Completed (Implemented & Verified in Prompt 2)`
 
 ### TASK-SEC-003: Implement Next.js Edge Middleware for Route Protection
 - **Module:** Authentication & Routing
@@ -56,7 +56,7 @@
 - **Description:** Create root `middleware.ts` integrating NextAuth v5 session validation. Automatically protect all `/(dashboard)/` routes and private `/api/` endpoints, redirecting unauthenticated requests to `/login`.
 - **Acceptance Criteria:** Unauthenticated HTTP requests to `/dashboard`, `/invoices`, `/reports`, etc., receive immediate redirect to `/login` before rendering layouts.
 - **Proposed Phase:** Phase 1 (Prompt 2)
-- **Status:** `Pending`
+- **Status:** `Completed (Implemented & Verified in Prompt 2)`
 
 ### TASK-SEC-004: Secure All Server Actions with Session & Role Authorization
 - **Module:** Server Actions & RBAC
@@ -66,7 +66,7 @@
 - **Description:** Add `await requireAuth()` checks to all unprotected Server Actions (`createTaxInvoiceAction`, `recordInvoicePaymentAction`, `createExpenseAction`, `createBankTransferAction`, etc.) and enforce role permissions (`ADMIN` vs `USER`).
 - **Acceptance Criteria:** Calling any server action without a valid session throws an unauthorized error; actions execute only with valid user context.
 - **Proposed Phase:** Phase 1 (Prompt 2)
-- **Status:** `Pending`
+- **Status:** `Completed (Implemented & Verified in Prompt 2)`
 
 ### TASK-SEC-005: Decommission or Secure Diagnostic API Endpoint
 - **Module:** API Security
@@ -76,7 +76,7 @@
 - **Description:** Remove secret length, admin email, and stack trace disclosure from `/api/test-db`. Convert into an authenticated health check endpoint returning sanitized `{ status: "ok" }`.
 - **Acceptance Criteria:** Public unauthenticated requests receive 401 Unauthorized; responses never disclose stack traces or environment metadata.
 - **Proposed Phase:** Phase 1 (Prompt 2)
-- **Status:** `Pending`
+- **Status:** `Completed (Implemented & Verified in Prompt 2)`
 
 ### TASK-SEC-006: Secure Account Ledger Statement API Endpoint
 - **Module:** API Security & Data Protection
@@ -86,7 +86,7 @@
 - **Description:** Enforce session authentication and RBAC verification on `GET /api/ledgers/statement`.
 - **Acceptance Criteria:** Unauthenticated requests return 401; authenticated users can access only authorized ledger data.
 - **Proposed Phase:** Phase 1 (Prompt 2)
-- **Status:** `Pending`
+- **Status:** `Completed (Implemented & Verified in Prompt 2)`
 
 ---
 
@@ -99,8 +99,8 @@
 - **Target Files:** [`prisma/schema.prisma`](file:///Users/apple/Downloads/Antigravity/Billing%20ERP%20System/prisma/schema.prisma)
 - **Description:** Add `JournalEntry` and `JournalLine` models to the Prisma schema. `JournalEntry` represents an immutable voucher (voucherNumber, voucherType, date, narration, sourceType, sourceId, isBalanced). `JournalLine` stores individual balanced lines (accountId, debit, credit, particulars, entityId, entityType).
 - **Acceptance Criteria:** Schema compiles cleanly with `prisma generate`; relations between journal entries and lines support atomic creation.
-- **Proposed Phase:** Phase 2 (Prompt 3)
-- **Status:** `Pending`
+- **Proposed Phase:** Phase 2 (Prompt 3 Design Complete; Implementation Scheduled)
+- **Status:** `Pending (Design Complete - Prompt 3)`
 
 ### TASK-GL-002: Implement Statutory MCA Audit Trail Model
 - **Module:** Database & Compliance
@@ -109,8 +109,8 @@
 - **Target Files:** [`prisma/schema.prisma`](file:///Users/apple/Downloads/Antigravity/Billing%20ERP%20System/prisma/schema.prisma), `services/audit.service.ts` (new file)
 - **Description:** Add `AuditLog` model to track entity modifications (entityName, entityId, action: CREATE/UPDATE/DELETE/CANCEL, changedBy, timestamp, oldValues, newValues, justification).
 - **Acceptance Criteria:** Meets Indian MCA notification G.S.R. 206(E) requirements for unalterable accounting software audit trail.
-- **Proposed Phase:** Phase 2 (Prompt 3)
-- **Status:** `Pending`
+- **Proposed Phase:** Phase 2 (Prompt 3 Design Complete; Implementation Scheduled)
+- **Status:** `Pending (Design Complete - Prompt 3)`
 
 ### TASK-GL-003: Model Fiscal Period & Accounting Close Records
 - **Module:** Database & Financial Controls
@@ -119,8 +119,8 @@
 - **Target Files:** [`prisma/schema.prisma`](file:///Users/apple/Downloads/Antigravity/Billing%20ERP%20System/prisma/schema.prisma)
 - **Description:** Add `FiscalPeriod` model (financialYear, startDate, endDate, isClosed, closedAt, closedBy). Prevent posting transactions into closed fiscal periods.
 - **Acceptance Criteria:** Transactions dated within a closed fiscal period are rejected by the posting engine.
-- **Proposed Phase:** Phase 2 (Prompt 3)
-- **Status:** `Pending`
+- **Proposed Phase:** Phase 2 (Prompt 3 Design Complete; Implementation Scheduled)
+- **Status:** `Pending (Design Complete - Prompt 3)`
 
 ### TASK-GL-004: Standardize Fixed 2-Decimal Monetary Precision
 - **Module:** Core Utilities & Accounting
@@ -129,8 +129,8 @@
 - **Target Files:** `lib/utils/currency.ts`, `services/accounting-engine.service.ts`
 - **Description:** Create deterministic precision utility `roundPaise(amount: number): number` and integer paise conversion helper to eliminate IEEE 754 floating-point drift across all voucher calculations.
 - **Acceptance Criteria:** Summing debit and credit lines across 10,000 transactions produces exact equality ($\sum \text{Dr} = \sum \text{Cr}$) with zero artificial rounding plugs.
-- **Proposed Phase:** Phase 2 (Prompt 3)
-- **Status:** `Pending`
+- **Proposed Phase:** Phase 2 (Prompt 3 Design Complete; Implementation Scheduled)
+- **Status:** `Pending (Design Complete - Prompt 3)`
 
 ### TASK-GL-005: Build Atomic Journal Posting Engine
 - **Module:** Accounting Engine
@@ -139,8 +139,8 @@
 - **Target Files:** `services/journal-posting.service.ts` (new file), [`services/accounting-engine.service.ts`](file:///Users/apple/Downloads/Antigravity/Billing%20ERP%20System/services/accounting-engine.service.ts)
 - **Description:** Implement transactional journal posting service that writes balanced `JournalEntry` and `JournalLine` records to MongoDB atomically when source transactions are created, edited, or cancelled.
 - **Acceptance Criteria:** Double-entry vouchers are persisted in MongoDB; unbalanced vouchers are rejected before commit.
-- **Proposed Phase:** Phase 2 (Prompt 3)
-- **Status:** `Pending`
+- **Proposed Phase:** Phase 2 (Prompt 3 Design Complete; Implementation Scheduled)
+- **Status:** `Pending (Design Complete - Prompt 3)`
 
 ### TASK-GL-006: Historical Data Backfill & Reconciliation Migration Script
 - **Module:** Data Migration & Integrity
@@ -149,8 +149,8 @@
 - **Target Files:** `scripts/backfill-journal-entries.ts` (new file)
 - **Description:** Write idempotent migration script that compiles existing legacy transactions (`TaxInvoice`, `Expense`, `BankTransfer`, `OpeningBalance`) into balanced, persistent `JournalEntry` records without altering source data.
 - **Acceptance Criteria:** All existing database records have corresponding persistent journal vouchers that reconcile 100% to live statements.
-- **Proposed Phase:** Phase 2 (Prompt 3)
-- **Status:** `Pending`
+- **Proposed Phase:** Phase 2 (Prompt 3 Design Complete; Implementation Scheduled)
+- **Status:** `Pending (Design Complete - Prompt 3)`
 
 ---
 

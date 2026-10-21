@@ -32,7 +32,8 @@ graph TD
 
 ## 2. Phased Implementation Breakdown
 
-### Phase 1: Security, Authentication & Environmental Hardening
+### Phase 1: Security, Authentication & Environmental Hardening [COMPLETED — PROMPT 2]
+- **Status:** **Completed & Verified in Prompt 2** (13/13 security test cases passed, build verified, committed).
 - **Objective:** Eliminate critical security vulnerabilities, remove hardcoded secrets and backdoors, implement Edge middleware, and secure all Server Actions.
 - **Key Tasks:**
   - `TASK-SEC-001`: Remove hardcoded fallback JWT secret; enforce `AUTH_SECRET` environment requirement.
@@ -47,7 +48,8 @@ graph TD
 
 ---
 
-### Phase 2: Data Model, General Ledger & Monetary Precision
+### Phase 2: Data Model, General Ledger & Monetary Precision [DESIGN COMPLETED — PROMPT 3]
+- **Status:** **Architecture & Migration Design Completed in Prompt 3** (Implementation Pending).
 - **Objective:** Establish permanent double-entry collections (`JournalEntry` and `JournalLine`), implement MCA statutory audit logging, and standardize 2-decimal monetary precision.
 - **Key Tasks:**
   - `TASK-GL-001`: Add `JournalEntry` and `JournalLine` models to `prisma/schema.prisma`.
