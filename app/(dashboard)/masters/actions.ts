@@ -7,9 +7,11 @@ import { ProductService } from "@/services/product.service";
 import { ExpenseCategoryService } from "@/services/expense-category.service";
 import { ChartOfAccountsService } from "@/services/chart-of-accounts.service";
 import { EmployeeService } from "@/services/employee.service";
+import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 export async function createEmployeeMasterAction(data: any) {
   try {
+    await requireActionAuth();
     const emp = await EmployeeService.createEmployee(data);
     revalidatePath("/masters");
     revalidatePath("/expenses");
@@ -21,6 +23,7 @@ export async function createEmployeeMasterAction(data: any) {
 
 export async function updateEmployeeMasterAction(id: string, data: any) {
   try {
+    await requireActionAuth();
     const emp = await EmployeeService.updateEmployee(id, data);
     revalidatePath("/masters");
     revalidatePath("/expenses");
@@ -32,6 +35,7 @@ export async function updateEmployeeMasterAction(id: string, data: any) {
 
 export async function toggleEmployeeStatusAction(id: string, isActive: boolean) {
   try {
+    await requireActionAuth();
     const emp = await EmployeeService.updateEmployee(id, { isActive });
     revalidatePath("/masters");
     revalidatePath("/expenses");
@@ -43,6 +47,7 @@ export async function toggleEmployeeStatusAction(id: string, isActive: boolean) 
 
 export async function deleteEmployeeMasterAction(id: string) {
   try {
+    await requireActionAdmin();
     await EmployeeService.deleteEmployee(id);
     revalidatePath("/masters");
     revalidatePath("/expenses");
@@ -54,6 +59,7 @@ export async function deleteEmployeeMasterAction(id: string) {
 
 export async function createCustomerMasterAction(data: any) {
   try {
+    await requireActionAuth();
     const cust = await CustomerService.createCustomer(data);
     revalidatePath("/masters");
     revalidatePath("/customers");
@@ -65,6 +71,7 @@ export async function createCustomerMasterAction(data: any) {
 
 export async function updateCustomerMasterAction(id: string, data: any) {
   try {
+    await requireActionAuth();
     const cust = await CustomerService.updateCustomer(id, data);
     revalidatePath("/masters");
     revalidatePath("/customers");
@@ -76,6 +83,7 @@ export async function updateCustomerMasterAction(id: string, data: any) {
 
 export async function createVendorMasterAction(data: any) {
   try {
+    await requireActionAuth();
     const ven = await VendorService.createVendor(data);
     revalidatePath("/masters");
     revalidatePath("/vendors");
@@ -87,6 +95,7 @@ export async function createVendorMasterAction(data: any) {
 
 export async function updateVendorMasterAction(id: string, data: any) {
   try {
+    await requireActionAuth();
     const ven = await VendorService.updateVendor(id, data);
     revalidatePath("/masters");
     revalidatePath("/vendors");
@@ -98,6 +107,7 @@ export async function updateVendorMasterAction(id: string, data: any) {
 
 export async function createProductMasterAction(data: any) {
   try {
+    await requireActionAuth();
     const prod = await ProductService.createProduct(data);
     revalidatePath("/masters");
     revalidatePath("/products");
@@ -109,6 +119,7 @@ export async function createProductMasterAction(data: any) {
 
 export async function updateProductMasterAction(id: string, data: any) {
   try {
+    await requireActionAuth();
     const prod = await ProductService.updateProduct(id, data);
     revalidatePath("/masters");
     revalidatePath("/products");
@@ -120,6 +131,7 @@ export async function updateProductMasterAction(id: string, data: any) {
 
 export async function createCategoryMasterAction(data: any) {
   try {
+    await requireActionAuth();
     const cat = await ExpenseCategoryService.createExpenseCategory(data);
     revalidatePath("/masters");
     revalidatePath("/expenses");
@@ -131,6 +143,7 @@ export async function createCategoryMasterAction(data: any) {
 
 export async function updateCategoryMasterAction(id: string, data: any) {
   try {
+    await requireActionAuth();
     const cat = await ExpenseCategoryService.updateExpenseCategory(id, data);
     revalidatePath("/masters");
     revalidatePath("/expenses");
@@ -142,6 +155,7 @@ export async function updateCategoryMasterAction(id: string, data: any) {
 
 export async function toggleCategoryStatusAction(id: string, isActive: boolean) {
   try {
+    await requireActionAuth();
     const cat = await ExpenseCategoryService.toggleExpenseCategoryStatus(id, isActive);
     revalidatePath("/masters");
     revalidatePath("/expenses");
@@ -153,6 +167,7 @@ export async function toggleCategoryStatusAction(id: string, isActive: boolean) 
 
 export async function getFinancialTypesAction() {
   try {
+    await requireActionAuth();
     const types = await ChartOfAccountsService.getFinancialTypes();
     return { success: true, data: types };
   } catch (error: any) {
@@ -162,6 +177,7 @@ export async function getFinancialTypesAction() {
 
 export async function getStatementGroupsAction(financialTypeCode?: string) {
   try {
+    await requireActionAuth();
     const groups = await ChartOfAccountsService.getStatementGroups(financialTypeCode);
     return { success: true, data: groups };
   } catch (error: any) {
@@ -171,6 +187,7 @@ export async function getStatementGroupsAction(financialTypeCode?: string) {
 
 export async function getAccountNaturesAction(financialTypeCode?: string) {
   try {
+    await requireActionAuth();
     const natures = await ChartOfAccountsService.getAccountNatures(financialTypeCode);
     return { success: true, data: natures };
   } catch (error: any) {
@@ -180,6 +197,7 @@ export async function getAccountNaturesAction(financialTypeCode?: string) {
 
 export async function createStatementGroupAction(data: { name: string; financialTypeCode: string; code?: string }) {
   try {
+    await requireActionAdmin();
     const grp = await ChartOfAccountsService.createStatementGroup(data);
     revalidatePath("/masters");
     return { success: true, data: grp };
@@ -190,6 +208,7 @@ export async function createStatementGroupAction(data: { name: string; financial
 
 export async function createAccountNatureAction(data: { name: string; financialTypeCode: string; code?: string }) {
   try {
+    await requireActionAdmin();
     const nat = await ChartOfAccountsService.createAccountNature(data);
     revalidatePath("/masters");
     return { success: true, data: nat };

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { DepreciationService, RecordDepreciationInput } from "@/services/depreciation.service";
+import { requireActionAdmin } from "@/lib/auth-utils";
 
 export async function updateAssetAction(assetId: string, data: {
   notes?: string;
@@ -12,6 +13,7 @@ export async function updateAssetAction(assetId: string, data: {
   purchaseDate?: string;
 }) {
   try {
+    await requireActionAdmin();
     const updateData: any = {};
     if (data.notes !== undefined) updateData.notes = data.notes;
     if (data.assetType !== undefined) updateData.assetType = data.assetType;
@@ -44,6 +46,7 @@ export async function createAssetAction(data: {
   vendorName?: string;
 }) {
   try {
+    await requireActionAdmin();
     // Find or create asset category
     let category = await prisma.expenseCategory.findFirst({
       where: { name: { equals: data.categoryName || "Fixed Assets", mode: "insensitive" } }
@@ -120,6 +123,7 @@ export async function createAssetAction(data: {
 
 export async function deleteAssetAction(assetId: string) {
   try {
+    await requireActionAdmin();
     await prisma.expense.delete({
       where: { id: assetId }
     });
@@ -136,6 +140,7 @@ export async function deleteAssetAction(assetId: string) {
 
 export async function recordAssetDepreciationSettingsAction(data: RecordDepreciationInput) {
   try {
+    await requireActionAdmin();
     const record = await DepreciationService.recordAssetDepreciation(data);
     revalidatePath("/settings");
     revalidatePath("/reports");

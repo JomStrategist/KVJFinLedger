@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { OpeningClosingService, SaveOpeningBalanceInput } from "@/services/opening-closing.service";
 import { ExpenseCategoryService } from "@/services/expense-category.service";
+import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 export async function saveOpeningBalanceAction(data: SaveOpeningBalanceInput) {
   try {
+    await requireActionAdmin();
     const res = await OpeningClosingService.saveOpeningBalance(data);
     revalidatePath("/opening-closing");
     return { success: true, data: res };
@@ -16,6 +18,7 @@ export async function saveOpeningBalanceAction(data: SaveOpeningBalanceInput) {
 
 export async function deleteOpeningBalanceAction(id: string) {
   try {
+    await requireActionAdmin();
     await OpeningClosingService.deleteOpeningBalance(id);
     revalidatePath("/opening-closing");
     return { success: true };
@@ -30,6 +33,7 @@ const BALANCE_SHEET_TYPES = ["ASSET", "LIABILITY", "EQUITY"];
 
 export async function getBalanceSheetCategoriesAction() {
   try {
+    await requireActionAuth();
     const allCats = await ExpenseCategoryService.getExpenseCategories({ isActive: true });
     const bsCats = (allCats as any[]).filter((c) =>
       BALANCE_SHEET_TYPES.includes((c.financialType || "").toUpperCase())
@@ -47,6 +51,7 @@ export async function createCategoryForOpeningAction(data: {
   accountNature?: string;
 }) {
   try {
+    await requireActionAdmin();
     const cat = await ExpenseCategoryService.createExpenseCategory({
       name: data.name,
       financialType: data.financialType,

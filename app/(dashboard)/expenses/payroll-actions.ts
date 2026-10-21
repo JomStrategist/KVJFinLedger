@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { PayrollService, BatchPayrollInput } from "@/services/payroll.service";
 import { EmployeeAdvanceService, EmployeeAdvanceInput } from "@/services/employee-advance.service";
 import { BankPortalType, generateCorporateBankBatchFile, BankingPayoutRecord } from "@/lib/banking-export";
+import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 function revalidatePayrollRoutes() {
   revalidatePath("/expenses");
@@ -18,6 +19,7 @@ function revalidatePayrollRoutes() {
 
 export async function runBatchPayrollAction(input: BatchPayrollInput) {
   try {
+    await requireActionAdmin();
     const result = await PayrollService.runBatchPayroll(input);
     revalidatePayrollRoutes();
     return { success: true, data: JSON.parse(JSON.stringify(result)) };
@@ -28,6 +30,7 @@ export async function runBatchPayrollAction(input: BatchPayrollInput) {
 
 export async function getPayslipAction(expenseId: string) {
   try {
+    await requireActionAuth();
     const data = await PayrollService.getPayslipData(expenseId);
     return { success: true, data: JSON.parse(JSON.stringify(data)) };
   } catch (error: any) {
@@ -37,6 +40,7 @@ export async function getPayslipAction(expenseId: string) {
 
 export async function recordEmployeeAdvanceAction(data: EmployeeAdvanceInput) {
   try {
+    await requireActionAdmin();
     const advance = await EmployeeAdvanceService.createAdvance(data);
     revalidatePayrollRoutes();
     return { success: true, data: JSON.parse(JSON.stringify(advance)) };
@@ -47,6 +51,7 @@ export async function recordEmployeeAdvanceAction(data: EmployeeAdvanceInput) {
 
 export async function repayEmployeeAdvanceAction(advanceId: string, amount: number, notes?: string) {
   try {
+    await requireActionAdmin();
     const updated = await EmployeeAdvanceService.recordAdvanceRepayment(advanceId, amount, notes);
     revalidatePayrollRoutes();
     return { success: true, data: JSON.parse(JSON.stringify(updated)) };
@@ -57,6 +62,7 @@ export async function repayEmployeeAdvanceAction(advanceId: string, amount: numb
 
 export async function getEmployeeAdvancesAction(employeeId?: string) {
   try {
+    await requireActionAuth();
     const advances = await EmployeeAdvanceService.getAdvances({ employeeId });
     return { success: true, data: JSON.parse(JSON.stringify(advances)) };
   } catch (error: any) {
@@ -66,6 +72,7 @@ export async function getEmployeeAdvancesAction(employeeId?: string) {
 
 export async function getForm24QAction(quarter: string = "Q2", financialYear: string = "FY 2026–27") {
   try {
+    await requireActionAuth();
     const data = await PayrollService.getForm24QSummary(quarter, financialYear);
     return { success: true, data: JSON.parse(JSON.stringify(data)) };
   } catch (error: any) {
@@ -75,6 +82,7 @@ export async function getForm24QAction(quarter: string = "Q2", financialYear: st
 
 export async function getForm16Action(employeeId: string, financialYear: string = "FY 2026–27") {
   try {
+    await requireActionAuth();
     const data = await PayrollService.getForm16Data(employeeId, financialYear);
     return { success: true, data: JSON.parse(JSON.stringify(data)) };
   } catch (error: any) {

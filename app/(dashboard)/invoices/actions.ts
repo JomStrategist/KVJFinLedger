@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { TaxInvoiceService } from "@/services/tax-invoice.service";
 import { prisma } from "@/lib/prisma";
+import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 export async function createTaxInvoiceAction(data: any) {
   try {
+    await requireActionAuth();
     const invoice = await TaxInvoiceService.createTaxInvoice(data);
     revalidatePath("/invoices");
     revalidatePath("/finance");
@@ -20,6 +22,7 @@ export async function createTaxInvoiceAction(data: any) {
 
 export async function convertProformaToTaxInvoiceAction(proformaId: string) {
   try {
+    await requireActionAuth();
     const invoice = await TaxInvoiceService.convertProformaToTaxInvoice(proformaId);
     revalidatePath("/invoices");
     revalidatePath("/finance");
@@ -34,6 +37,7 @@ export async function convertProformaToTaxInvoiceAction(proformaId: string) {
 
 export async function cancelTaxInvoiceAction(id: string, reason: string) {
   try {
+    await requireActionAuth();
     const invoice = await TaxInvoiceService.cancelTaxInvoice(id, reason);
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${id}`);
@@ -58,6 +62,7 @@ export async function recordInvoicePaymentAction(
   }
 ) {
   try {
+    await requireActionAuth();
     const payment = await TaxInvoiceService.recordPayment(invoiceId, payload);
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${invoiceId}`);
@@ -91,6 +96,7 @@ export async function updateInvoicePaymentAction(
   }
 ) {
   try {
+    await requireActionAuth();
     const res = await TaxInvoiceService.updatePayment(paymentId, payload);
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${invoiceId}`);
@@ -111,6 +117,7 @@ export async function updateInvoicePaymentAction(
 
 export async function deleteInvoicePaymentAction(paymentId: string, invoiceId: string) {
   try {
+    await requireActionAdmin();
     const res = await TaxInvoiceService.deletePayment(paymentId);
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${invoiceId}`);
@@ -140,6 +147,7 @@ export async function markInvoiceGstPaidAction(
   paidDate: string
 ) {
   try {
+    await requireActionAuth();
     await prisma.taxInvoice.update({
       where: { id: invoiceId },
       data: {
@@ -161,6 +169,7 @@ export async function markInvoiceGstPaidAction(
 
 export async function updateTaxInvoiceAction(id: string, payload: any) {
   try {
+    await requireActionAuth();
     const invoice = await TaxInvoiceService.updateTaxInvoice(id, payload);
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${id}`);
@@ -176,6 +185,7 @@ export async function updateTaxInvoiceAction(id: string, payload: any) {
 
 export async function deleteTaxInvoiceAction(id: string) {
   try {
+    await requireActionAdmin();
     const res = await TaxInvoiceService.deleteTaxInvoice(id);
     revalidatePath("/invoices");
     revalidatePath("/finance");

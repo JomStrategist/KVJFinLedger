@@ -1,25 +1,36 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/auth';
 
 export async function GET() {
   try {
-    const userCount = await prisma.user.count();
-    const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+    let session = null;
+    try {
+      session = await auth();
+    } catch {
+      session = null;
+    }
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if ((session.user as any).role !== 'ADMIN') {
+      return NextResponse.json({ error: "Forbidden: Administrator privileges required" }, { status: 403 });
+    }
+
+    // Safe operational connectivity ping
+    await prisma.$runCommandRaw({ ping: 1 });
     
     return NextResponse.json({ 
-      status: 'success', 
-      userCount, 
-      adminExists: !!adminUser,
-      adminEmail: adminUser?.email,
-      databaseUrlLength: process.env.DATABASE_URL?.length || 0,
-      authSecretLength: process.env.AUTH_SECRET?.length || 0
+      status: 'ok', 
+      database: 'connected'
     });
   } catch (error: any) {
+    console.error("Database health check error:", error?.message);
     return NextResponse.json({ 
       status: 'error', 
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    }, { status: 500 });
+      message: 'Database service unavailable'
+    }, { status: 503 });
   }
 }
+

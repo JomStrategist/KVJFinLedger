@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
 import { LedgerService } from "@/services/ledger.service";
+import { auth } from "@/auth";
 
 export async function GET(request: Request) {
   try {
+    let session = null;
+    try {
+      session = await auth();
+    } catch {
+      session = null;
+    }
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
     const fromDate = searchParams.get("fromDate") || undefined;
@@ -15,7 +26,8 @@ export async function GET(request: Request) {
     const statement = await LedgerService.getLedgerStatement(accountId, fromDate, toDate);
     return NextResponse.json(statement);
   } catch (error: any) {
-    console.error("Error fetching ledger statement:", error);
+    console.error("Error fetching ledger statement:", error?.message);
     return NextResponse.json({ error: "Failed to fetch statement" }, { status: 500 });
   }
 }
+

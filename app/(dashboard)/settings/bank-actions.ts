@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { BankAccountService, CreateBankAccountInput, UpdateBankAccountInput } from "@/services/bank-account.service";
-import { requireAdmin } from "@/lib/auth-utils";
+import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 export async function getBankAccountsAction() {
   try {
+    await requireActionAuth();
     const accounts = await BankAccountService.getBankAccounts();
     return { success: true, data: accounts };
   } catch (error: any) {
@@ -15,7 +16,7 @@ export async function getBankAccountsAction() {
 
 export async function createBankAccountAction(data: CreateBankAccountInput) {
   try {
-    await requireAdmin();
+    await requireActionAdmin();
     const account = await BankAccountService.createBankAccount(data);
     revalidatePath("/settings");
     revalidatePath("/invoices");
@@ -28,7 +29,7 @@ export async function createBankAccountAction(data: CreateBankAccountInput) {
 
 export async function updateBankAccountAction(id: string, data: UpdateBankAccountInput) {
   try {
-    await requireAdmin();
+    await requireActionAdmin();
     const account = await BankAccountService.updateBankAccount(id, data);
     revalidatePath("/settings");
     revalidatePath("/invoices");
@@ -41,7 +42,7 @@ export async function updateBankAccountAction(id: string, data: UpdateBankAccoun
 
 export async function setPrimaryBankAccountAction(id: string) {
   try {
-    await requireAdmin();
+    await requireActionAdmin();
     const account = await BankAccountService.setPrimaryBankAccount(id);
     revalidatePath("/settings");
     revalidatePath("/invoices");

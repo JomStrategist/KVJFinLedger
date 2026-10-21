@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { DepreciationService, RecordDepreciationInput } from "@/services/depreciation.service";
+import { requireActionAdmin } from "@/lib/auth-utils";
 
 export async function recordAssetDepreciationAction(data: RecordDepreciationInput) {
   try {
+    await requireActionAdmin();
     const record = await DepreciationService.recordAssetDepreciation(data);
     revalidatePath("/reports");
     revalidatePath("/profit-loss");
@@ -19,6 +21,7 @@ export async function recordAssetDepreciationAction(data: RecordDepreciationInpu
 
 export async function deleteAssetDepreciationAction(id: string) {
   try {
+    await requireActionAdmin();
     await DepreciationService.deleteDepreciation(id);
     revalidatePath("/reports");
     revalidatePath("/profit-loss");

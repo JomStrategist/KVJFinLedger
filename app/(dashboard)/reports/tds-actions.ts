@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { TdsDepositService, RecordTdsDepositInput } from "@/services/tds-deposit.service";
-import { requireAuth } from "@/lib/auth-utils";
+import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 export async function recordTdsDepositAction(data: RecordTdsDepositInput) {
   try {
-    await requireAuth();
+    await requireActionAuth();
     const result = await TdsDepositService.recordTdsDeposit(data);
     revalidatePath("/reports");
     revalidatePath("/dashboard");
@@ -21,7 +21,7 @@ export async function recordTdsDepositAction(data: RecordTdsDepositInput) {
 
 export async function markExpenseTdsPaidAction(expenseId: string, challanNumber: string, paidDate?: string) {
   try {
-    await requireAuth();
+    await requireActionAuth();
     const result = await TdsDepositService.markExpenseTdsPaid(expenseId, challanNumber, paidDate);
     revalidatePath("/reports");
     revalidatePath("/dashboard");
@@ -36,7 +36,7 @@ export async function markExpenseTdsPaidAction(expenseId: string, challanNumber:
 
 export async function deleteTdsDepositAction(id: string) {
   try {
-    await requireAuth();
+    await requireActionAdmin();
     await TdsDepositService.deleteTdsDeposit(id);
     revalidatePath("/reports");
     revalidatePath("/dashboard");

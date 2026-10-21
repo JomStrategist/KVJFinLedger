@@ -2,11 +2,11 @@ import { prisma } from "@/lib/prisma";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { authConfig } from "./auth.config";
+import { authConfig, getAuthSecret } from "./auth.config";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
-  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "ATG7kBWRrKlZnzMiJ8wYXjFt5O2eQc3p",
+  secret: getAuthSecret(),
   providers: [
     Credentials({
       credentials: {
@@ -18,27 +18,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const email = (credentials.email as string).trim().toLowerCase();
         const inputPassword = credentials.password as string;
-
-        // Admin fallback check for primary credentials
-        if (email === "info@thestrategist.co.in" && (inputPassword === "AjayThomas@1" || inputPassword === "admin123")) {
-          return {
-            id: "admin-jomon-001",
-            name: "Jomon Joseph",
-            email: "info@thestrategist.co.in",
-            role: "ADMIN",
-            mustResetPassword: false,
-          };
-        }
-
-        if (email === "mail@thestrategist.co.in" && (inputPassword === "AjayThomas@1" || inputPassword === "user123")) {
-          return {
-            id: "user-ajay-002",
-            name: "Ajay Thomas",
-            email: "mail@thestrategist.co.in",
-            role: "USER",
-            mustResetPassword: false,
-          };
-        }
 
         try {
           const user = await prisma.user.findFirst({

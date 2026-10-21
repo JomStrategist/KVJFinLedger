@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { GstFilingService, RecordGstFilingInput } from "@/services/gst-filing.service";
-import { requireAuth } from "@/lib/auth-utils";
+import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 export async function recordGstFilingAction(data: RecordGstFilingInput) {
   try {
-    await requireAuth();
+    await requireActionAuth();
     const result = await GstFilingService.recordGstFiling(data);
     revalidatePath("/reports");
     revalidatePath("/dashboard");
@@ -20,7 +20,7 @@ export async function recordGstFilingAction(data: RecordGstFilingInput) {
 
 export async function deleteGstFilingAction(id: string) {
   try {
-    await requireAuth();
+    await requireActionAdmin();
     await GstFilingService.deleteGstFiling(id);
     revalidatePath("/reports");
     revalidatePath("/dashboard");

@@ -2,9 +2,11 @@
 
 import { CustomerService, CreateCustomerInput, UpdateCustomerInput } from "@/services/customer.service";
 import { revalidatePath } from "next/cache";
+import { requireActionAuth } from "@/lib/auth-utils";
 
 export async function toggleCustomerStatusAction(id: string, currentlyActive: boolean) {
   try {
+    await requireActionAuth();
     if (currentlyActive) {
       await CustomerService.deactivateCustomer(id);
     } else {
@@ -19,6 +21,7 @@ export async function toggleCustomerStatusAction(id: string, currentlyActive: bo
 
 export async function createCustomerAction(data: CreateCustomerInput) {
   try {
+    await requireActionAuth();
     const customer = await CustomerService.createCustomer(data);
     revalidatePath("/customers");
     return { success: true, id: customer.id, customer };
@@ -29,6 +32,7 @@ export async function createCustomerAction(data: CreateCustomerInput) {
 
 export async function updateCustomerAction(id: string, data: UpdateCustomerInput) {
   try {
+    await requireActionAuth();
     const customer = await CustomerService.updateCustomer(id, data);
     revalidatePath("/customers");
     revalidatePath(`/customers/${id}`);

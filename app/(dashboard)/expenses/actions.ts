@@ -5,6 +5,7 @@ import { ExpenseService } from "@/services/expense.service";
 import { PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { deleteEmployeeMasterAction } from "../masters/actions";
+import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 function revalidateAllExpenseRoutes(id?: string) {
   try {
@@ -27,6 +28,7 @@ function revalidateAllExpenseRoutes(id?: string) {
 
 export async function createExpenseAction(data: any) {
   try {
+    await requireActionAuth();
     const expense = await ExpenseService.createExpense(data);
     revalidateAllExpenseRoutes();
     return { success: true, data: JSON.parse(JSON.stringify(expense)) };
@@ -37,6 +39,7 @@ export async function createExpenseAction(data: any) {
 
 export async function updateExpenseAction(id: string, data: any) {
   try {
+    await requireActionAuth();
     const expense = await ExpenseService.updateExpense(id, data);
     revalidateAllExpenseRoutes(id);
     return { success: true, data: JSON.parse(JSON.stringify(expense)) };
@@ -47,6 +50,7 @@ export async function updateExpenseAction(id: string, data: any) {
 
 export async function approveExpenseAction(id: string) {
   try {
+    await requireActionAuth();
     await ExpenseService.approveExpense(id);
     revalidateAllExpenseRoutes(id);
     return { success: true };
@@ -57,6 +61,7 @@ export async function approveExpenseAction(id: string) {
 
 export async function cancelExpenseAction(id: string, reason: string) {
   try {
+    await requireActionAuth();
     await ExpenseService.cancelExpense(id, reason);
     revalidateAllExpenseRoutes(id);
     return { success: true };
@@ -67,6 +72,7 @@ export async function cancelExpenseAction(id: string, reason: string) {
 
 export async function updatePaymentStatusAction(id: string, status: PaymentStatus, paidAmount?: number) {
   try {
+    await requireActionAuth();
     await ExpenseService.updatePaymentStatus(id, status, paidAmount);
     revalidateAllExpenseRoutes(id);
     return { success: true };
@@ -86,6 +92,7 @@ export async function recordExpensePaymentAction(data: {
   isReimbursement?: boolean;
 }) {
   try {
+    await requireActionAuth();
     const result = await ExpenseService.recordExpensePayment(data.expenseId, {
       amount: data.amount,
       paymentDate: data.paymentDate,
@@ -104,6 +111,7 @@ export async function recordExpensePaymentAction(data: {
 
 export async function deleteExpensePaymentAction(paymentId: string, expenseId?: string) {
   try {
+    await requireActionAdmin();
     const updatedExpense = await ExpenseService.deleteExpensePayment(paymentId);
     revalidateAllExpenseRoutes(expenseId || updatedExpense.id);
     return { success: true, data: JSON.parse(JSON.stringify(updatedExpense)) };
@@ -114,6 +122,7 @@ export async function deleteExpensePaymentAction(paymentId: string, expenseId?: 
 
 export async function getExpensePaymentsAction(expenseId: string) {
   try {
+    await requireActionAuth();
     const payments = await ExpenseService.getExpensePayments(expenseId);
     return { success: true, data: JSON.parse(JSON.stringify(payments)) };
   } catch (error: any) {
@@ -123,6 +132,7 @@ export async function getExpensePaymentsAction(expenseId: string) {
 
 export async function deleteExpenseAction(id: string) {
   try {
+    await requireActionAdmin();
     await ExpenseService.deleteExpense(id);
     revalidateAllExpenseRoutes(id);
     return { success: true };
@@ -143,6 +153,7 @@ export async function recordSalaryPayoutAction(data: {
   notes?: string;
 }) {
   try {
+    await requireActionAdmin();
     const employee = await prisma.employee.findUnique({ where: { id: data.employeeId } });
     if (!employee) throw new Error("Employee not found.");
 

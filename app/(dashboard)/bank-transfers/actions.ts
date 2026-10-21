@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { BankTransferService } from "@/services/bank-transfer.service";
+import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 export async function createBankTransferAction(data: {
   date: string;
@@ -12,6 +13,7 @@ export async function createBankTransferAction(data: {
   description?: string;
 }) {
   try {
+    await requireActionAuth();
     const transfer = await BankTransferService.createBankTransfer({
       ...data,
       date: new Date(data.date),
@@ -37,6 +39,7 @@ export async function updateBankTransferAction(
   }
 ) {
   try {
+    await requireActionAuth();
     const transfer = await BankTransferService.updateBankTransfer(id, {
       ...data,
       date: new Date(data.date),
@@ -52,6 +55,7 @@ export async function updateBankTransferAction(
 
 export async function deleteBankTransferAction(id: string) {
   try {
+    await requireActionAdmin();
     const res = await BankTransferService.deleteBankTransfer(id);
     revalidatePath("/bank-transfers");
     revalidatePath("/finance");

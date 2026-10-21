@@ -3,9 +3,11 @@
 import { ProformaInvoiceService, CreateProformaInvoiceInput } from "@/services/proforma-invoice.service";
 import { ProformaInvoiceStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { requireActionAuth } from "@/lib/auth-utils";
 
 export async function createProformaInvoiceAction(data: any) {
   try {
+    await requireActionAuth();
     const invoice = await ProformaInvoiceService.createProformaInvoiceWithUnits(data);
     revalidatePath("/invoices");
     return { success: true, id: invoice.id };
@@ -17,6 +19,7 @@ export async function createProformaInvoiceAction(data: any) {
 
 export async function updateProformaInvoiceAction(id: string, data: any) {
   try {
+    await requireActionAuth();
     const invoice = await ProformaInvoiceService.updateProformaInvoice(id, data);
     revalidatePath("/invoices");
     revalidatePath(`/proforma-invoices/${id}`);
@@ -29,6 +32,7 @@ export async function updateProformaInvoiceAction(id: string, data: any) {
 
 export async function updateProformaInvoiceStatusAction(id: string, status: ProformaInvoiceStatus) {
   try {
+    await requireActionAuth();
     await ProformaInvoiceService.updateStatus(id, status);
     revalidatePath("/invoices");
     revalidatePath(`/proforma-invoices/${id}`);

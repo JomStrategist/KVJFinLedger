@@ -2,9 +2,11 @@
 
 import { ProductService, CreateProductInput, UpdateProductInput } from "@/services/product.service";
 import { revalidatePath } from "next/cache";
+import { requireActionAuth } from "@/lib/auth-utils";
 
 export async function toggleProductStatusAction(id: string, currentlyActive: boolean) {
   try {
+    await requireActionAuth();
     if (currentlyActive) {
       await ProductService.deactivateProduct(id);
     } else {
@@ -20,6 +22,7 @@ export async function toggleProductStatusAction(id: string, currentlyActive: boo
 
 export async function createProductAction(data: CreateProductInput) {
   try {
+    await requireActionAuth();
     const product = await ProductService.createProduct(data);
     revalidatePath("/products");
     return { success: true, id: product.id };
@@ -30,6 +33,7 @@ export async function createProductAction(data: CreateProductInput) {
 
 export async function updateProductAction(id: string, data: UpdateProductInput) {
   try {
+    await requireActionAuth();
     const product = await ProductService.updateProduct(id, data);
     revalidatePath("/products");
     revalidatePath(`/products/${id}`);

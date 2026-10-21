@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: "Financial Management System for Indian IT Services and Training Businesses",
 };
 
-import { auth } from "@/auth";
+import { requireAuth } from "@/lib/auth-utils";
 import { DashboardLayoutClient } from "@/components/DashboardLayoutClient";
 
 export default async function DashboardLayout({
@@ -16,7 +16,7 @@ export default async function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
+  const session = await requireAuth();
   const role = (session?.user as any)?.role || "USER";
 
   return (

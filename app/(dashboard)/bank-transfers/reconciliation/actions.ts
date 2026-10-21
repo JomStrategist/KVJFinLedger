@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { BankReconciliationService, StatementLineInput } from "@/services/bank-reconciliation.service";
+import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 export async function createStatementImportAction(bankAccountId: string, fileName: string, lines: StatementLineInput[]) {
   try {
+    await requireActionAuth();
     const res = await BankReconciliationService.createImport(bankAccountId, fileName, lines);
     revalidatePath("/bank-transfers/reconciliation");
     return { success: true, data: res };
@@ -15,6 +17,7 @@ export async function createStatementImportAction(bankAccountId: string, fileNam
 
 export async function confirmLineMatchAction(lineId: string, matchedType: string, matchedId: string, notes?: string) {
   try {
+    await requireActionAuth();
     const res = await BankReconciliationService.confirmMatch(lineId, matchedType, matchedId, notes);
     revalidatePath("/bank-transfers/reconciliation");
     return { success: true, data: res };
@@ -25,6 +28,7 @@ export async function confirmLineMatchAction(lineId: string, matchedType: string
 
 export async function unmatchLineAction(lineId: string) {
   try {
+    await requireActionAuth();
     const res = await BankReconciliationService.unmatchLine(lineId);
     revalidatePath("/bank-transfers/reconciliation");
     return { success: true, data: res };
@@ -35,6 +39,7 @@ export async function unmatchLineAction(lineId: string) {
 
 export async function deleteImportAction(importId: string) {
   try {
+    await requireActionAdmin();
     await BankReconciliationService.deleteImport(importId);
     revalidatePath("/bank-transfers/reconciliation");
     return { success: true };

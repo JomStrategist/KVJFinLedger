@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { RecurringExpenseService, CreateRecurringInput } from "@/services/recurring-expense.service";
+import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 function revalidateRecurringRoutes() {
   revalidatePath("/expenses");
@@ -11,6 +12,7 @@ function revalidateRecurringRoutes() {
 
 export async function createRecurringScheduleAction(data: CreateRecurringInput) {
   try {
+    await requireActionAuth();
     const schedule = await RecurringExpenseService.createSchedule(data);
     revalidateRecurringRoutes();
     return { success: true, data: JSON.parse(JSON.stringify(schedule)) };
@@ -21,6 +23,7 @@ export async function createRecurringScheduleAction(data: CreateRecurringInput) 
 
 export async function updateRecurringScheduleAction(id: string, data: Partial<CreateRecurringInput>) {
   try {
+    await requireActionAuth();
     const schedule = await RecurringExpenseService.updateSchedule(id, data);
     revalidateRecurringRoutes();
     return { success: true, data: JSON.parse(JSON.stringify(schedule)) };
@@ -31,6 +34,7 @@ export async function updateRecurringScheduleAction(id: string, data: Partial<Cr
 
 export async function toggleRecurringScheduleAction(id: string, isActive: boolean) {
   try {
+    await requireActionAuth();
     const schedule = await RecurringExpenseService.toggleSchedule(id, isActive);
     revalidateRecurringRoutes();
     return { success: true, data: JSON.parse(JSON.stringify(schedule)) };
@@ -41,6 +45,7 @@ export async function toggleRecurringScheduleAction(id: string, isActive: boolea
 
 export async function deleteRecurringScheduleAction(id: string) {
   try {
+    await requireActionAdmin();
     await RecurringExpenseService.deleteSchedule(id);
     revalidateRecurringRoutes();
     return { success: true };
@@ -63,6 +68,7 @@ export async function confirmRecurringExpenseAction(
   }
 ) {
   try {
+    await requireActionAuth();
     const expense = await RecurringExpenseService.confirmAndGenerateExpense(scheduleId, options);
     revalidateRecurringRoutes();
     revalidatePath("/expenses");

@@ -1,8 +1,24 @@
 import type { NextAuthConfig } from "next-auth";
 
+/**
+ * Validates and retrieves the authentication secret.
+ * Enforces AUTH_SECRET or NEXTAUTH_SECRET in all non-test environments.
+ * Fails safely without leaking secret values or lengths.
+ */
+export function getAuthSecret(): string {
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "test") {
+      return "finledger-isolated-test-secret-do-not-use-in-production";
+    }
+    throw new Error("Configuration Error: AUTH_SECRET or NEXTAUTH_SECRET environment variable is required.");
+  }
+  return secret;
+}
+
 export const authConfig = {
   trustHost: true,
-  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "ATG7kBWRrKlZnzMiJ8wYXjFt5O2eQc3p",
+  secret: getAuthSecret(),
   pages: {
     signIn: "/login",
   },

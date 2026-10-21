@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { UserService } from "@/services/user.service";
-import { requireAdmin } from "@/lib/auth-utils";
+import { requireActionAdmin } from "@/lib/auth-utils";
 import { RolePermissions } from "@/lib/rbac";
 
 export async function createUserAction(payload: {
@@ -17,8 +17,8 @@ export async function createUserAction(payload: {
   isActive?: boolean;
   permissions?: RolePermissions;
 }) {
-  await requireAdmin();
   try {
+    await requireActionAdmin();
     const user = await UserService.createUser(payload);
     revalidatePath("/users");
     return { success: true, data: user };
@@ -43,8 +43,8 @@ export async function updateUserAction(id: string, payload: {
   permissions?: RolePermissions;
   password?: string;
 }) {
-  await requireAdmin();
   try {
+    await requireActionAdmin();
     const user = await UserService.updateUser(id, payload);
     revalidatePath("/users");
     return { success: true, data: user };
@@ -58,8 +58,8 @@ export async function updateUserAction(id: string, payload: {
 }
 
 export async function toggleUserStatusAction(id: string, isActive: boolean) {
-  await requireAdmin();
   try {
+    await requireActionAdmin();
     const user = await UserService.toggleStatus(id, isActive);
     revalidatePath("/users");
     return { success: true, data: user };
@@ -76,8 +76,8 @@ export async function saveRoleAction(payload: {
   status?: string;
   permissions: RolePermissions;
 }) {
-  await requireAdmin();
   try {
+    await requireActionAdmin();
     const role = await UserService.saveRole(payload);
     revalidatePath("/users");
     return { success: true, data: role };
