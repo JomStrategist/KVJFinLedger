@@ -4,6 +4,8 @@ import { FinancialTransactionService } from "./financial-transaction.service";
 import { generateFormattedInvoiceNumber } from "@/lib/invoice-number";
 import { ProformaInvoiceService, CreateProformaInvoiceInput } from "./proforma-invoice.service";
 import { AccountingEngine } from "./accounting-engine.service";
+import { InvoiceAccountingService } from "./invoice-accounting.service";
+import { ActorContext } from "./journal-posting.service";
 
 export class TaxInvoiceService {
   private static async generateInvoiceNumber(
@@ -79,9 +81,11 @@ export class TaxInvoiceService {
       tdsRate: number;
       tdsAmount: number;
       bankReceipt: number;
+      bankAccountId?: string | null;
       reference?: string;
       remarks?: string;
-    }
+    },
+    actor?: ActorContext
   ) {
     const invoice = await prisma.taxInvoice.findUnique({
       where: { id: invoiceId },
@@ -92,28 +96,42 @@ export class TaxInvoiceService {
     if (invoice.status === "CANCELLED") throw new Error("Cannot record payment for a cancelled invoice.");
 
     const payment = await prisma.$transaction(async (tx) => {
-      // 1. Create payment record
+      // 1. Calculate prior settlements & customer advance (overpayment)
+      const activeExisting = invoice.payments.filter((p: any) => !p.isCancelled);
+      const priorSettled = activeExisting.reduce(
+        (sum: number, p: any) => sum + Number(p.paymentAmount - (p.advanceAmount || 0)),
+        0
+      );
+      const invoiceTotal = Number(invoice.grossAmount);
+      const currentOutstanding = Math.max(0, invoiceTotal - priorSettled);
+      const paymentAmount = Number(data.paymentAmount);
+      const advanceAmount = Math.max(0, paymentAmount - currentOutstanding);
+
+      // 2. Create payment record
       const payment = await tx.invoicePayment.create({
         data: {
           taxInvoiceId: invoiceId,
           paymentDate: new Date(data.paymentDate),
-          paymentAmount: data.paymentAmount,
+          paymentAmount: paymentAmount,
           isTdsDeducted: data.isTdsDeducted,
           tdsRate: data.tdsRate || 0,
           tdsAmount: data.tdsAmount || 0,
           bankReceipt: data.bankReceipt,
+          bankAccountId: data.bankAccountId || invoice.bankAccountId || null,
+          advanceAmount: advanceAmount > 0 ? advanceAmount : 0,
+          isOnAccount: advanceAmount > 0,
           reference: data.reference || null,
           remarks: data.remarks || null,
         }
       });
 
-      // 2. Compute total settlements (exclude cancelled payments)
-      const activeExisting = invoice.payments.filter((p: any) => !p.isCancelled);
+      // 3. Compute total settlements
       const allPayments = [...activeExisting, payment];
-      const totalPaidAmount = allPayments.reduce((sum: number, p: any) => sum + Number(p.paymentAmount), 0);
-      const totalSettled = totalPaidAmount;
+      const totalSettled = allPayments.reduce(
+        (sum: number, p: any) => sum + Number(p.paymentAmount - (p.advanceAmount || 0)),
+        0
+      );
 
-      const invoiceTotal = Number(invoice.grossAmount);
       let newStatus: TaxInvoiceStatus = "CONFIRMED";
       if (totalSettled >= invoiceTotal - 0.5 && totalSettled > 0) { // allow 50 paisa rounding tolerance
         newStatus = "PAID";
@@ -121,21 +139,24 @@ export class TaxInvoiceService {
         newStatus = "PARTIALLY_PAID";
       }
 
-      // 3. Update invoice status
+      // 4. Update invoice status
       await tx.taxInvoice.update({
         where: { id: invoiceId },
         data: { status: newStatus }
       });
 
-      // 4. Update corresponding FinancialTransaction status
+      // 5. Update corresponding FinancialTransaction status (legacy reporting)
       const ftStatus = newStatus === "PAID" ? "PAID" : newStatus === "PARTIALLY_PAID" ? "PARTIALLY_PAID" : "UNPAID";
       await tx.financialTransaction.updateMany({
         where: { sourceId: invoiceId, sourceType: "TAX_INVOICE" },
         data: { paymentStatus: ftStatus }
       });
 
+      // 6. Post persistent General Ledger customer receipt journal atomically in same transaction
+      await InvoiceAccountingService.postCustomerReceipt(payment.id, actor, tx);
+
       return payment;
-    });
+    }, { timeout: 15000 });
 
     AccountingEngine.invalidateCache();
     return payment;
@@ -150,9 +171,11 @@ export class TaxInvoiceService {
       tdsRate: number;
       tdsAmount: number;
       bankReceipt: number;
+      bankAccountId?: string | null;
       reference?: string;
       remarks?: string;
-    }
+    },
+    actor?: ActorContext
   ) {
     const existingPayment = await prisma.invoicePayment.findUnique({
       where: { id: paymentId },
@@ -162,28 +185,58 @@ export class TaxInvoiceService {
     const invoiceId = existingPayment.taxInvoiceId;
 
     const res = await prisma.$transaction(async (tx) => {
+      // 1. Reverse previous receipt journal entry
+      await InvoiceAccountingService.reverseCustomerReceipt(
+        paymentId,
+        "Reversal due to customer payment update",
+        actor,
+        tx
+      );
+
+      // 2. Re-calculate advance/overpayment
+      const allPaymentsExceptThis = (await tx.invoicePayment.findMany({ where: { taxInvoiceId: invoiceId } })).filter(
+        (p: any) => !p.isCancelled && p.id !== paymentId
+      );
+      const priorSettled = allPaymentsExceptThis.reduce(
+        (sum: number, p: any) => sum + Number(p.paymentAmount - (p.advanceAmount || 0)),
+        0
+      );
+      const invoiceTotal = Number(existingPayment.taxInvoice.grossAmount);
+      const currentOutstanding = Math.max(0, invoiceTotal - priorSettled);
+      const paymentAmount = Number(data.paymentAmount);
+      const advanceAmount = Math.max(0, paymentAmount - currentOutstanding);
+
       await tx.invoicePayment.update({
         where: { id: paymentId },
         data: {
           paymentDate: new Date(data.paymentDate),
-          paymentAmount: data.paymentAmount,
+          paymentAmount: paymentAmount,
           isTdsDeducted: data.isTdsDeducted,
           tdsRate: data.tdsRate || 0,
           tdsAmount: data.tdsAmount || 0,
           bankReceipt: data.bankReceipt,
+          bankAccountId: data.bankAccountId || existingPayment.bankAccountId || existingPayment.taxInvoice.bankAccountId || null,
+          advanceAmount: advanceAmount > 0 ? advanceAmount : 0,
+          isOnAccount: advanceAmount > 0,
           reference: data.reference || null,
           remarks: data.remarks || null,
         }
       });
 
+      // 3. Post revised receipt journal
+      await InvoiceAccountingService.postCustomerReceipt(paymentId, actor, tx);
+
+      // 4. Update invoice status
       const allPayments = (await tx.invoicePayment.findMany({ where: { taxInvoiceId: invoiceId } })).filter((p: any) => !p.isCancelled);
-      const totalPaidAmount = allPayments.reduce((sum: number, p: any) => sum + Number(p.paymentAmount), 0);
-      const invoiceTotal = Number(existingPayment.taxInvoice.grossAmount);
+      const totalSettled = allPayments.reduce(
+        (sum: number, p: any) => sum + Number(p.paymentAmount - (p.advanceAmount || 0)),
+        0
+      );
 
       let newStatus: TaxInvoiceStatus = "CONFIRMED";
-      if (totalPaidAmount >= invoiceTotal - 0.5 && totalPaidAmount > 0) {
+      if (totalSettled >= invoiceTotal - 0.5 && totalSettled > 0) {
         newStatus = "PAID";
-      } else if (totalPaidAmount > 0) {
+      } else if (totalSettled > 0) {
         newStatus = "PARTIALLY_PAID";
       }
 
@@ -199,13 +252,13 @@ export class TaxInvoiceService {
       });
 
       return { success: true };
-    });
+    }, { timeout: 15000 });
 
     AccountingEngine.invalidateCache();
     return res;
   }
 
-  static async cancelPayment(paymentId: string, reason?: string) {
+  static async cancelPayment(paymentId: string, reason?: string, actor?: ActorContext) {
     const existingPayment = await prisma.invoicePayment.findUnique({
       where: { id: paymentId },
       include: { taxInvoice: true }
@@ -224,14 +277,25 @@ export class TaxInvoiceService {
         }
       });
 
+      // Reverse receipt journal entry
+      await InvoiceAccountingService.reverseCustomerReceipt(
+        paymentId,
+        reason || "Payment cancelled by user",
+        actor,
+        tx
+      );
+
       const allPayments = (await tx.invoicePayment.findMany({ where: { taxInvoiceId: invoiceId } })).filter((p: any) => !p.isCancelled && p.id !== paymentId);
-      const totalPaidAmount = allPayments.reduce((sum: number, p: any) => sum + Number(p.paymentAmount), 0);
+      const totalSettled = allPayments.reduce(
+        (sum: number, p: any) => sum + Number(p.paymentAmount - (p.advanceAmount || 0)),
+        0
+      );
       const invoiceTotal = Number(existingPayment.taxInvoice.grossAmount);
 
       let newStatus: TaxInvoiceStatus = "CONFIRMED";
-      if (totalPaidAmount >= invoiceTotal - 0.5 && totalPaidAmount > 0) {
+      if (totalSettled >= invoiceTotal - 0.5 && totalSettled > 0) {
         newStatus = "PAID";
-      } else if (totalPaidAmount > 0) {
+      } else if (totalSettled > 0) {
         newStatus = "PARTIALLY_PAID";
       }
 
@@ -247,13 +311,13 @@ export class TaxInvoiceService {
       });
 
       return { success: true };
-    });
+    }, { timeout: 15000 });
 
     AccountingEngine.invalidateCache();
     return res;
   }
 
-  static async deletePayment(paymentId: string) {
+  static async deletePayment(paymentId: string, actor?: ActorContext) {
     const existingPayment = await prisma.invoicePayment.findUnique({
       where: { id: paymentId },
       include: { taxInvoice: true }
@@ -262,16 +326,27 @@ export class TaxInvoiceService {
     const invoiceId = existingPayment.taxInvoiceId;
 
     const res = await prisma.$transaction(async (tx) => {
+      // Reverse receipt journal entry before deletion
+      await InvoiceAccountingService.reverseCustomerReceipt(
+        paymentId,
+        "Payment deleted by user",
+        actor,
+        tx
+      );
+
       await tx.invoicePayment.delete({ where: { id: paymentId } });
 
       const allPayments = (await tx.invoicePayment.findMany({ where: { taxInvoiceId: invoiceId } })).filter((p: any) => !p.isCancelled);
-      const totalPaidAmount = allPayments.reduce((sum: number, p: any) => sum + Number(p.paymentAmount), 0);
+      const totalSettled = allPayments.reduce(
+        (sum: number, p: any) => sum + Number(p.paymentAmount - (p.advanceAmount || 0)),
+        0
+      );
       const invoiceTotal = Number(existingPayment.taxInvoice.grossAmount);
 
       let newStatus: TaxInvoiceStatus = "CONFIRMED";
-      if (totalPaidAmount >= invoiceTotal - 0.5 && totalPaidAmount > 0) {
+      if (totalSettled >= invoiceTotal - 0.5 && totalSettled > 0) {
         newStatus = "PAID";
-      } else if (totalPaidAmount > 0) {
+      } else if (totalSettled > 0) {
         newStatus = "PARTIALLY_PAID";
       }
 
@@ -287,13 +362,13 @@ export class TaxInvoiceService {
       });
 
       return { success: true };
-    });
+    }, { timeout: 15000 });
 
     AccountingEngine.invalidateCache();
     return res;
   }
 
-  static async deleteTaxInvoice(id: string) {
+  static async deleteTaxInvoice(id: string, actor?: ActorContext) {
     const invoice = await prisma.taxInvoice.findUnique({
       where: { id },
       include: { payments: true }
@@ -301,11 +376,19 @@ export class TaxInvoiceService {
     if (!invoice) throw new Error("Tax invoice not found.");
 
     const res = await prisma.$transaction(async (tx) => {
+      // 1. Reverse confirmed sales journal if exists
+      await InvoiceAccountingService.reverseTaxInvoiceConfirmation(id, "Invoice deleted by administrator", actor, tx);
+
+      // 2. Reverse any payment receipt journals
+      for (const p of invoice.payments) {
+        await InvoiceAccountingService.reverseCustomerReceipt(p.id, "Payment deleted due to invoice deletion", actor, tx);
+      }
+
       await tx.taxInvoiceItem.deleteMany({ where: { taxInvoiceId: id } });
       await tx.invoicePayment.deleteMany({ where: { taxInvoiceId: id } });
       await FinancialTransactionService.deleteTransactionBySource(tx, "TAX_INVOICE", id);
       return await tx.taxInvoice.delete({ where: { id } });
-    });
+    }, { timeout: 15000 });
 
     AccountingEngine.invalidateCache();
     return res;
@@ -334,7 +417,7 @@ export class TaxInvoiceService {
     }
   }
 
-  static async convertProformaToTaxInvoice(proformaId: string) {
+  static async convertProformaToTaxInvoice(proformaId: string, actor?: ActorContext) {
     // 1. Validate
     const proforma = await prisma.proformaInvoice.findUnique({
       where: { id: proformaId },
@@ -355,7 +438,7 @@ export class TaxInvoiceService {
     }
 
     // Ensure it doesn't already exist (double check)
-    const existing = await prisma.taxInvoice.findUnique({
+    const existing = await prisma.taxInvoice.findFirst({
       where: { sourceProformaId: proformaId }
     });
     if (existing) {
@@ -474,13 +557,16 @@ export class TaxInvoiceService {
         netAmount: taxInvoice.netAmount,
       });
 
+      // 5. Post General Ledger sales journal atomically in same transaction
+      await InvoiceAccountingService.postTaxInvoiceConfirmation(taxInvoice.id, actor, tx);
+
       return taxInvoice;
     }, { timeout: 15000 });
     AccountingEngine.invalidateCache();
     return res;
   }
 
-  static async createTaxInvoice(data: any) {
+  static async createTaxInvoice(data: any, actor?: ActorContext) {
     const customer = await prisma.customer.findUnique({ where: { id: data.customerId } });
     if (!customer) throw new Error("Customer not found.");
 
@@ -570,6 +656,9 @@ export class TaxInvoiceService {
         netAmount: taxInvoice.netAmount,
       });
 
+      // Post persistent General Ledger sales journal atomically in same transaction
+      await InvoiceAccountingService.postTaxInvoiceConfirmation(taxInvoice.id, actor, tx);
+
       return taxInvoice;
     }, { timeout: 15000 });
 
@@ -577,7 +666,7 @@ export class TaxInvoiceService {
     return res;
   }
 
-  static async cancelTaxInvoice(id: string, reason: string) {
+  static async cancelTaxInvoice(id: string, reason: string, actor?: ActorContext) {
     if (!reason || reason.trim() === "") throw new Error("Cancellation reason is required.");
 
     const invoice = await prisma.taxInvoice.findUnique({ where: { id } });
@@ -597,14 +686,17 @@ export class TaxInvoiceService {
 
       await FinancialTransactionService.deleteTransactionBySource(tx, "TAX_INVOICE", id);
 
+      // Reverse confirmed sales journal atomically in same transaction
+      await InvoiceAccountingService.reverseTaxInvoiceConfirmation(id, reason, actor, tx);
+
       return updatedInvoice;
-    });
+    }, { timeout: 15000 });
 
     AccountingEngine.invalidateCache();
     return res;
   }
 
-  static async updateTaxInvoice(id: string, data: CreateProformaInvoiceInput) {
+  static async updateTaxInvoice(id: string, data: CreateProformaInvoiceInput, actor?: ActorContext) {
     const invoice = await prisma.taxInvoice.findUnique({
       where: { id },
       include: { payments: true }
@@ -622,8 +714,12 @@ export class TaxInvoiceService {
         where: { taxInvoiceId: id }
       });
 
-      const productIds = calculationResult.calculatedItems.map(i => i.productId);
-      const products = await tx.product.findMany({ where: { id: { in: productIds } } });
+      const productIds = calculationResult.calculatedItems
+        .map(i => i.productId)
+        .filter((pid): pid is string => typeof pid === "string" && pid.trim().length > 0);
+      const products = productIds.length > 0 
+        ? await tx.product.findMany({ where: { id: { in: productIds } } })
+        : [];
       const productMap = new Map(products.map(p => [p.id, p]));
 
       const updated = await tx.taxInvoice.update({
@@ -685,7 +781,7 @@ export class TaxInvoiceService {
       });
 
       const allPayments = await tx.invoicePayment.findMany({ where: { taxInvoiceId: id } });
-      const totalPaidAmount = allPayments.reduce((sum, p) => sum + Number(p.paymentAmount), 0);
+      const totalPaidAmount = allPayments.reduce((sum, p) => sum + Number(p.paymentAmount - (p.advanceAmount || 0)), 0);
       const invoiceTotal = Number(calculationResult.grossAmount);
 
       let newStatus: TaxInvoiceStatus = "CONFIRMED";
@@ -713,6 +809,9 @@ export class TaxInvoiceService {
           paymentStatus: ftStatus,
         }
       });
+
+      // Apply persistent ledger revision atomically in same transaction
+      await InvoiceAccountingService.adjustTaxInvoice(id, actor, tx);
 
       return updated;
     }, { timeout: 15000 });

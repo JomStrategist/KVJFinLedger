@@ -35,6 +35,8 @@ export class InvalidReversalError extends Error {
   }
 }
 
+export type DbClientOrTx = PrismaClient | Prisma.TransactionClient;
+
 export class JournalPostingService {
   private static readonly MAX_TRANSACTION_RETRIES = 5;
 
@@ -60,17 +62,18 @@ export class JournalPostingService {
 
   /**
    * Posts a balanced double-entry journal voucher atomically with audit logging and idempotency.
+   * Can be called standalone (wrapping in internal $transaction) or within an existing transaction client.
    */
   static async postJournalEntry(
     input: JournalEntryInput,
     actor?: ActorContext,
-    db: PrismaClient = prisma
+    dbOrTx: DbClientOrTx = prisma
   ): Promise<JournalEntryWithLines> {
     // Step 1: Pre-validation of input schema and paise equality
     const validated = JournalValidator.validateOrThrow(input);
 
     // Step 2: Idempotency Check (Fast Path before transaction)
-    const existingEntry = await db.journalEntry.findUnique({
+    const existingEntry = await (dbOrTx as any).journalEntry.findUnique({
       where: { idempotencyKey: validated.idempotencyKey },
       include: { lines: { orderBy: { lineNumber: "asc" } } },
     });
@@ -91,22 +94,30 @@ export class JournalPostingService {
     }
 
     // Step 3: Fiscal Period Lock Verification
-    await this.verifyFiscalPeriodOpen(validated.accountingDate, validated.fiscalPeriodId, db);
+    await this.verifyFiscalPeriodOpen(validated.accountingDate, validated.fiscalPeriodId, dbOrTx);
 
     // Step 4: Reversal Sanity Check
     if (validated.reversalOfId) {
-      await this.verifyReversalPrerequisites(validated.reversalOfId, db);
+      await this.verifyReversalPrerequisites(validated.reversalOfId, dbOrTx);
     }
 
-    // Step 5: Atomic Transaction Execution with Bounded Retries for Transient Errors
+    // Step 5: If dbOrTx is already an interactive TransactionClient, execute directly
+    if (!("$transaction" in dbOrTx)) {
+      return await this.writeJournalRecords(validated, dbOrTx as Prisma.TransactionClient, actor);
+    }
+
+    // Step 6: Atomic Transaction Execution with Bounded Retries for Transient Errors (for standalone PrismaClient)
+    const client = dbOrTx as PrismaClient;
     let attempts = 0;
     while (attempts < this.MAX_TRANSACTION_RETRIES) {
       attempts++;
       try {
-        return await this.executeTransactionalPost(validated, actor, db);
+        return await client.$transaction(async (tx) => {
+          return await this.writeJournalRecords(validated, tx, actor);
+        }, { timeout: 15000 });
       } catch (err: any) {
         // If another concurrent request just committed the exact same idempotency key
-        const replay = await db.journalEntry.findUnique({
+        const replay = await client.journalEntry.findUnique({
           where: { idempotencyKey: validated.idempotencyKey },
           include: { lines: { orderBy: { lineNumber: "asc" } } },
         });
@@ -137,120 +148,115 @@ export class JournalPostingService {
   }
 
   /**
-   * Internal transactional execution logic.
+   * Internal database writer executing within a confirmed Prisma transaction.
    */
-  private static async executeTransactionalPost(
+  private static async writeJournalRecords(
     validated: ValidatedJournalEntry,
-    actor?: ActorContext,
-    db: PrismaClient = prisma
+    tx: Prisma.TransactionClient,
+    actor?: ActorContext
   ): Promise<JournalEntryWithLines> {
-    return await db.$transaction(async (tx) => {
-      // 1. Allocate Entry Number if not already provided
-      let entryNumber = validated.entryNumber;
-      if (!entryNumber) {
-        const fyClean = validated.financialYear.replace(/[^0-9]/g, "");
-        const prefix = `${validated.entryType}-${fyClean}`;
-        const seq = await AtomicNumberingService.getNextSequence(tx, prefix);
-        entryNumber = seq.formattedNumber;
-      }
+    // 1. Allocate Entry Number if not already provided
+    let entryNumber = validated.entryNumber;
+    if (!entryNumber) {
+      const fyClean = validated.financialYear.replace(/[^0-9]/g, "");
+      const prefix = `${validated.entryType}-${fyClean}`;
+      const seq = await AtomicNumberingService.getNextSequence(tx, prefix);
+      entryNumber = seq.formattedNumber;
+    }
 
-      // 2. Create JournalEntry and nested JournalLine records atomically
-      const created = await tx.journalEntry.create({
-        data: {
-          entryNumber,
-          entryType: validated.entryType,
-          accountingDate: validated.accountingDate,
-          financialYear: validated.financialYear,
-          fiscalPeriodId: validated.fiscalPeriodId,
-          sourceType: validated.sourceType,
-          sourceId: validated.sourceId,
-          sourceNumber: validated.sourceNumber,
-          narration: validated.narration,
-          reference: validated.reference,
-          totalDebit: validated.totalDebit,
-          totalCredit: validated.totalCredit,
-          isBalanced: validated.isBalanced,
-          status: "POSTED",
-          postedBy: actor?.id || validated.postedBy || null,
-          authorizedBy: actor?.id || validated.authorizedBy || null,
-          idempotencyKey: validated.idempotencyKey,
-          reversalOfId: validated.reversalOfId,
-          reversalReason: validated.reversalReason,
-          lines: {
-            create: validated.lines.map((l) => ({
-              lineNumber: l.lineNumber,
-              accountId: l.accountId,
-              accountCode: l.accountCode || null,
-              accountName: l.accountName,
-              financialType: l.financialType,
-              statementGroup: l.statementGroup,
-              normalBalance: l.normalBalance,
-              debit: l.debit,
-              credit: l.credit,
-              particulars: l.particulars || null,
-              entityType: l.entityType || null,
-              entityId: l.entityId || null,
-              bankAccountId: l.bankAccountId || null,
-            })),
-          },
+    // 2. Create JournalEntry and nested JournalLine records atomically
+    const created = await tx.journalEntry.create({
+      data: {
+        entryNumber,
+        entryType: validated.entryType,
+        accountingDate: validated.accountingDate,
+        financialYear: validated.financialYear,
+        fiscalPeriodId: validated.fiscalPeriodId,
+        sourceType: validated.sourceType,
+        sourceId: validated.sourceId,
+        sourceNumber: validated.sourceNumber,
+        narration: validated.narration,
+        reference: validated.reference,
+        totalDebit: validated.totalDebit,
+        totalCredit: validated.totalCredit,
+        isBalanced: validated.isBalanced,
+        status: "POSTED",
+        postedBy: actor?.id || validated.postedBy || null,
+        authorizedBy: actor?.id || validated.authorizedBy || null,
+        idempotencyKey: validated.idempotencyKey,
+        reversalOfId: validated.reversalOfId,
+        reversalReason: validated.reversalReason,
+        lines: {
+          create: validated.lines.map((l) => ({
+            lineNumber: l.lineNumber,
+            accountId: l.accountId,
+            accountCode: l.accountCode || null,
+            accountName: l.accountName,
+            financialType: l.financialType,
+            statementGroup: l.statementGroup,
+            normalBalance: l.normalBalance,
+            debit: l.debit,
+            credit: l.credit,
+            particulars: l.particulars || null,
+            entityType: l.entityType || null,
+            entityId: l.entityId || null,
+            bankAccountId: l.bankAccountId || null,
+          })),
         },
-        include: {
-          lines: { orderBy: { lineNumber: "asc" } },
+      },
+      include: {
+        lines: { orderBy: { lineNumber: "asc" } },
+      },
+    });
+
+    // 3. If this is a reversal entry, atomically update the original target entry
+    if (validated.reversalOfId) {
+      await tx.journalEntry.update({
+        where: { id: validated.reversalOfId },
+        data: {
+          status: "REVERSED",
+          reversedAt: new Date(),
+          reversalReason: validated.reversalReason || `Reversed by voucher ${created.entryNumber}`,
         },
       });
+    }
 
-      // 3. If this is a reversal entry, atomically update the original target entry
-      if (validated.reversalOfId) {
-        await tx.journalEntry.update({
-          where: { id: validated.reversalOfId },
-          data: {
-            status: "REVERSED",
-            reversedAt: new Date(),
-            reversalReason: validated.reversalReason || `Reversed by voucher ${created.entryNumber}`,
-          },
-        });
-      }
+    // 4. Create immutable AuditLog entry in the same transaction
+    const auditAction =
+      validated.entryType === "REVERSAL"
+        ? "REVERSE_JOURNAL"
+        : validated.entryType === "ADJUSTMENT"
+        ? "ADJUSTMENT_JOURNAL"
+        : "POST_JOURNAL";
 
-      // 4. Create immutable AuditLog entry in the same transaction
-      const auditAction =
-        validated.entryType === "REVERSAL"
-          ? "REVERSE_JOURNAL"
-          : validated.entryType === "ADJUSTMENT"
-          ? "ADJUSTMENT_JOURNAL"
-          : "POST_JOURNAL";
-
-      await tx.auditLog.create({
-        data: {
-          actorId: actor?.id || null,
-          actorName: actor?.name || "System / Automated",
-          actorEmail: actor?.email || "system@kvj.local",
-          action: auditAction,
-          entity: "JournalEntry",
-          entityId: created.id,
-          changeSummary: `${created.entryType} voucher ${created.entryNumber} posted for ₹${created.totalDebit.toFixed(2)} with ${created.lines.length} lines.`,
-          reason: validated.reversalReason || validated.narration,
-          afterState: {
-            entryNumber: created.entryNumber,
-            entryType: created.entryType,
-            accountingDate: created.accountingDate,
-            financialYear: created.financialYear,
-            sourceType: created.sourceType,
-            sourceId: created.sourceId,
-            totalDebit: created.totalDebit,
-            totalCredit: created.totalCredit,
-            isBalanced: created.isBalanced,
-            linesCount: created.lines.length,
-          },
+    await tx.auditLog.create({
+      data: {
+        actorId: actor?.id || null,
+        actorName: actor?.name || "System / Automated",
+        actorEmail: actor?.email || "system@kvj.local",
+        action: auditAction,
+        entity: "JournalEntry",
+        entityId: created.id,
+        changeSummary: `${created.entryType} voucher ${created.entryNumber} posted for ₹${created.totalDebit.toFixed(2)} with ${created.lines.length} lines.`,
+        reason: validated.reversalReason || validated.narration,
+        afterState: {
+          entryNumber: created.entryNumber,
+          entryType: created.entryType,
+          accountingDate: created.accountingDate,
+          financialYear: created.financialYear,
+          sourceType: created.sourceType,
+          sourceId: created.sourceId,
+          totalDebit: created.totalDebit,
+          totalCredit: created.totalCredit,
+          isBalanced: created.isBalanced,
+          linesCount: created.lines.length,
         },
-      });
+      },
+    });
 
-      return created as JournalEntryWithLines;
-    }, { timeout: 15000 });
+    return created as JournalEntryWithLines;
   }
 
-  /**
-   * Reverses a previously posted journal voucher by generating and persisting an exact inverse entry.
-   */
   /**
    * Reverses a previously posted journal voucher by generating and persisting an exact inverse entry.
    */
@@ -262,7 +268,7 @@ export class JournalPostingService {
       accountingDate?: Date;
       financialYear?: string;
     },
-    db: PrismaClient = prisma
+    dbOrTx: DbClientOrTx = prisma
   ): Promise<JournalEntryWithLines> {
     const { originalEntryId, reason, actor, accountingDate, financialYear } = params;
 
@@ -270,7 +276,7 @@ export class JournalPostingService {
       throw new Error("InvalidReversalError: Cancellation/reversal reason is required.");
     }
 
-    const original = await db.journalEntry.findUnique({
+    const original = await (dbOrTx as any).journalEntry.findUnique({
       where: { id: originalEntryId },
       include: { lines: { orderBy: { lineNumber: "asc" } } },
     });
@@ -288,7 +294,7 @@ export class JournalPostingService {
     }
 
     // Invert the lines: all original debits become credits; all original credits become debits
-    const invertedLines = original.lines.map((line, idx) => ({
+    const invertedLines = original.lines.map((line: any, idx: number) => ({
       lineNumber: idx + 1,
       accountId: line.accountId,
       accountCode: line.accountCode,
@@ -324,7 +330,7 @@ export class JournalPostingService {
       lines: invertedLines,
     };
 
-    return await this.postJournalEntry(reversalInput, actor, db);
+    return await this.postJournalEntry(reversalInput, actor, dbOrTx);
   }
 
   /**
@@ -336,7 +342,7 @@ export class JournalPostingService {
       actor: ActorContext;
       justification: string;
     },
-    db: PrismaClient = prisma
+    dbOrTx: DbClientOrTx = prisma
   ): Promise<JournalEntryWithLines> {
     const { input, actor, justification } = params;
 
@@ -356,15 +362,15 @@ export class JournalPostingService {
       reversalReason: justification,
     };
 
-    return await this.postJournalEntry(adjustmentInput, actor, db);
+    return await this.postJournalEntry(adjustmentInput, actor, dbOrTx);
   }
 
   /**
    * Period locking validation.
    */
-  private static async verifyFiscalPeriodOpen(date: Date, fiscalPeriodId?: string | null, db: PrismaClient = prisma) {
+  private static async verifyFiscalPeriodOpen(date: Date, fiscalPeriodId?: string | null, dbOrTx: DbClientOrTx = prisma) {
     if (fiscalPeriodId) {
-      const period = await db.fiscalPeriod.findUnique({
+      const period = await (dbOrTx as any).fiscalPeriod.findUnique({
         where: { id: fiscalPeriodId },
       });
       if (period?.isLocked) {
@@ -376,7 +382,7 @@ export class JournalPostingService {
     }
 
     // Auto-match by date
-    const lockedPeriod = await db.fiscalPeriod.findFirst({
+    const lockedPeriod = await (dbOrTx as any).fiscalPeriod.findFirst({
       where: {
         startDate: { lte: date },
         endDate: { gte: date },
@@ -394,8 +400,8 @@ export class JournalPostingService {
   /**
    * Verification of reversal prerequisites.
    */
-  private static async verifyReversalPrerequisites(reversalOfId: string, db: PrismaClient = prisma) {
-    const target = await db.journalEntry.findUnique({
+  private static async verifyReversalPrerequisites(reversalOfId: string, dbOrTx: DbClientOrTx = prisma) {
+    const target = await (dbOrTx as any).journalEntry.findUnique({
       where: { id: reversalOfId },
     });
     if (!target) {

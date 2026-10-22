@@ -175,6 +175,7 @@ model BankAccount {
   updatedAt     DateTime @updatedAt
   expensePayments ExpensePayment[]
   journalLines  JournalLine[]
+  invoicePayments InvoicePayment[]
 }
 
 enum ProformaInvoiceStatus {
@@ -267,7 +268,7 @@ enum TaxInvoiceStatus {
 model TaxInvoice {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   invoiceNumber   String   @unique
-  sourceProformaId String?  @unique
+  sourceProformaId String?
   poNumber        String?
   
   // Relations
@@ -322,6 +323,9 @@ model TaxInvoice {
 
   items           TaxInvoiceItem[]
   payments        InvoicePayment[]
+
+  @@index([sourceProformaId])
+  @@index([customerId])
 }
 
 model InvoicePayment {
@@ -341,7 +345,15 @@ model InvoicePayment {
   cancellationReason String?
   advanceAmount   Float?      @default(0)
   isOnAccount     Boolean?    @default(false)
+  
+  // Explicit Bank Account Linking
+  bankAccountId   String?     @db.ObjectId
+  bankAccount     BankAccount? @relation(fields: [bankAccountId], references: [id])
+
   createdAt       DateTime    @default(now())
+
+  @@index([taxInvoiceId])
+  @@index([bankAccountId])
 }
 
 model TaxInvoiceItem {

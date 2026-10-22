@@ -7,8 +7,14 @@ import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 export async function createTaxInvoiceAction(data: any) {
   try {
-    await requireActionAuth();
-    const invoice = await TaxInvoiceService.createTaxInvoice(data);
+    const session = await requireActionAuth();
+    const actor = {
+      id: (session.user as any)?.id,
+      name: session.user?.name || undefined,
+      email: session.user?.email || undefined,
+      role: (session.user as any)?.role || undefined,
+    };
+    const invoice = await TaxInvoiceService.createTaxInvoice(data, actor);
     revalidatePath("/invoices");
     revalidatePath("/finance");
     revalidatePath("/dashboard");
@@ -22,8 +28,14 @@ export async function createTaxInvoiceAction(data: any) {
 
 export async function convertProformaToTaxInvoiceAction(proformaId: string) {
   try {
-    await requireActionAuth();
-    const invoice = await TaxInvoiceService.convertProformaToTaxInvoice(proformaId);
+    const session = await requireActionAuth();
+    const actor = {
+      id: (session.user as any)?.id,
+      name: session.user?.name || undefined,
+      email: session.user?.email || undefined,
+      role: (session.user as any)?.role || undefined,
+    };
+    const invoice = await TaxInvoiceService.convertProformaToTaxInvoice(proformaId, actor);
     revalidatePath("/invoices");
     revalidatePath("/finance");
     revalidatePath("/dashboard");
@@ -37,8 +49,14 @@ export async function convertProformaToTaxInvoiceAction(proformaId: string) {
 
 export async function cancelTaxInvoiceAction(id: string, reason: string) {
   try {
-    await requireActionAuth();
-    const invoice = await TaxInvoiceService.cancelTaxInvoice(id, reason);
+    const session = await requireActionAuth();
+    const actor = {
+      id: (session.user as any)?.id,
+      name: session.user?.name || undefined,
+      email: session.user?.email || undefined,
+      role: (session.user as any)?.role || undefined,
+    };
+    const invoice = await TaxInvoiceService.cancelTaxInvoice(id, reason, actor);
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${id}`);
     return { success: true, data: invoice };
@@ -57,13 +75,20 @@ export async function recordInvoicePaymentAction(
     tdsRate: number;
     tdsAmount: number;
     bankReceipt: number;
+    bankAccountId?: string | null;
     reference?: string;
     remarks?: string;
   }
 ) {
   try {
-    await requireActionAuth();
-    const payment = await TaxInvoiceService.recordPayment(invoiceId, payload);
+    const session = await requireActionAuth();
+    const actor = {
+      id: (session.user as any)?.id,
+      name: session.user?.name || undefined,
+      email: session.user?.email || undefined,
+      role: (session.user as any)?.role || undefined,
+    };
+    const payment = await TaxInvoiceService.recordPayment(invoiceId, payload, actor);
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${invoiceId}`);
     revalidatePath("/finance");
@@ -91,13 +116,20 @@ export async function updateInvoicePaymentAction(
     tdsRate: number;
     tdsAmount: number;
     bankReceipt: number;
+    bankAccountId?: string | null;
     reference?: string;
     remarks?: string;
   }
 ) {
   try {
-    await requireActionAuth();
-    const res = await TaxInvoiceService.updatePayment(paymentId, payload);
+    const session = await requireActionAuth();
+    const actor = {
+      id: (session.user as any)?.id,
+      name: session.user?.name || undefined,
+      email: session.user?.email || undefined,
+      role: (session.user as any)?.role || undefined,
+    };
+    const res = await TaxInvoiceService.updatePayment(paymentId, payload, actor);
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${invoiceId}`);
     revalidatePath("/finance");
@@ -117,8 +149,14 @@ export async function updateInvoicePaymentAction(
 
 export async function deleteInvoicePaymentAction(paymentId: string, invoiceId: string) {
   try {
-    await requireActionAdmin();
-    const res = await TaxInvoiceService.deletePayment(paymentId);
+    const session = await requireActionAdmin();
+    const actor = {
+      id: (session.user as any)?.id,
+      name: session.user?.name || undefined,
+      email: session.user?.email || undefined,
+      role: (session.user as any)?.role || undefined,
+    };
+    const res = await TaxInvoiceService.deletePayment(paymentId, actor);
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${invoiceId}`);
     revalidatePath("/finance");
@@ -169,8 +207,14 @@ export async function markInvoiceGstPaidAction(
 
 export async function updateTaxInvoiceAction(id: string, payload: any) {
   try {
-    await requireActionAuth();
-    const invoice = await TaxInvoiceService.updateTaxInvoice(id, payload);
+    const session = await requireActionAuth();
+    const actor = {
+      id: (session.user as any)?.id,
+      name: session.user?.name || undefined,
+      email: session.user?.email || undefined,
+      role: (session.user as any)?.role || undefined,
+    };
+    const invoice = await TaxInvoiceService.updateTaxInvoice(id, payload, actor);
     revalidatePath("/invoices");
     revalidatePath(`/invoices/${id}`);
     revalidatePath("/finance");
@@ -185,8 +229,14 @@ export async function updateTaxInvoiceAction(id: string, payload: any) {
 
 export async function deleteTaxInvoiceAction(id: string) {
   try {
-    await requireActionAdmin();
-    const res = await TaxInvoiceService.deleteTaxInvoice(id);
+    const session = await requireActionAdmin();
+    const actor = {
+      id: (session.user as any)?.id,
+      name: session.user?.name || undefined,
+      email: session.user?.email || undefined,
+      role: (session.user as any)?.role || undefined,
+    };
+    const res = await TaxInvoiceService.deleteTaxInvoice(id, actor);
     revalidatePath("/invoices");
     revalidatePath("/finance");
     revalidatePath("/dashboard");

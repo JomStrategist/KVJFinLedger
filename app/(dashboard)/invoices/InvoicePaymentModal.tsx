@@ -84,11 +84,6 @@ export function InvoicePaymentModal({
       return;
     }
 
-    if (paymentAmount > maxAllowedAmount + 1) { // allow small 1 rupee tolerance
-      setError(`Payment amount cannot exceed allowable balance of ₹${maxAllowedAmount.toFixed(2)}.`);
-      return;
-    }
-
     if (editingPaymentId) {
       startTransition(async () => {
         const res = await updateInvoicePaymentAction(editingPaymentId, invoice.id, {
@@ -100,6 +95,7 @@ export function InvoicePaymentModal({
           bankReceipt: calculatedBankReceipt,
           reference: reference.trim() || undefined,
           remarks: remarks.trim() || undefined,
+          bankAccountId: editingPayment?.bankAccountId || invoice.bankAccountId || undefined,
         });
 
         if (res.success) {
@@ -120,6 +116,7 @@ export function InvoicePaymentModal({
           bankReceipt: calculatedBankReceipt,
           reference: reference.trim() || undefined,
           remarks: remarks.trim() || undefined,
+          bankAccountId: invoice.bankAccountId || undefined,
         });
 
         if (res.success) {
@@ -144,9 +141,16 @@ export function InvoicePaymentModal({
             <h2 className="text-xl font-bold text-theme-text mt-0.5">
               Record Payment for {invoice.invoiceNumber}
             </h2>
-            <p className="text-xs text-theme-text-muted">
-              {invoice.customerNameSnapshot || invoice.customer?.legalName}
-            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+              <p className="text-xs text-theme-text-muted">
+                {invoice.customerNameSnapshot || invoice.customer?.legalName}
+              </p>
+              {(invoice.bankNameSnapshot || invoice.bankAccount?.bankName) && (
+                <span className="text-[10px] font-medium bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Bank: {invoice.bankNameSnapshot || invoice.bankAccount?.bankName} (•••{(invoice.accountNumberSnapshot || invoice.bankAccount?.accountNumber)?.slice(-4)})
+                </span>
+              )}
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -309,7 +313,6 @@ export function InvoicePaymentModal({
                     type="number"
                     step="0.01"
                     min="0.01"
-                    max={maxAllowedAmount}
                     required
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(Number(e.target.value))}
@@ -317,6 +320,15 @@ export function InvoicePaymentModal({
                   />
                 </div>
               </div>
+
+              {paymentAmount > outstanding && outstanding > 0 && !editingPaymentId && (
+                <div className="p-2.5 bg-blue-50/80 border border-blue-200 rounded-lg text-blue-700 text-xs font-medium flex items-center gap-1.5">
+                  <svg className="w-4 h-4 shrink-0 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Overpayment of ₹{(paymentAmount - outstanding).toFixed(2)} will be credited as Customer Advance liability.</span>
+                </div>
+              )}
 
               {/* TDS Actual Deduction */}
               <div className="bg-theme-surface-hover/50 p-3.5 rounded-xl border border-theme-border space-y-3">
