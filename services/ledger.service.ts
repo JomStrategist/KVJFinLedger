@@ -19,4 +19,16 @@ export class LedgerService {
 
     return await AccountingEngine.getLedgerStatement(accountId, fromDate, toDate);
   }
+
+  /**
+   * Generate authoritative statement directly from persistent JournalLine records
+   */
+  static async getPersistentLedgerStatement(accountId: string, fromDateStr?: string, toDateStr?: string) {
+    const fromDate = fromDateStr ? new Date(fromDateStr) : undefined;
+    const toDate = toDateStr ? new Date(toDateStr + "T23:59:59.999Z") : undefined;
+
+    const { PersistentLedgerReportingService } = await import("./persistent-ledger-reporting.service");
+    return await PersistentLedgerReportingService.getLedgerStatement(accountId, { fromDate, toDate });
+  }
 }
+
