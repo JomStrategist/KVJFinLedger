@@ -174,6 +174,7 @@ model BankAccount {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   expensePayments ExpensePayment[]
+  journalLines  JournalLine[]
 }
 
 enum ProformaInvoiceStatus {
@@ -920,4 +921,176 @@ model GstSettlement {
   updatedAt         DateTime  @updatedAt
 }
 
+// ----------------------------------------------------------------------------
+// Phase 9: Persistent General Ledger, Fiscal Period, Audit & Atomic Sequences
+// ----------------------------------------------------------------------------
 
+enum JournalEntryType {
+  SALES
+  PURCHASE
+  RECEIPT
+  PAYMENT
+  CONTRA
+  JOURNAL
+  OPENING
+  CLOSING
+  REVERSAL
+  ADJUSTMENT
+}
+
+enum PostingStatus {
+  POSTED
+  REVERSED
+}
+
+enum JournalSourceType {
+  TAX_INVOICE
+  INVOICE_PAYMENT
+  EXPENSE
+  EXPENSE_PAYMENT
+  BANK_TRANSFER
+  OPENING_BALANCE
+  ASSET_DEPRECIATION
+  ASSET_DISPOSAL
+  LOAN_RECEIPT
+  LOAN_REPAYMENT
+  GST_SETTLEMENT
+  TDS_DEPOSIT
+  PERIOD_CLOSING
+  MANUAL_ADJUSTMENT
+}
+
+model JournalEntry {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  entryNumber     String            @unique
+  entryType       JournalEntryType
+  accountingDate  DateTime
+  financialYear   String            // e.g. "2026-27"
+  
+  fiscalPeriodId  String?           @db.ObjectId
+  fiscalPeriod    FiscalPeriod?     @relation(fields: [fiscalPeriodId], references: [id])
+
+  sourceType      JournalSourceType
+  sourceId        String            // ObjectId of source document
+  sourceNumber    String?           // Human-readable source reference
+  
+  narration       String
+  reference       String?           // External reference, UTR, cheque, challan
+
+  totalDebit      Float
+  totalCredit     Float
+  isBalanced      Boolean           @default(true)
+  status          PostingStatus     @default(POSTED)
+
+  // Creation & Authorization Metadata
+  postedAt        DateTime          @default(now())
+  postedBy        String?
+  authorizedBy    String?
+
+  // Idempotency & Uniqueness
+  idempotencyKey  String            @unique
+
+  // Reversal Tracking (MongoDB safe: 1-to-many relation avoids duplicate null index conflicts)
+  reversalOfId    String?           @db.ObjectId
+  reversalOf      JournalEntry?     @relation("EntryReversal", fields: [reversalOfId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reversals       JournalEntry[]    @relation("EntryReversal")
+  reversalReason  String?
+  reversedAt      DateTime?
+
+  lines           JournalLine[]
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([accountingDate])
+  @@index([financialYear])
+  @@index([sourceType, sourceId])
+  @@index([status])
+  @@index([reversalOfId])
+}
+
+model JournalLine {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  
+  entryId         String            @db.ObjectId
+  entry           JournalEntry      @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  
+  lineNumber      Int               // 1-indexed line position within entry
+  
+  // Account Identity (Chart of Accounts integration)
+  accountId       String            // Canonical identifier (ExpenseCategory.id or statutory account code)
+  accountCode     String?           // Human-readable code e.g. "EXP-SAL-001"
+  accountName     String            // Snapshot of account name for point-in-time audit integrity
+  financialType   String            // ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
+  statementGroup  String            // "Revenue from Operations", "Trade Receivables", etc.
+  normalBalance   String            // DEBIT, CREDIT
+
+  debit           Float             @default(0)
+  credit          Float             @default(0)
+
+  particulars     String?
+
+  // Sub-Ledger Dimensions
+  entityType      String?           // CUSTOMER, VENDOR, EMPLOYEE, BANK, LOAN, CATEGORY
+  entityId        String?           // Target entity ObjectId (Customer.id, Vendor.id, etc.)
+  
+  // Explicit Bank Account Linking
+  bankAccountId   String?           @db.ObjectId
+  bankAccount     BankAccount?      @relation(fields: [bankAccountId], references: [id])
+
+  createdAt       DateTime          @default(now())
+
+  @@index([entryId])
+  @@index([accountId])
+  @@index([entityType, entityId])
+  @@index([bankAccountId])
+}
+
+model FiscalPeriod {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  financialYear   String            // "2026-27"
+  periodName      String            // "April 2026", "FY 2026-27"
+  periodCode      String            @unique // "2026-04", "FY-2026-27"
+  startDate       DateTime
+  endDate         DateTime
+  isLocked        Boolean           @default(false)
+  lockedAt        DateTime?
+  lockedBy        String?
+  lockReason      String?
+
+  entries         JournalEntry[]
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([financialYear])
+  @@index([isLocked])
+}
+
+model AuditLog {
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  actorId         String?
+  actorName       String
+  actorEmail      String
+  action          String            // "POST_JOURNAL", "REVERSE_JOURNAL", "ADJUSTMENT", "LOCK_PERIOD"
+  entity          String            // "JournalEntry", "TaxInvoice", "FiscalPeriod"
+  entityId        String
+  timestamp       DateTime          @default(now())
+  ipAddress       String?
+  userAgent       String?
+  
+  beforeState     Json?
+  afterState      Json?
+  changeSummary   String?
+  reason          String?
+
+  @@index([entity, entityId])
+  @@index([actorId])
+  @@index([timestamp])
+}
+
+model Counter {
+  id              String            @id @map("_id") // Sequential prefix key, e.g. "JV-2026-27"
+  sequence        Int               @default(0)
+  updatedAt       DateTime          @updatedAt
+}
