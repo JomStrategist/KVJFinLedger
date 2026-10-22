@@ -7,17 +7,11 @@ import { signOut } from "next-auth/react";
 import {
   DashboardIcon,
   LedgersIcon,
-  JournalIcon,
   InvoiceIcon,
   ExpenseIcon,
-  EmployeesIcon,
   BankingIcon,
-  MastersIcon,
-  UsersIcon,
   ReportsIcon,
-  OpeningClosingIcon,
   SettingsIcon,
-  HomeIcon,
 } from "./icons/SidebarIcons";
 
 interface NavItem {
@@ -33,16 +27,12 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: <DashboardIcon /> },
-  { name: "Ledgers", href: "/ledgers", icon: <LedgersIcon /> },
-  { name: "Journal", href: "/journals", icon: <JournalIcon /> },
-  { name: "Invoice", href: "/invoices", icon: <InvoiceIcon /> },
-  { name: "Expense", href: "/expenses", icon: <ExpenseIcon /> },
-  { name: "Employees", href: "/expenses?tab=employees", icon: <EmployeesIcon /> },
-  { name: "Banking & Cash", href: "/bank-transfers", icon: <BankingIcon /> },
-  { name: "Masters", href: "/masters", icon: <MastersIcon /> },
-  { name: "Users", href: "/users", icon: <UsersIcon /> },
+  { name: "Sales & Invoicing", href: "/invoices", icon: <InvoiceIcon /> },
+  { name: "Purchases & Expenses", href: "/expenses", icon: <ExpenseIcon /> },
+  { name: "Banking & Treasury", href: "/bank-transfers", icon: <BankingIcon /> },
+  { name: "General Ledger", href: "/ledgers", icon: <LedgersIcon /> },
   {
-    name: "Reports",
+    name: "Reports & Analytics",
     href: "/reports",
     icon: <ReportsIcon />,
     subItems: [
@@ -59,8 +49,7 @@ const navItems: NavItem[] = [
       { name: "Audit", href: "/reports?category=audit", icon: "🔍" },
     ]
   },
-  { name: "Opening/Closing", href: "/opening-closing", icon: <OpeningClosingIcon /> },
-  { name: "Settings", href: "/settings", icon: <SettingsIcon /> }
+  { name: "Administration & Settings", href: "/settings", icon: <SettingsIcon /> }
 ];
 
 export function Sidebar({
@@ -70,7 +59,7 @@ export function Sidebar({
   onCloseMobile,
 }: {
   userRole?: string;
-  user?: any;
+  user?: { name?: string | null; email?: string | null; image?: string | null; role?: string | null };
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
 }) {
@@ -140,39 +129,55 @@ export function Sidebar({
 
   const isItemActive = (href: string) => {
     const currentHref = (isPending || optimisticHref) && optimisticHref ? optimisticHref : pathname;
-    if (href === "/dashboard") return currentHref === "/dashboard";
-    if (href === "/ledgers") return currentHref.startsWith("/ledgers");
-    if (href === "/journals") return currentHref.startsWith("/journals");
-    if (href === "/invoices") return currentHref.startsWith("/invoices") || currentHref.startsWith("/proforma-invoices");
-    if (href === "/expenses?tab=employees") {
-      return (currentHref.startsWith("/expenses") && searchParams?.get("tab") === "employees") || (currentHref.startsWith("/masters") && searchParams?.get("tab") === "employees");
+    if (href === "/dashboard") return currentHref === "/dashboard" || currentHref === "/home";
+    if (href === "/invoices") {
+      return (
+        currentHref.startsWith("/invoices") ||
+        currentHref.startsWith("/proforma-invoices") ||
+        currentHref.startsWith("/customers") ||
+        currentHref.startsWith("/products")
+      );
     }
     if (href === "/expenses") {
-      return (currentHref.startsWith("/expenses") && searchParams?.get("tab") !== "employees") || currentHref.startsWith("/expense-categories");
+      return (
+        currentHref.startsWith("/expenses") ||
+        currentHref.startsWith("/vendors") ||
+        currentHref.startsWith("/expense-categories")
+      );
     }
-    if (href === "/bank-transfers") return currentHref.startsWith("/bank-transfers");
-    if (href === "/masters") return currentHref.startsWith("/masters") || currentHref.startsWith("/customers") || currentHref.startsWith("/vendors");
-    if (href === "/users") return currentHref.startsWith("/users");
-    if (href === "/reports") return currentHref.startsWith("/reports") || currentHref.startsWith("/financial-statements");
-    if (href === "/opening-closing") return currentHref.startsWith("/opening-closing");
-    if (href === "/settings") return currentHref.startsWith("/settings");
+    if (href === "/bank-transfers") {
+      return currentHref.startsWith("/bank-transfers") || currentHref.startsWith("/finance");
+    }
+    if (href === "/ledgers") {
+      return (
+        currentHref.startsWith("/ledgers") ||
+        currentHref.startsWith("/journals") ||
+        currentHref.startsWith("/opening-closing")
+      );
+    }
+    if (href === "/reports") {
+      return (
+        currentHref.startsWith("/reports") ||
+        currentHref.startsWith("/financial-statements") ||
+        currentHref.startsWith("/profit-loss") ||
+        currentHref.startsWith("/analysis")
+      );
+    }
+    if (href === "/settings") {
+      return (
+        currentHref.startsWith("/settings") ||
+        currentHref.startsWith("/users") ||
+        currentHref.startsWith("/masters") ||
+        currentHref.startsWith("/admin")
+      );
+    }
     return currentHref.startsWith(href);
   };
 
   const filteredNavItems = navItems.filter((item) => {
-    if (item.name === "Settings" && userRole !== "ADMIN") return false;
-    if (item.name === "Users" && userRole !== "ADMIN") return false;
-    if (item.name === "Dashboard" && userRole !== "ADMIN") return false;
+    if (item.name === "Administration & Settings" && userRole !== "ADMIN") return false;
     return true;
   });
-
-  if (userRole !== "ADMIN") {
-    filteredNavItems.unshift({
-      name: "Home",
-      href: "/home",
-      icon: <HomeIcon />
-    });
-  }
 
   // Width management
   const sidebarWidth = !isMounted ? "w-64" : (isCollapsed ? "w-20" : "w-64");
@@ -230,7 +235,7 @@ export function Sidebar({
           <ul className="space-y-1">
             {filteredNavItems.map((item) => {
               const active = isItemActive(item.href);
-              const hasSubItems = Boolean((item as any).subItems && (item as any).subItems.length > 0);
+              const hasSubItems = Boolean(item.subItems && item.subItems.length > 0);
               const isExpanded = hasSubItems && reportsExpanded;
 
               return (
@@ -273,7 +278,7 @@ export function Sidebar({
                       {/* Sub-Items Indented List */}
                       {!isCollapsed && isExpanded && (
                         <ul className="mt-1 space-y-0.5 pl-2 animate-in fade-in duration-150">
-                          {((item as any).subItems as Array<{ name: string; href: string; icon: string }>).map((sub) => {
+                          {item.subItems?.map((sub) => {
                             const isSubActive = isSubItemActive(sub.href);
                             return (
                               <li key={sub.name}>
@@ -344,7 +349,7 @@ export function Sidebar({
                 <div className="min-w-0 leading-tight">
                   <p className="text-xs font-bold text-white truncate">{user?.name || 'Jomon Joseph'}</p>
                   <p className="text-[10px] font-bold text-emerald-400/90 tracking-wider uppercase truncate">
-                    {(user as any)?.role || userRole || 'ADMIN'}
+                    {user?.role || userRole || 'ADMIN'}
                   </p>
                 </div>
               </div>
@@ -371,7 +376,7 @@ export function Sidebar({
                 </svg>
               </button>
               <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#06100B] text-white text-xs font-semibold rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap border border-[#1B2B23] pointer-events-none">
-                {user?.name || 'Jomon Joseph'} ({(user as any)?.role || userRole || 'ADMIN'})
+                {user?.name || 'Jomon Joseph'} ({user?.role || userRole || 'ADMIN'})
               </div>
             </div>
           )}
@@ -419,7 +424,7 @@ export function Sidebar({
           <ul className="space-y-1">
             {filteredNavItems.map((item) => {
               const active = isItemActive(item.href);
-              const hasSubItems = Boolean((item as any).subItems && (item as any).subItems.length > 0);
+              const hasSubItems = Boolean(item.subItems && item.subItems.length > 0);
               const isExpanded = hasSubItems && reportsExpanded;
 
               return (
@@ -448,7 +453,7 @@ export function Sidebar({
                       {/* Mobile Sub-Items */}
                       {isExpanded && (
                         <ul className="mt-1 space-y-0.5 pl-2">
-                          {((item as any).subItems as Array<{ name: string; href: string; icon: string }>).map((sub) => {
+                          {item.subItems?.map((sub) => {
                             const isSubActive = isSubItemActive(sub.href);
                             return (
                               <li key={sub.name}>
@@ -504,7 +509,7 @@ export function Sidebar({
               <div className="min-w-0 leading-tight">
                 <p className="text-xs font-bold text-white truncate">{user?.name || 'Jomon Joseph'}</p>
                 <p className="text-[10px] font-bold text-emerald-400/90 tracking-wider uppercase truncate">
-                  {(user as any)?.role || userRole || 'ADMIN'}
+                  {user?.role || userRole || 'ADMIN'}
                 </p>
               </div>
             </div>

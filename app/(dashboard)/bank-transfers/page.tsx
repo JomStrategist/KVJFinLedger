@@ -10,7 +10,7 @@ import Link from "next/link";
 export default async function BankTransfersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; [key: string]: any }>;
+  searchParams: Promise<{ tab?: string; [key: string]: string | string[] | undefined }>;
 }) {
   await requireAuth();
   const params = await searchParams;
@@ -26,7 +26,7 @@ export default async function BankTransfersPage({
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Banking &amp; Cash</h1>
+          <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Banking &amp; Treasury</h1>
           <p className="text-[#68756C] text-sm mt-0.5 font-normal">
             Inter-bank fund movements, contra vouchers, bank reconciliation, and cash accounts.
           </p>

@@ -1,5 +1,6 @@
 import { JournalService } from "@/services/journal.service";
 import { JournalsClient } from "./JournalsClient";
+import { GeneralLedgerNav } from "@/components/GeneralLedgerNav";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,17 @@ export default async function JournalsPage({
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">General Ledger</h1>
+          <p className="text-[#68756C] text-sm mt-0.5 font-normal">
+            Chart of Accounts explorer, double-entry ledger vouchers, and financial statements.
+          </p>
+        </div>
+      </div>
+
+      <GeneralLedgerNav />
+
       <JournalsClient
         initialVouchers={JSON.parse(JSON.stringify(vouchers))}
         initialTotalDebit={totalDebit}

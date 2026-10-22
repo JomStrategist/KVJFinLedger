@@ -5,27 +5,46 @@ import { ConfirmedInvoices } from './ConfirmedInvoices';
 import { OptimisticTabs } from '@/components/OptimisticTabs';
 import { CustomerService } from '@/services/customer.service';
 import { CustomerClientList } from '../customers/CustomerClientList';
+import { ProductService } from '@/services/product.service';
+import { ProductClientList } from '../products/ProductClientList';
 
 export default async function InvoicesHubPage({
-  searchParams
+  searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; [key: string]: any }>
+  searchParams: Promise<{
+    tab?: string;
+    q?: string;
+    search?: string;
+    type?: string;
+    status?: string;
+  }>;
 }) {
   await requireAuth();
 
   const params = await searchParams;
   const activeTab = params.tab || 'confirmed';
 
-  const customers = activeTab === 'customers' ? await CustomerService.getCustomers() : [];
+  const [customers, products] = await Promise.all([
+    activeTab === 'customers'
+      ? CustomerService.getCustomers({
+          search: params.q || params.search || "",
+          customerType: params.type === "B2B" || params.type === "B2C" ? params.type : undefined,
+          isActive: params.status === "ACTIVE" ? true : params.status === "INACTIVE" ? false : undefined,
+        })
+      : Promise.resolve([]),
+    activeTab === 'products'
+      ? ProductService.getProducts()
+      : Promise.resolve([]),
+  ]);
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-7">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Invoice</h1>
+          <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Sales &amp; Invoicing</h1>
           <p className="text-[#68756C] text-sm mt-0.5 font-normal">
-            Confirmed Tax Invoices, Proforma Invoices, and Customer Accounts.
+            Confirmed Tax Invoices, Proforma Invoices, Customer Directory, and Products &amp; Services Catalog.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -49,6 +68,14 @@ export default async function InvoicesHubPage({
               <span>+</span> New Customer
             </Link>
           )}
+          {activeTab === 'products' && (
+            <Link
+              href="/products/new"
+              className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent rounded-xl text-xs font-bold text-white bg-[#177B55] hover:bg-[#0B5F46] shadow-xs transition-colors gap-1.5 shrink-0"
+            >
+              <span>+</span> New Product / Service
+            </Link>
+          )}
         </div>
       </div>
 
@@ -59,7 +86,8 @@ export default async function InvoicesHubPage({
         tabs={[
           { id: "confirmed", label: "Confirmed Invoices" },
           { id: "proforma", label: "Proforma Invoices" },
-          { id: "customers", label: "Customers" }
+          { id: "customers", label: "Customers" },
+          { id: "products", label: "Products & Services" }
         ]}
       />
 
@@ -68,9 +96,14 @@ export default async function InvoicesHubPage({
         {activeTab === 'proforma' ? (
           <ProformaInvoices />
         ) : activeTab === 'customers' ? (
-          <CustomerClientList initialCustomers={customers as any} searchParams={{}} />
+          <CustomerClientList 
+            initialCustomers={customers} 
+            searchParams={{ q: params.q || params.search, type: params.type, status: params.status }} 
+          />
+        ) : activeTab === 'products' ? (
+          <ProductClientList initialProducts={JSON.parse(JSON.stringify(products))} />
         ) : (
-          <ConfirmedInvoices searchParams={params as any} />
+          <ConfirmedInvoices searchParams={{ q: params.q || params.search, status: params.status }} />
         )}
       </div>
     </div>

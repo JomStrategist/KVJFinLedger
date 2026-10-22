@@ -50,11 +50,7 @@ export const authConfig = {
 
       // Logged in, no password reset needed
       if (isLoginRoute || isChangePasswordRoute) {
-        if (user.role === 'ADMIN') {
-          return Response.redirect(new URL('/dashboard', nextUrl));
-        } else {
-          return Response.redirect(new URL('/home', nextUrl));
-        }
+        return Response.redirect(new URL('/dashboard', nextUrl));
       }
 
       return true;

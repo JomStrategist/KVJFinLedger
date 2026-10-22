@@ -65,9 +65,9 @@ export default async function ExpensesPage({
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Business Expenses</h1>
+          <h1 className="text-3xl font-extrabold text-[#17211B] tracking-tight">Purchases &amp; Expenses</h1>
           <p className="text-[#68756C] text-sm mt-0.5 font-normal">
-            Manage operational costs, salaries, utility bills, capital additions, and employee reimbursements.
+            Manage operational expenses, vendor bills, employee payroll, recurring schedules, and suppliers.
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/auth-utils';
+import { requireAuth } from '@/lib/auth-utils';
 import { DashboardService } from '@/services/dashboard.service';
 import { formatCurrency } from '@/lib/utils/currency';
 import Link from 'next/link';
@@ -11,7 +11,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; fy?: string }>;
 }) {
-  await requireAdmin();
+  await requireAuth();
 
   const resolvedParams = await searchParams;
   const rawFy = resolvedParams?.fy;
@@ -68,7 +68,7 @@ export default async function DashboardPage({
               <div className="mt-2 bg-white/80 border border-amber-300/80 p-2.5 rounded-xl text-xs font-medium text-amber-950 font-mono">
                 📍 <strong>Your Current Public IP:</strong> <code className="bg-amber-100 px-1.5 py-0.5 rounded text-amber-900 font-bold">103.182.167.158</code>
                 <br />
-                👉 <strong>Fix:</strong> Log in to <span className="font-bold">MongoDB Atlas</span> → <span className="font-bold">Network Access</span> → Click <span className="font-bold">"Add IP Address"</span> → Add <code className="bg-amber-100 px-1.5 py-0.5 rounded font-bold text-amber-900">103.182.167.158</code> (or <code className="bg-amber-100 px-1.5 py-0.5 rounded font-bold text-amber-900">0.0.0.0/0</code> for everywhere access).
+                👉 <strong>Fix:</strong> Log in to <span className="font-bold">MongoDB Atlas</span> → <span className="font-bold">Network Access</span> → Click <span className="font-bold">&quot;Add IP Address&quot;</span> → Add <code className="bg-amber-100 px-1.5 py-0.5 rounded font-bold text-amber-900">103.182.167.158</code> (or <code className="bg-amber-100 px-1.5 py-0.5 rounded font-bold text-amber-900">0.0.0.0/0</code> for everywhere access).
               </div>
             </div>
           </div>

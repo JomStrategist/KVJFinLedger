@@ -6,11 +6,10 @@ import Link from "next/link";
 import { getCurrentFinancialYear } from "@/lib/utils/financial-year";
 
 export function Header({
-  user,
   onToggleMobileNav,
   isMobileNavOpen,
 }: {
-  user?: any;
+  user?: { name?: string | null; email?: string | null; role?: string | null };
   onToggleMobileNav?: () => void;
   isMobileNavOpen?: boolean;
 }) {
@@ -23,9 +22,22 @@ export function Header({
     const segments = pathname.split("/").filter(Boolean);
     if (segments.length === 0) return [{ label: "Dashboard", href: "/dashboard" }];
 
+    const MODULE_NAMES: Record<string, string> = {
+      invoices: "Sales & Invoicing",
+      expenses: "Purchases & Expenses",
+      "bank-transfers": "Banking & Treasury",
+      ledgers: "General Ledger",
+      journals: "Journal Vouchers",
+      "opening-closing": "Opening & Closing",
+      reports: "Reports & Analytics",
+      settings: "Settings",
+      users: "Users & Roles",
+      dashboard: "Dashboard",
+    };
+
     return segments.map((seg, idx) => {
       const href = "/" + segments.slice(0, idx + 1).join("/");
-      const formatted = seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, " ");
+      const formatted = MODULE_NAMES[seg] || (seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, " "));
       return { label: formatted, href };
     });
   };
