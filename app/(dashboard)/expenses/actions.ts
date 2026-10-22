@@ -26,10 +26,20 @@ function revalidateAllExpenseRoutes(id?: string) {
   }
 }
 
+function extractActor(session: any) {
+  return {
+    id: (session?.user as any)?.id,
+    name: session?.user?.name || undefined,
+    email: session?.user?.email || undefined,
+    role: (session?.user as any)?.role || undefined,
+  };
+}
+
 export async function createExpenseAction(data: any) {
   try {
-    await requireActionAuth();
-    const expense = await ExpenseService.createExpense(data);
+    const session = await requireActionAuth();
+    const actor = extractActor(session);
+    const expense = await ExpenseService.createExpense(data, actor);
     revalidateAllExpenseRoutes();
     return { success: true, data: JSON.parse(JSON.stringify(expense)) };
   } catch (error: any) {
@@ -39,8 +49,9 @@ export async function createExpenseAction(data: any) {
 
 export async function updateExpenseAction(id: string, data: any) {
   try {
-    await requireActionAuth();
-    const expense = await ExpenseService.updateExpense(id, data);
+    const session = await requireActionAuth();
+    const actor = extractActor(session);
+    const expense = await ExpenseService.updateExpense(id, data, actor);
     revalidateAllExpenseRoutes(id);
     return { success: true, data: JSON.parse(JSON.stringify(expense)) };
   } catch (error: any) {
@@ -50,8 +61,9 @@ export async function updateExpenseAction(id: string, data: any) {
 
 export async function approveExpenseAction(id: string) {
   try {
-    await requireActionAuth();
-    await ExpenseService.approveExpense(id);
+    const session = await requireActionAuth();
+    const actor = extractActor(session);
+    await ExpenseService.approveExpense(id, actor);
     revalidateAllExpenseRoutes(id);
     return { success: true };
   } catch (error: any) {
@@ -61,8 +73,9 @@ export async function approveExpenseAction(id: string) {
 
 export async function cancelExpenseAction(id: string, reason: string) {
   try {
-    await requireActionAuth();
-    await ExpenseService.cancelExpense(id, reason);
+    const session = await requireActionAuth();
+    const actor = extractActor(session);
+    await ExpenseService.cancelExpense(id, reason, actor);
     revalidateAllExpenseRoutes(id);
     return { success: true };
   } catch (error: any) {
@@ -90,9 +103,15 @@ export async function recordExpensePaymentAction(data: {
   referenceNumber?: string;
   notes?: string;
   isReimbursement?: boolean;
+  isTdsDeducted?: boolean;
+  tdsRate?: number;
+  tdsAmount?: number;
+  tdsSection?: string;
+  bankPayment?: number;
 }) {
   try {
-    await requireActionAuth();
+    const session = await requireActionAuth();
+    const actor = extractActor(session);
     const result = await ExpenseService.recordExpensePayment(data.expenseId, {
       amount: data.amount,
       paymentDate: data.paymentDate,
@@ -101,7 +120,12 @@ export async function recordExpensePaymentAction(data: {
       referenceNumber: data.referenceNumber,
       notes: data.notes,
       isReimbursement: data.isReimbursement,
-    });
+      isTdsDeducted: data.isTdsDeducted,
+      tdsRate: data.tdsRate,
+      tdsAmount: data.tdsAmount,
+      tdsSection: data.tdsSection,
+      bankPayment: data.bankPayment,
+    }, actor);
     revalidateAllExpenseRoutes(data.expenseId);
     return { success: true, data: JSON.parse(JSON.stringify(result)) };
   } catch (error: any) {
@@ -111,8 +135,9 @@ export async function recordExpensePaymentAction(data: {
 
 export async function deleteExpensePaymentAction(paymentId: string, expenseId?: string) {
   try {
-    await requireActionAdmin();
-    const updatedExpense = await ExpenseService.deleteExpensePayment(paymentId);
+    const session = await requireActionAdmin();
+    const actor = extractActor(session);
+    const updatedExpense = await ExpenseService.deleteExpensePayment(paymentId, actor);
     revalidateAllExpenseRoutes(expenseId || updatedExpense.id);
     return { success: true, data: JSON.parse(JSON.stringify(updatedExpense)) };
   } catch (error: any) {
@@ -132,8 +157,9 @@ export async function getExpensePaymentsAction(expenseId: string) {
 
 export async function deleteExpenseAction(id: string) {
   try {
-    await requireActionAdmin();
-    await ExpenseService.deleteExpense(id);
+    const session = await requireActionAdmin();
+    const actor = extractActor(session);
+    await ExpenseService.deleteExpense(id, actor);
     revalidateAllExpenseRoutes(id);
     return { success: true };
   } catch (error: any) {

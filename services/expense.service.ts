@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { PrismaClient, ExpenseStatus, PaymentStatus } from "@prisma/client";
 import { FinancialTransactionService } from "./financial-transaction.service";
 import { AccountingEngine } from "./accounting-engine.service";
+import { ExpenseAccountingService } from "./expense-accounting.service";
+import { ActorContext } from "./journal-posting.service";
 
 export interface RecordExpensePaymentInput {
   amount: number;
@@ -11,6 +13,11 @@ export interface RecordExpensePaymentInput {
   referenceNumber?: string;
   notes?: string;
   isReimbursement?: boolean;
+  isTdsDeducted?: boolean;
+  tdsRate?: number;
+  tdsAmount?: number;
+  tdsSection?: string;
+  bankPayment?: number;
 }
 
 export class ExpenseService {
@@ -232,8 +239,9 @@ export class ExpenseService {
     }
   }
 
-  static async createExpense(data: any) {
-    const res = await prisma.$transaction(async (tx) => {
+  static async createExpense(data: any, actor?: ActorContext, existingTx?: any) {
+    const runInTx = async (op: (tx: any) => Promise<any>) => existingTx ? op(existingTx) : prisma.$transaction(op);
+    const res = await runInTx(async (tx) => {
       const expenseNumber = await this.generateExpenseNumber(tx);
       const expenseDate = new Date(data.expenseDate);
       const financialYear = data.financialYear || this.getFinancialYear(expenseDate);
@@ -312,6 +320,9 @@ export class ExpenseService {
           inputIGST: Number(data.inputIGST ?? data.igstAmount ?? 0),
           totalInputGST: Number(data.totalInputGST ?? data.totalGST ?? 0),
 
+          isItcEligible: data.isItcEligible !== undefined ? Boolean(data.isItcEligible) : true,
+          itcIneligibleReason: data.itcIneligibleReason || null,
+
           tdsRate: Number(data.tdsRate || 0),
           tdsAmount: Number(data.tdsAmount || 0),
           tdsPaymentStatus: data.tdsPaymentStatus || (Number(data.tdsAmount || 0) > 0 ? "UNPAID" : "NA"),
@@ -360,8 +371,9 @@ export class ExpenseService {
       });
 
       // If initial payment was made and bankAccountId provided, record the initial ExpensePayment
+      let initialPayment: any = null;
       if (paidAmount > 0 && data.bankAccountId) {
-        await tx.expensePayment.create({
+        initialPayment = await tx.expensePayment.create({
           data: {
             expenseId: expense.id,
             amount: paidAmount,
@@ -371,11 +383,21 @@ export class ExpenseService {
             referenceNumber: data.paymentReference || data.billNumber || null,
             notes: data.paymentNotes || (data.paidBy === "EMPLOYEE" ? "Initial employee reimbursement" : "Initial direct settlement"),
             isReimbursement: data.paidBy === "EMPLOYEE",
+            isTdsDeducted: Boolean(data.isTdsDeducted),
+            tdsRate: Number(data.tdsRate || 0),
+            tdsAmount: Number(data.tdsAmount || 0),
+            tdsSection: data.tdsSection || null,
+            bankPayment: data.bankPayment !== undefined ? Number(data.bankPayment) : undefined,
           }
         });
       }
 
       if (expense.status === "APPROVED") {
+        await ExpenseAccountingService.postExpenseConfirmation(expense.id, actor, tx);
+        if (initialPayment) {
+          await ExpenseAccountingService.postExpensePayment(initialPayment.id, actor, tx);
+        }
+
         await FinancialTransactionService.upsertExpenseTransaction(tx, {
           sourceId: expense.id,
           transactionDate: expense.expenseDate,
@@ -397,7 +419,7 @@ export class ExpenseService {
     return res;
   }
 
-  static async updateExpense(id: string, data: any) {
+  static async updateExpense(id: string, data: any, actor?: ActorContext, existingTx?: any) {
     const current = await prisma.expense.findUnique({ 
       where: { id },
       include: { payments: true }
@@ -405,7 +427,8 @@ export class ExpenseService {
     if (!current) throw new Error("Expense not found");
     if (current.status === "CANCELLED") throw new Error("Cannot edit a cancelled expense.");
 
-    const res = await prisma.$transaction(async (tx) => {
+    const runInTx = async (op: (tx: any) => Promise<any>) => existingTx ? op(existingTx) : prisma.$transaction(op);
+    const res = await runInTx(async (tx) => {
       // Delete existing items
       await tx.expenseItem.deleteMany({ where: { expenseId: id } });
 
@@ -529,6 +552,8 @@ export class ExpenseService {
       });
 
       if (updatedExpense.status === "APPROVED") {
+        await ExpenseAccountingService.adjustExpense(updatedExpense.id, actor, tx);
+
         await FinancialTransactionService.upsertExpenseTransaction(tx, {
           sourceId: updatedExpense.id,
           transactionDate: updatedExpense.expenseDate,
@@ -558,7 +583,12 @@ export class ExpenseService {
    * - Accurate debit to Trade Payable / Employee Payable, credit to Bank Account
    * - Never creates duplicate P&L expense
    */
-  static async recordExpensePayment(expenseId: string, data: RecordExpensePaymentInput) {
+  static async recordExpensePayment(
+    expenseId: string,
+    data: RecordExpensePaymentInput,
+    actor?: ActorContext,
+    existingTx?: any
+  ) {
     const amount = Number(data.amount);
     if (isNaN(amount) || amount <= 0) {
       throw new Error("Payment amount must be greater than zero.");
@@ -582,7 +612,8 @@ export class ExpenseService {
       throw new Error(`Payment amount (₹${amount.toLocaleString("en-IN")}) exceeds remaining balance payable (₹${remainingPayable.toLocaleString("en-IN")}).`);
     }
 
-    const res = await prisma.$transaction(async (tx) => {
+    const runInTx = async (op: (tx: any) => Promise<any>) => existingTx ? op(existingTx) : prisma.$transaction(op);
+    const res = await runInTx(async (tx) => {
       // 1. Create payment record
       const payment = await tx.expensePayment.create({
         data: {
@@ -594,13 +625,21 @@ export class ExpenseService {
           referenceNumber: data.referenceNumber || null,
           notes: data.notes || null,
           isReimbursement: Boolean(data.isReimbursement || current.paidBy === "EMPLOYEE"),
+          isTdsDeducted: Boolean(data.isTdsDeducted),
+          tdsRate: Number(data.tdsRate || 0),
+          tdsAmount: Number(data.tdsAmount || 0),
+          tdsSection: data.tdsSection || null,
+          bankPayment: data.bankPayment !== undefined ? Number(data.bankPayment) : undefined,
         },
         include: { bankAccount: true }
       });
 
-      // 2. Recalculate paidAmount and balancePayable
+      // 2. Post persistent General Ledger payment voucher atomically
+      await ExpenseAccountingService.postExpensePayment(payment.id, actor, tx);
+
+      // 3. Recalculate paidAmount and balancePayable
       const allPayments = await tx.expensePayment.findMany({ where: { expenseId } });
-      const newPaidAmount = allPayments.reduce((s, p) => s + Number(p.amount), 0);
+      const newPaidAmount = allPayments.reduce((s: number, p: any) => s + Number(p.amount), 0);
       const netAmount = Number(current.netAmount);
       const newBalancePayable = Math.max(0, netAmount - newPaidAmount);
       const newPaymentStatus: PaymentStatus = newBalancePayable <= 0.01 ? "PAID" : "PARTIALLY_PAID";
@@ -649,7 +688,7 @@ export class ExpenseService {
     }
   }
 
-  static async deleteExpensePayment(paymentId: string) {
+  static async deleteExpensePayment(paymentId: string, actor?: ActorContext, existingTx?: any) {
     const payment = await prisma.expensePayment.findUnique({
       where: { id: paymentId },
       include: { expense: true }
@@ -658,12 +697,16 @@ export class ExpenseService {
     if (!payment) throw new Error("Payment record not found.");
 
     const expenseId = payment.expenseId;
+    const runInTx = async (op: (tx: any) => Promise<any>) => existingTx ? op(existingTx) : prisma.$transaction(op);
 
-    const res = await prisma.$transaction(async (tx) => {
+    const res = await runInTx(async (tx) => {
+      // 1. Reverse persistent General Ledger payment voucher atomically
+      await ExpenseAccountingService.reverseExpensePayment(paymentId, "Payment deleted by user", actor, tx);
+
       await tx.expensePayment.delete({ where: { id: paymentId } });
 
       const allPayments = await tx.expensePayment.findMany({ where: { expenseId } });
-      const newPaidAmount = allPayments.reduce((s, p) => s + Number(p.amount), 0);
+      const newPaidAmount = allPayments.reduce((s: number, p: any) => s + Number(p.amount), 0);
       const netAmount = Number(payment.expense.netAmount);
       const newBalancePayable = Math.max(0, netAmount - newPaidAmount);
       const newPaymentStatus: PaymentStatus = newPaidAmount === 0 ? "UNPAID" : (newBalancePayable <= 0.01 ? "PAID" : "PARTIALLY_PAID");
@@ -697,16 +740,19 @@ export class ExpenseService {
     return res;
   }
 
-  static async approveExpense(id: string) {
+  static async approveExpense(id: string, actor?: ActorContext, existingTx?: any) {
     const current = await prisma.expense.findUnique({ where: { id } });
     if (!current) throw new Error("Expense not found");
     if (current.status !== "DRAFT") throw new Error("Only draft expenses can be approved.");
 
-    const res = await prisma.$transaction(async (tx) => {
+    const runInTx = async (op: (tx: any) => Promise<any>) => existingTx ? op(existingTx) : prisma.$transaction(op);
+    const res = await runInTx(async (tx) => {
       const updatedExpense = await tx.expense.update({
         where: { id },
         data: { status: "APPROVED" }
       });
+
+      await ExpenseAccountingService.postExpenseConfirmation(updatedExpense.id, actor, tx);
 
       await FinancialTransactionService.createExpenseTransaction(tx, {
         sourceId: updatedExpense.id,
@@ -728,7 +774,7 @@ export class ExpenseService {
     return res;
   }
 
-  static async cancelExpense(id: string, reason: string) {
+  static async cancelExpense(id: string, reason: string, actor?: ActorContext, existingTx?: any) {
     if (!reason || reason.trim() === "") throw new Error("Cancellation reason is required.");
     const current = await prisma.expense.findUnique({ 
       where: { id },
@@ -743,7 +789,8 @@ export class ExpenseService {
       throw new Error("Cannot cancel a paid expense.");
     }
 
-    const res = await prisma.$transaction(async (tx) => {
+    const runInTx = async (op: (tx: any) => Promise<any>) => existingTx ? op(existingTx) : prisma.$transaction(op);
+    const res = await runInTx(async (tx) => {
       const updatedExpense = await tx.expense.update({
         where: { id },
         data: {
@@ -752,6 +799,8 @@ export class ExpenseService {
           cancelledAt: new Date(),
         }
       });
+
+      await ExpenseAccountingService.reverseExpenseConfirmation(id, reason, actor, tx);
 
       await FinancialTransactionService.deleteTransactionBySource(tx, "EXPENSE", id);
 
@@ -808,11 +857,22 @@ export class ExpenseService {
     return res;
   }
 
-  static async deleteExpense(id: string) {
-    const current = await prisma.expense.findUnique({ where: { id } });
+  static async deleteExpense(id: string, actor?: ActorContext, existingTx?: any) {
+    const current = await prisma.expense.findUnique({ 
+      where: { id },
+      include: { payments: true }
+    });
     if (!current) throw new Error("Expense not found");
 
-    const res = await prisma.$transaction(async (tx) => {
+    const runInTx = async (op: (tx: any) => Promise<any>) => existingTx ? op(existingTx) : prisma.$transaction(op);
+    const res = await runInTx(async (tx) => {
+      if (current.payments && current.payments.length > 0) {
+        for (const p of current.payments) {
+          await ExpenseAccountingService.reverseExpensePayment(p.id, "Expense deleted", actor, tx);
+        }
+      }
+      await ExpenseAccountingService.reverseExpenseConfirmation(id, "Expense deleted", actor, tx);
+
       await tx.assetDepreciation.deleteMany({ where: { expenseId: id } });
       await tx.assetDisposal.deleteMany({ where: { expenseId: id } });
       await tx.expensePayment.deleteMany({ where: { expenseId: id } });

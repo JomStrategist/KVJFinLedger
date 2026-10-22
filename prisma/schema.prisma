@@ -675,6 +675,11 @@ model ExpensePayment {
   referenceNumber     String?      // Reference Number alias
   paymentType         String?      @default("SETTLEMENT") // SETTLEMENT, REIMBURSEMENT, ADVANCE
   isReimbursement     Boolean?     @default(false)
+  isTdsDeducted       Boolean?     @default(false)
+  tdsRate             Float?       @default(0)
+  tdsAmount           Float?       @default(0)
+  tdsSection          String?
+  bankPayment         Float?
   notes               String?
   isCancelled         Boolean?     @default(false)
   cancelledAt         DateTime?

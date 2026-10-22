@@ -32,6 +32,11 @@ export function RecordPaymentModal({
   const isReimbursement = Boolean(expense?.paidBy === "EMPLOYEE");
   const remainingPayable = Number(expense?.balancePayable || 0);
 
+  const [isTdsDeducted, setIsTdsDeducted] = useState<boolean>(false);
+  const [tdsSection, setTdsSection] = useState<string>("194J");
+  const [tdsRate, setTdsRate] = useState<string>("10");
+  const [tdsAmount, setTdsAmount] = useState<string>("0");
+
   useEffect(() => {
     if (expense) {
       setAmount(remainingPayable.toString());
@@ -39,6 +44,19 @@ export function RecordPaymentModal({
       setReferenceNumber("");
       setNotes("");
       setError(null);
+
+      const hasInitialTds = Number(expense.tdsRate || 0) > 0 || Number(expense.tdsAmount || 0) > 0;
+      setIsTdsDeducted(hasInitialTds);
+      setTdsSection(expense.tdsSection || "194J");
+      const defaultRate = expense.tdsRate ? expense.tdsRate.toString() : "10";
+      setTdsRate(defaultRate);
+      if (hasInitialTds) {
+        const computed = Math.round(remainingPayable * (Number(defaultRate) / 100) * 100) / 100;
+        setTdsAmount(computed.toString());
+      } else {
+        setTdsAmount("0");
+      }
+
       // Select primary bank or first available
       const primary = bankAccounts.find((b) => b.isPrimary) || bankAccounts[0];
       if (primary) {
@@ -46,6 +64,24 @@ export function RecordPaymentModal({
       }
     }
   }, [expense, remainingPayable, bankAccounts]);
+
+  const handleTdsToggle = (checked: boolean) => {
+    setIsTdsDeducted(checked);
+    if (checked) {
+      const rate = Number(tdsRate) || 10;
+      const computed = Math.round(Number(amount || 0) * (rate / 100) * 100) / 100;
+      setTdsAmount(computed.toString());
+    } else {
+      setTdsAmount("0");
+    }
+  };
+
+  const handleTdsRateChange = (newRate: string) => {
+    setTdsRate(newRate);
+    const rate = Number(newRate) || 0;
+    const computed = Math.round(Number(amount || 0) * (rate / 100) * 100) / 100;
+    setTdsAmount(computed.toString());
+  };
 
   if (!isOpen || !expense) return null;
 
@@ -75,6 +111,14 @@ export function RecordPaymentModal({
       return;
     }
 
+    const numTdsAmount = isTdsDeducted ? Number(tdsAmount || 0) : 0;
+    if (isTdsDeducted && (numTdsAmount < 0 || numTdsAmount >= numAmount)) {
+      setError("TDS deduction must be greater than zero and less than the total payment settlement amount.");
+      return;
+    }
+
+    const bankPayment = isTdsDeducted ? Math.max(0, numAmount - numTdsAmount) : numAmount;
+
     setIsSubmitting(true);
     try {
       const res = await recordExpensePaymentAction({
@@ -86,6 +130,11 @@ export function RecordPaymentModal({
         referenceNumber: referenceNumber.trim() || undefined,
         notes: notes.trim() || undefined,
         isReimbursement,
+        isTdsDeducted,
+        tdsRate: isTdsDeducted ? Number(tdsRate || 0) : 0,
+        tdsAmount: numTdsAmount,
+        tdsSection: isTdsDeducted ? tdsSection : undefined,
+        bankPayment,
       });
 
       if (res.success) {
@@ -249,6 +298,93 @@ export function RecordPaymentModal({
             </div>
           </div>
 
+          {!isReimbursement && (
+            <div className="p-3 bg-[#F4F7F3] rounded-xl border border-[#E0E7E2] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#17211B] flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isTdsDeducted}
+                    onChange={(e) => handleTdsToggle(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#1b5e4b] focus:ring-[#1b5e4b]"
+                  />
+                  <span>Deduct Vendor TDS at Payment</span>
+                </label>
+                {isTdsDeducted && (
+                  <span className="text-[10px] font-bold text-[#1b5e4b] bg-[#E2ECE6] px-2 py-0.5 rounded-full">
+                    Withholding Active
+                  </span>
+                )}
+              </div>
+
+              {isTdsDeducted && (
+                <div className="pt-2 border-t border-[#D9E3DC] space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#68756C] mb-1">
+                        TDS Section
+                      </label>
+                      <select
+                        value={tdsSection}
+                        onChange={(e) => {
+                          const sec = e.target.value;
+                          setTdsSection(sec);
+                          if (sec === "194C") handleTdsRateChange("2");
+                          else if (sec === "194J") handleTdsRateChange("10");
+                          else if (sec === "194I") handleTdsRateChange("10");
+                          else if (sec === "194H") handleTdsRateChange("5");
+                        }}
+                        className="w-full h-8 px-2 border border-[#D9E3DC] rounded-lg text-xs font-semibold bg-white"
+                      >
+                        <option value="194J">194J (Prof./Tech - 10%)</option>
+                        <option value="194C">194C (Contractors - 2%)</option>
+                        <option value="194I">194I (Rent - 10%)</option>
+                        <option value="194H">194H (Commission - 5%)</option>
+                        <option value="OTHER">Other / Custom</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#68756C] mb-1">
+                        TDS Rate (%)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        value={tdsRate}
+                        onChange={(e) => handleTdsRateChange(e.target.value)}
+                        className="w-full h-8 px-2 border border-[#D9E3DC] rounded-lg text-xs font-semibold bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#68756C] mb-1">
+                        TDS Amount (₹)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={tdsAmount}
+                        onChange={(e) => setTdsAmount(e.target.value)}
+                        className="w-full h-8 px-2 border border-[#D9E3DC] rounded-lg text-xs font-semibold bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs pt-1 text-[#45544A]">
+                    <span>Net Bank Outflow:</span>
+                    <span className="font-bold text-[#17211B]">
+                      ₹{Math.max(0, Number(amount || 0) - Number(tdsAmount || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-[#17211B] mb-1">
               Internal Notes / Remarks
@@ -279,7 +415,13 @@ export function RecordPaymentModal({
               {isSubmitting ? (
                 <>Recording...</>
               ) : (
-                <>Confirm & Disburse ₹{Number(amount || 0).toLocaleString("en-IN")}</>
+                <>
+                  Confirm & Disburse ₹
+                  {(isTdsDeducted
+                    ? Math.max(0, Number(amount || 0) - Number(tdsAmount || 0))
+                    : Number(amount || 0)
+                  ).toLocaleString("en-IN")}
+                </>
               )}
             </button>
           </div>

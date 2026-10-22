@@ -3,6 +3,7 @@ import { AccountingEngine } from "./accounting-engine.service";
 import { EmployeeAdvanceService } from "./employee-advance.service";
 import { convertNumberToIndianWords } from "@/lib/utils/indian-currency-words";
 import { BankingPayoutRecord, generateCorporateBankBatchFile, BankPortalType } from "@/lib/banking-export";
+import { ExpenseAccountingService } from "./expense-accounting.service";
 
 export interface BatchPayrollEmployeeItem {
   employeeId: string;
@@ -200,6 +201,10 @@ export class PayrollService {
           category: true,
         },
       });
+
+      if (expense.status === "APPROVED") {
+        await ExpenseAccountingService.postExpenseConfirmation(expense.id);
+      }
 
       // Deduct advance balance if applicable
       if (advDeduction > 0) {
