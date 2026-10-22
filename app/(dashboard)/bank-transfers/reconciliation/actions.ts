@@ -47,3 +47,36 @@ export async function deleteImportAction(importId: string) {
     return { success: false, error: error.message || "Failed to delete import" };
   }
 }
+
+export async function recordReconciliationAdjustmentAction(data: {
+  bankAccountId: string;
+  adjustmentType: "BANK_CHARGES" | "INTEREST_RECEIVED" | "CUSTOM";
+  amount: number;
+  date: string;
+  reference?: string;
+  particulars?: string;
+  contraAccountId?: string;
+  contraAccountName?: string;
+}) {
+  try {
+    const session = await requireActionAuth();
+    const user = (session.user as any) || {};
+    const actor = {
+      id: user.id,
+      name: user.name || "User",
+      email: user.email || "user@kvjfinledger.internal",
+      role: user.role || "USER",
+    };
+    const res = await BankReconciliationService.createAdjustment(
+      {
+        ...data,
+        date: new Date(data.date),
+      },
+      actor
+    );
+    revalidatePath("/bank-transfers/reconciliation");
+    return { success: true, data: res };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to record adjustment" };
+  }
+}

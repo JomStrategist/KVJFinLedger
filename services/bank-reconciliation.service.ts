@@ -59,6 +59,20 @@ export class BankReconciliationService {
   }
 
   static async createImport(bankAccountId: string, fileName: string, lines: StatementLineInput[]) {
+    // Detect duplicate statement imports safely
+    const existing = await prisma.bankStatementImport.findFirst({
+      where: {
+        bankAccountId,
+        fileName,
+        totalRecords: lines.length,
+      },
+      include: { lines: true },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
     return prisma.$transaction(async (tx) => {
       const imp = await tx.bankStatementImport.create({
         data: {
@@ -85,6 +99,29 @@ export class BankReconciliationService {
 
       return imp;
     });
+  }
+
+  /**
+   * Posts an explicit, auditable reconciliation adjustment voucher (e.g. Bank Charges or Interest).
+   */
+  static async createAdjustment(
+    data: {
+      bankAccountId: string;
+      adjustmentType: "BANK_CHARGES" | "INTEREST_RECEIVED" | "CUSTOM";
+      amount: number;
+      date: Date | string;
+      reference?: string;
+      particulars?: string;
+      contraAccountId?: string;
+      contraAccountName?: string;
+      contraFinancialType?: string;
+      contraStatementGroup?: string;
+      contraNormalBalance?: string;
+    },
+    actor?: any
+  ) {
+    const { BankingStatutoryAccountingService } = await import("./banking-statutory-accounting.service");
+    return await BankingStatutoryAccountingService.postReconciliationAdjustment(data, actor);
   }
 
   /**

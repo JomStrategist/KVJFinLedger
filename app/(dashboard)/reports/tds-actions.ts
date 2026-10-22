@@ -6,8 +6,15 @@ import { requireActionAuth, requireActionAdmin } from "@/lib/auth-utils";
 
 export async function recordTdsDepositAction(data: RecordTdsDepositInput) {
   try {
-    await requireActionAuth();
-    const result = await TdsDepositService.recordTdsDeposit(data);
+    const session = await requireActionAuth();
+    const user = (session.user as any) || {};
+    const actor = {
+      id: user.id,
+      name: user.name || "User",
+      email: user.email || "user@kvjfinledger.internal",
+      role: user.role || "USER",
+    };
+    const result = await TdsDepositService.recordTdsDeposit(data, actor);
     revalidatePath("/reports");
     revalidatePath("/dashboard");
     revalidatePath("/finance");
@@ -36,8 +43,15 @@ export async function markExpenseTdsPaidAction(expenseId: string, challanNumber:
 
 export async function deleteTdsDepositAction(id: string) {
   try {
-    await requireActionAdmin();
-    await TdsDepositService.deleteTdsDeposit(id);
+    const session = await requireActionAdmin();
+    const user = (session.user as any) || {};
+    const actor = {
+      id: user.id,
+      name: user.name || "Admin",
+      email: user.email || "admin@kvjfinledger.internal",
+      role: user.role || "ADMIN",
+    };
+    await TdsDepositService.deleteTdsDeposit(id, actor);
     revalidatePath("/reports");
     revalidatePath("/dashboard");
     revalidatePath("/finance");

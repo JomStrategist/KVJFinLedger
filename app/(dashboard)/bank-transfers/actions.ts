@@ -11,14 +11,26 @@ export async function createBankTransferAction(data: {
   amount: number;
   reference?: string;
   description?: string;
+  fromAccountId?: string;
+  toAccountId?: string;
 }) {
   try {
-    await requireActionAuth();
-    const transfer = await BankTransferService.createBankTransfer({
-      ...data,
-      date: new Date(data.date),
-      amount: Number(data.amount),
-    });
+    const session = await requireActionAuth();
+    const user = (session.user as any) || {};
+    const actor = {
+      id: user.id,
+      name: user.name || "User",
+      email: user.email || "user@kvjfinledger.internal",
+      role: user.role || "USER",
+    };
+    const transfer = await BankTransferService.createBankTransfer(
+      {
+        ...data,
+        date: new Date(data.date),
+        amount: Number(data.amount),
+      },
+      actor
+    );
     revalidatePath("/bank-transfers");
     revalidatePath("/finance");
     return { success: true, data: transfer };
@@ -36,15 +48,28 @@ export async function updateBankTransferAction(
     amount: number;
     reference?: string;
     description?: string;
+    fromAccountId?: string;
+    toAccountId?: string;
   }
 ) {
   try {
-    await requireActionAuth();
-    const transfer = await BankTransferService.updateBankTransfer(id, {
-      ...data,
-      date: new Date(data.date),
-      amount: Number(data.amount),
-    });
+    const session = await requireActionAuth();
+    const user = (session.user as any) || {};
+    const actor = {
+      id: user.id,
+      name: user.name || "User",
+      email: user.email || "user@kvjfinledger.internal",
+      role: user.role || "USER",
+    };
+    const transfer = await BankTransferService.updateBankTransfer(
+      id,
+      {
+        ...data,
+        date: new Date(data.date),
+        amount: Number(data.amount),
+      },
+      actor
+    );
     revalidatePath("/bank-transfers");
     revalidatePath("/finance");
     return { success: true, data: transfer };
@@ -55,8 +80,15 @@ export async function updateBankTransferAction(
 
 export async function deleteBankTransferAction(id: string) {
   try {
-    await requireActionAdmin();
-    const res = await BankTransferService.deleteBankTransfer(id);
+    const session = await requireActionAdmin();
+    const user = (session.user as any) || {};
+    const actor = {
+      id: user.id,
+      name: user.name || "Admin",
+      email: user.email || "admin@kvjfinledger.internal",
+      role: user.role || "ADMIN",
+    };
+    const res = await BankTransferService.deleteBankTransfer(id, actor);
     revalidatePath("/bank-transfers");
     revalidatePath("/finance");
     return { success: true, data: res };
@@ -64,4 +96,3 @@ export async function deleteBankTransferAction(id: string) {
     return { success: false, error: error.message || "Failed to delete bank transfer." };
   }
 }
-

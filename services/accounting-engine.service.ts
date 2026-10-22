@@ -1709,8 +1709,12 @@ export class AccountingEngine {
 
       const lines: JournalVoucherLine[] = [];
 
-      // Dr Output GST liabilities (settling output tax)
-      if (cgstPay > 0) {
+      // Dr Output GST liabilities (settling output tax = cash paid + ITC credit utilized)
+      const totalCgstSettled = cgstPay + cgstItc;
+      const totalSgstSettled = sgstPay + sgstItc;
+      const totalIgstSettled = igstPay + igstItc;
+
+      if (totalCgstSettled > 0) {
         lines.push({
           accountId: "stat_output_cgst",
           accountName: "Output CGST Payable",
@@ -1718,12 +1722,12 @@ export class AccountingEngine {
           financialType: "LIABILITY",
           financialStatement: "BALANCE_SHEET",
           normalBalance: "CREDIT",
-          debit: cgstPay,
+          debit: totalCgstSettled,
           credit: 0,
           particulars: `Output CGST settled for ${gs.returnPeriod}`
         });
       }
-      if (sgstPay > 0) {
+      if (totalSgstSettled > 0) {
         lines.push({
           accountId: "stat_output_sgst",
           accountName: "Output SGST Payable",
@@ -1731,12 +1735,12 @@ export class AccountingEngine {
           financialType: "LIABILITY",
           financialStatement: "BALANCE_SHEET",
           normalBalance: "CREDIT",
-          debit: sgstPay,
+          debit: totalSgstSettled,
           credit: 0,
           particulars: `Output SGST settled for ${gs.returnPeriod}`
         });
       }
-      if (igstPay > 0) {
+      if (totalIgstSettled > 0) {
         lines.push({
           accountId: "stat_output_igst",
           accountName: "Output IGST Payable",
@@ -1744,7 +1748,7 @@ export class AccountingEngine {
           financialType: "LIABILITY",
           financialStatement: "BALANCE_SHEET",
           normalBalance: "CREDIT",
-          debit: igstPay,
+          debit: totalIgstSettled,
           credit: 0,
           particulars: `Output IGST settled for ${gs.returnPeriod}`
         });

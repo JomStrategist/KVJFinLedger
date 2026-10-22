@@ -6,8 +6,15 @@ import { requireActionAdmin } from "@/lib/auth-utils";
 
 export async function recordAssetDepreciationAction(data: RecordDepreciationInput) {
   try {
-    await requireActionAdmin();
-    const record = await DepreciationService.recordAssetDepreciation(data);
+    const session = await requireActionAdmin();
+    const user = (session.user as any) || {};
+    const actor = {
+      id: user.id,
+      name: user.name || "Admin",
+      email: user.email || "admin@kvjfinledger.internal",
+      role: user.role || "ADMIN",
+    };
+    const record = await DepreciationService.recordAssetDepreciation(data, actor);
     revalidatePath("/reports");
     revalidatePath("/profit-loss");
     revalidatePath("/reports/balance-sheet");
@@ -21,8 +28,15 @@ export async function recordAssetDepreciationAction(data: RecordDepreciationInpu
 
 export async function deleteAssetDepreciationAction(id: string) {
   try {
-    await requireActionAdmin();
-    await DepreciationService.deleteDepreciation(id);
+    const session = await requireActionAdmin();
+    const user = (session.user as any) || {};
+    const actor = {
+      id: user.id,
+      name: user.name || "Admin",
+      email: user.email || "admin@kvjfinledger.internal",
+      role: user.role || "ADMIN",
+    };
+    await DepreciationService.deleteDepreciation(id, actor);
     revalidatePath("/reports");
     revalidatePath("/profit-loss");
     revalidatePath("/reports/balance-sheet");

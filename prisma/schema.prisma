@@ -753,15 +753,18 @@ model FinancialTransaction {
 }
 
 model BankTransfer {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  date        DateTime @default(now())
-  fromAccount String
-  toAccount   String
-  amount      Float
-  reference   String?
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  date          DateTime @default(now())
+  fromAccount   String
+  toAccount     String
+  fromAccountId String?  @db.ObjectId
+  toAccountId   String?  @db.ObjectId
+  amount        Float
+  reference     String?
+  description   String?
+  status        String   @default("COMPLETED")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model OpeningBalance {
@@ -819,6 +822,7 @@ model TdsDeposit {
   amountPaid      Float     @default(0)
   status          String    @default("PAID")
   bankAccount     String?   @default("Primary Bank Account")
+  bankAccountId   String?   @db.ObjectId
   notes           String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
