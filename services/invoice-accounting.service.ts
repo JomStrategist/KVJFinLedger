@@ -234,23 +234,25 @@ export class InvoiceAccountingService {
     dbOrTx: DbClientOrTx = prisma
   ): Promise<JournalEntryWithLines | null> {
     const client = dbOrTx as any;
-    const existing = await client.journalEntry.findUnique({
-      where: { idempotencyKey: `TAX_INVOICE:CONFIRM:${invoiceId}` },
+    // Find the currently active POSTED sales journal entry (original or revised) for this invoice
+    const activeExisting = await client.journalEntry.findFirst({
+      where: {
+        sourceType: "TAX_INVOICE",
+        sourceId: invoiceId,
+        entryType: "SALES",
+        status: "POSTED",
+      },
+      orderBy: { createdAt: "desc" },
     });
 
-    if (!existing) {
-      // No persistent journal exists for this invoice (e.g. historical invoice)
-      return null;
-    }
-
-    if (existing.status === "REVERSED") {
-      // Already reversed
+    if (!activeExisting) {
+      // No active persistent journal exists for this invoice (e.g. historical invoice or already reversed)
       return null;
     }
 
     return await JournalPostingService.reverseJournalEntry(
       {
-        originalEntryId: existing.id,
+        originalEntryId: activeExisting.id,
         reason: reason || "Invoice cancelled by user",
         actor: actor || { id: "system", name: "System" },
         accountingDate: new Date(),
@@ -269,15 +271,28 @@ export class InvoiceAccountingService {
     dbOrTx: DbClientOrTx = prisma
   ): Promise<JournalEntryWithLines | null> {
     const client = dbOrTx as any;
-    const existing = await client.journalEntry.findUnique({
-      where: { idempotencyKey: `TAX_INVOICE:CONFIRM:${invoiceId}` },
+    const invoice = await client.taxInvoice.findUnique({
+      where: { id: invoiceId },
+      include: { customer: true, items: true },
+    });
+    if (!invoice) return null;
+
+    // Find the currently active POSTED journal entry for this invoice to reverse it
+    const activeExisting = await client.journalEntry.findFirst({
+      where: {
+        sourceType: "TAX_INVOICE",
+        sourceId: invoiceId,
+        entryType: "SALES",
+        status: "POSTED",
+      },
+      orderBy: { createdAt: "desc" },
     });
 
-    if (existing && existing.status !== "REVERSED") {
+    if (activeExisting) {
       // Atomically reverse the prior journal entry
       await JournalPostingService.reverseJournalEntry(
         {
-          originalEntryId: existing.id,
+          originalEntryId: activeExisting.id,
           reason: `Reversal due to Tax Invoice modification`,
           actor: actor || { id: "system", name: "System" },
           accountingDate: new Date(),
@@ -286,13 +301,9 @@ export class InvoiceAccountingService {
       );
     }
 
-    // Post the updated invoice voucher with versioned idempotency key
-    const versionedKey = `TAX_INVOICE:CONFIRM:${invoiceId}:REV_${Date.now()}`;
-    const invoice = await client.taxInvoice.findUnique({
-      where: { id: invoiceId },
-      include: { customer: true, items: true },
-    });
-    if (!invoice) return null;
+    // Post the updated invoice voucher with deterministic versioned idempotency key
+    const revisionId = invoice.updatedAt ? new Date(invoice.updatedAt).getTime() : Date.now();
+    const versionedKey = `TAX_INVOICE:CONFIRM:${invoiceId}:REV_${revisionId}`;
 
     const customerName = invoice.customerNameSnapshot || invoice.customer?.legalName || "Customer";
     const customerId = invoice.customerId;

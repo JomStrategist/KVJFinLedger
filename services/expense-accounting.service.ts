@@ -428,22 +428,24 @@ export class ExpenseAccountingService {
     dbOrTx: DbClientOrTx = prisma
   ): Promise<JournalEntryWithLines | null> {
     const client = dbOrTx as any;
-    const existing = await client.journalEntry.findUnique({
-      where: { idempotencyKey: `EXPENSE:CONFIRM:${expenseId}` },
+    // Find the currently active POSTED purchase/journal entry (original or revised) for this expense
+    const activeExisting = await client.journalEntry.findFirst({
+      where: {
+        sourceType: "EXPENSE",
+        sourceId: expenseId,
+        entryType: { in: ["PURCHASE", "JOURNAL"] },
+        status: "POSTED",
+      },
+      orderBy: { createdAt: "desc" },
     });
 
-    if (!existing) {
-      return null;
-    }
-
-    if (existing.status === "REVERSED") {
-      // Already reversed — idempotent
+    if (!activeExisting) {
       return null;
     }
 
     return await JournalPostingService.reverseJournalEntry(
       {
-        originalEntryId: existing.id,
+        originalEntryId: activeExisting.id,
         reason: reason || "Expense cancelled by user",
         actor: actor || { id: "system", name: "System" },
         accountingDate: new Date(),
@@ -462,23 +464,6 @@ export class ExpenseAccountingService {
     dbOrTx: DbClientOrTx = prisma
   ): Promise<JournalEntryWithLines | null> {
     const client = dbOrTx as any;
-    const existing = await client.journalEntry.findUnique({
-      where: { idempotencyKey: `EXPENSE:CONFIRM:${expenseId}` },
-    });
-
-    if (existing && existing.status !== "REVERSED") {
-      await JournalPostingService.reverseJournalEntry(
-        {
-          originalEntryId: existing.id,
-          reason: `Reversal due to Expense modification`,
-          actor: actor || { id: "system", name: "System" },
-          accountingDate: new Date(),
-        },
-        dbOrTx
-      );
-    }
-
-    const versionedKey = `EXPENSE:CONFIRM:${expenseId}:REV_${Date.now()}`;
     const expense = await client.expense.findUnique({
       where: { id: expenseId },
       include: {
@@ -493,6 +478,32 @@ export class ExpenseAccountingService {
     if (!expense || expense.status === "CANCELLED" || expense.status === "DRAFT") {
       return null;
     }
+
+    // Find the currently active POSTED journal entry for this expense to reverse it
+    const activeExisting = await client.journalEntry.findFirst({
+      where: {
+        sourceType: "EXPENSE",
+        sourceId: expenseId,
+        entryType: { in: ["PURCHASE", "JOURNAL"] },
+        status: "POSTED",
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (activeExisting) {
+      await JournalPostingService.reverseJournalEntry(
+        {
+          originalEntryId: activeExisting.id,
+          reason: `Reversal due to Expense modification`,
+          actor: actor || { id: "system", name: "System" },
+          accountingDate: new Date(),
+        },
+        dbOrTx
+      );
+    }
+
+    const revisionId = expense.updatedAt ? new Date(expense.updatedAt).getTime() : Date.now();
+    const versionedKey = `EXPENSE:CONFIRM:${expenseId}:REV_${revisionId}`;
 
     const catAny = expense.category as any;
     const isAsset = Boolean(expense.isAsset || catAny?.isCapitalAsset || catAny?.accountingClassification === "FIXED_ASSET");

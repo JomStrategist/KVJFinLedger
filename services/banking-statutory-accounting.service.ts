@@ -403,7 +403,7 @@ export class BankingStatutoryAccountingService {
       financialYear,
       sourceType: "MANUAL_ADJUSTMENT",
       sourceId: bank.id,
-      sourceNumber: data.reference || `BRS-ADJ-${Date.now().toString().slice(-6)}`,
+      sourceNumber: data.reference || `BRS-ADJ-${bank.id.slice(-4)}-${accountingDate.toISOString().slice(0, 10).replace(/-/g, "")}`,
       narration: data.particulars || `Bank reconciliation adjustment for ${bank.bankName}`,
       reference: data.reference || null,
       postedBy: actor?.name || actor?.email || "BRS Service",

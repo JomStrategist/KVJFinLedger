@@ -4,6 +4,22 @@
  */
 
 import "dotenv/config";
+
+// Enforce isolated test database
+const originalDbUrl = process.env.DATABASE_URL;
+if (!originalDbUrl) {
+  console.error("FATAL: DATABASE_URL environment variable is not defined.");
+  process.exit(1);
+}
+
+const isolatedTestDbUrl = originalDbUrl.includes("/billing_erp?")
+  ? originalDbUrl.replace("/billing_erp?", "/billing_erp_test?")
+  : originalDbUrl.includes("/billing_erp")
+  ? originalDbUrl.replace("/billing_erp", "/billing_erp_test")
+  : `${originalDbUrl}_test`;
+
+process.env.DATABASE_URL = isolatedTestDbUrl;
+
 import { getAuthSecret } from "@/auth.config";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
