@@ -7,7 +7,10 @@
         "build": "prisma generate && next build",
         "start": "next start",
         "lint": "eslint",
-        "clean": "rm -rf .next node_modules/.cache *.tsbuildinfo"
+        "clean": "rm -rf .next node_modules/.cache *.tsbuildinfo",
+        "backup:db": "tsx scripts/backup-db.ts",
+        "restore:verify": "tsx scripts/restore-and-verify.ts",
+        "migrate:dry-run": "tsx scripts/dry-run-migration.ts"
     },
     "dependencies": {
         "@prisma/client": "^6.19.3",

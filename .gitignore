@@ -44,3 +44,5 @@ next-env.d.ts
 /lib/generated/prisma
 /scratch/
 /prisma/backup/
+/prisma/backups/
+/backups/

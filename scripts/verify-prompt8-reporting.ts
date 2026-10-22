@@ -575,10 +575,10 @@ async function runPrompt8Tests() {
     // -------------------------------------------------------------------------
     console.log("\n--- Scenario 11: Nominal Account Period Isolation ---");
     const pnlNextYear = await PersistentLedgerReportingService.getProfitAndLoss(
-      { financialYear: "2027-28" },
+      { financialYear: "2028-29" },
       testPrisma
     );
-    // Since we posted zero transactions in FY 2027-28, revenue and expense must be zero
+    // Since zero transactions were posted in FY 2028-29, nominal revenue and expense must reset to zero
     assert(pnlNextYear.totalRevenue === 0, "Nominal revenue resets to zero in subsequent financial year.");
     assert(pnlNextYear.totalExpenses === 0, "Nominal expense resets to zero in subsequent financial year.");
 

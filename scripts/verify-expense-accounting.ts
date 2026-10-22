@@ -643,7 +643,7 @@ async function runPrompt6Tests() {
     // Monthly salary with manual entered amount: ₹65,000 (not copied from master ₹50,000)
     // Less TDS ₹2,500 under Section 192 -> Net Salary ₹62,500
     const salaryCategory = await testPrisma.expenseCategory.findFirst({
-      where: { code: "EXP-SAL-001" },
+      where: { OR: [{ code: "EXP-SAL-001" }, { name: "Salaries & Wages" }] },
     }) || await testPrisma.expenseCategory.create({
       data: {
         name: "Salaries & Wages",
