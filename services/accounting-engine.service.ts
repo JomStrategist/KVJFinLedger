@@ -2604,8 +2604,8 @@ export class AccountingEngine {
     const totalShareholdersFunds = Math.round((capital + reservesAndSurplus - drawings) * 100) / 100;
 
     tradePayables = Math.round(tradePayables * 100) / 100;
-    employeePayables = Math.round(Math.max(0, employeePayables) * 100) / 100;
-    tdsPayable = Math.round(Math.max(0, tdsPayable) * 100) / 100;
+    employeePayables = Math.round(employeePayables * 100) / 100;
+    tdsPayable = Math.round(tdsPayable * 100) / 100;
     customerAdvances = Math.round(customerAdvances * 100) / 100;
     const incomeTaxProvision = pnl.taxExpense;
     const totalOtherLiabilities = Math.round((otherLiabs + customerAdvances + incomeTaxProvision) * 100) / 100;
@@ -2619,7 +2619,7 @@ export class AccountingEngine {
 
     tradeReceivables = Math.round(tradeReceivables * 100) / 100;
     cashAndBank = Math.round(cashAndBank * 100) / 100;
-    tdsReceivable = Math.round(Math.max(0, tdsReceivable) * 100) / 100;
+    tdsReceivable = Math.round(tdsReceivable * 100) / 100;
     vendorAdvances = Math.round(vendorAdvances * 100) / 100;
     const totalOtherAssets = Math.round((otherAssets + vendorAdvances) * 100) / 100;
 

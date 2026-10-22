@@ -15,10 +15,10 @@ This register logs every functional, accounting, UI/UX, and performance defect u
 | Severity | Total Discovered | Resolved / Verified | Pending Implementation |
 | :--- | :---: | :---: | :---: |
 | **Critical / Blocker** | 1 | 1 | 0 |
-| **High** | 2 | 1 | 1 |
+| **High** | 3 | 2 | 1 |
 | **Medium** | 1 | 0 | 1 |
 | **Low** | 1 | 0 | 1 |
-| **Total** | **5** | **2** | **3** |
+| **Total** | **6** | **3** | **3** |
 
 ---
 
@@ -85,10 +85,11 @@ This register logs every functional, accounting, UI/UX, and performance defect u
 
 ---
 
-## 3. Defect Resolution Schedule (Phase 3 & Phase 4)
-
-| Defect ID | Target File(s) | Lead Assignee | Target Phase |
-| :--- | :--- | :--- | :--- |
-| `DEF-003` | `app/(dashboard)/expenses/page.tsx`, `ExpenseEmployeesView.tsx` | Full-Stack Architect | Phase 4 |
-| `DEF-004` | `app/(dashboard)/reports/page.tsx`, `reports/FixedAssetsRegister.tsx` | Chartered Accountant | Phase 4 |
-| `DEF-005` | `components/layout/Sidebar.tsx` | UI/UX Developer | Phase 4 |
+### DEF-006: Legacy Balance Sheet ₹34,500 Discrepancy due to TDS Payable Clamping
+- **Defect ID:** `DEF-006`
+- **Severity:** High
+- **Affected URL/Component:** `services/accounting-engine.service.ts` (`AccountingEngine.getBalanceSheet()`)
+- **Reported By:** Screen Audit Suite (`scripts/audit-screens.ts`, Prompt 10/11)
+- **Root Cause:** In `AccountingEngine.getBalanceSheet()` line 2608, `tdsPayable` was clamped to non-negative values using `Math.max(0, tdsPayable)`. When TDS deposits (Challan ITNS 281) paid to the tax authority exceeded withholdings on expenses/payroll (in the test database, ₹42,000 was deposited vs ₹7,500 withheld, leaving net -₹34,500), clamping converted `-34,500` to `0`. This discarded the ₹34,500 liability reduction while cash assets were credited by the full ₹42,000, creating an artificial ₹34,500 imbalance where Total Equity & Liabilities exceeded Total Assets.
+- **Resolution:** Removed `Math.max(0, ...)` clamping on `tdsPayable`, `tdsReceivable`, and `employeePayables`, preserving exact algebraic double-entry balances in both legacy and persistent reporting engines.
+- **Status:** **RESOLVED & VERIFIED** (Verified by `scripts/audit-screens.ts` 23/23 passing and `scripts/verify-prompt11-legacy-reconciliation.ts` 18/18 passing).
